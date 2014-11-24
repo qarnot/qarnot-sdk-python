@@ -6,16 +6,21 @@ class QTask(object):
         self.profile = profile
         self.frameCount = frameNbr
         self.resourceDisk = None #disk object
-        self.constant = {}
-        self.submitted = False
-
-    def __del__(self):
-        self.abort()
+        self.constants = {}
+        self.status = 'UnSubmitted'
 
     def submit(self):
-        self.submitted = True #change into json object and send
+        pass #change into json object and send
 
     def abort(self):
+        pass
+
+    def update(self):
+        """get the current state of this task and return it's status"""
+        if self.status == 'UnSubmitted':
+            return self.status
+
+    def _update(self, jsonTask):
         pass
 
     def wait(self):

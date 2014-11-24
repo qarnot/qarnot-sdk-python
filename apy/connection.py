@@ -12,25 +12,34 @@ class QConnection(object):
     def __init__(self, qnode, auth):
         self.qnode = qnode
         self._http = requests.session()
-        self._http.headers.update({"Authorization": "second"})
-        #self._http.auth = auth
+        self._http.headers.update({"Authorization": auth})
+        self.auth = auth
         self._http.verify=False #s/False/`file of auth certificates`
 
     def get(self, url, **kwargs):
-        return self._http.get(self.qnode + url, **kwargs)
+        ret = self._http.get(self.qnode + url, **kwargs)
+        if ret.status_code == 401:
+            raise UnauthorizedException(self.auth)
+        return ret
 
     def post(self, url, data=None, json=None,**kwargs):
-        return self._http.post(self.qnode + url, json=json, **kwargs)
+        ret =  self._http.post(self.qnode + url, json=json, **kwargs)
+        if ret.status_code == 401:
+            raise UnauthorizedException(self.auth)
+        return ret
 
     def delete(self, url, data=None, json=None,**kwargs):
-        return self._http.delete(self.qnode + url, **kwargs)
+        ret = self._http.delete(self.qnode + url, **kwargs)
+        if ret.status_code == 401:
+            raise UnauthorizedException(self.auth)
+        return ret
 
 
     #move to a better place (session)
     def disks(self):
         response = self.get(get_url('disk folder'))
         if response.status_code != 200:
-            return None
+            return response.status_code
         disks = [QDisk(data, self) for data in response.json()]
         return disks
 
