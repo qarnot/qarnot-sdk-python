@@ -14,17 +14,22 @@
 *** TODO proper authentication
 *** TODO proper cert whitelist
 *** TODO add user functions
+*** TODO POST request -> handle redirections
 ** disks
 *** Add files
     Note : error 405 happening sometimes => *why ?*
 *** DONE get files
 *** DONE list files
+*** TODO get archive
+*** TODO delete file
 ** tasks
 *** DONE contants
     constants are a python dictionary
 *** TODO ressources
     should be a wrapper on disk
 *** taskinfo ?= task
+*** TODO submission
+
 * TODO style
  - have a coherent style (pep 8?)
  - classmethod -> functions *?*

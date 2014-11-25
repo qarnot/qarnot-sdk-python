@@ -2,6 +2,11 @@
 
 __all__ = ["task", "connection", "disk"]
 
+__version__ = 'O.0.1'
+
+from connection import QConnection
+from task import QTask
+
 def get_url(key, **kwargs):
     """get and format the url for the given key"""
     Urls = {
@@ -12,7 +17,7 @@ def get_url(key, **kwargs):
         'update file' : '/disks/{name}/{path}', #POST; GET; DELETE
         'list profiles': '/tasks/profiles', #GET -> possible profiles
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task
-        'task update' : '/tasks/{id}', #GET -> result, DELETE ->abort
-        'task snapshot': '/tasks/{id}/snapshot' #GET -> task snapshot
+        'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort
+        'task snapshot': '/tasks/{uuid}/snapshot' #GET -> snapshot
     }
     return Urls[key].format(**kwargs)

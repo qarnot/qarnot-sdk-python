@@ -50,7 +50,7 @@ class QDisk(object):
             return None
 
         disk_id = response.json()
-        return cls.retreive(connection, disk_id)
+        return cls.retreive(connection, disk_id['guid'])
 
 
     @classmethod
@@ -85,15 +85,22 @@ class QDisk(object):
         return response.status_code == 200
 
     def add_file(self, filename): #TODO finish with api
-        """add a file to the disk"""
+        """add a file to the disk
+
+        Parameters:
+        filename: string, name of the remote file
+        """
         with open(filename) as f:
             response = self._connection.post(
                 get_url('update file', name=self.name, path=""),
-                files = {filename : f.read()})
+                files={'filedata': (path.basename(filename),f)})
+            #change once session requests accept files
 
             if (response.status_code == 404):
-                raise Exception((404, "No such disk"))
-            return response.status_code
+                raise MissingDiskException(self.name)
+            else:
+                response.raise_for_status()
+            return response.status_code == 200
 
 
     def list_files(self):
@@ -102,7 +109,8 @@ class QDisk(object):
         if (response.status_code == 404):
             raise MissingDiskException(self.name)
         elif response.status_code != 200:
-            return None
+            response.raise_for_status()
+            print response.status_code()
         return [FileInfo._make(f.values()) for f in response.json()]
 
 
@@ -114,13 +122,15 @@ class QDisk(object):
         if outputfile is None:
             outputfile = filename
         response = self._connection.get(
-            get_url('update file', name=self.name, path=filename))
+            get_url('update file', name=self.name, path=filename),
+            stream=True)
 
         if response.status_code == 404:
-            if response.json() == "Resource not found":
+            if response.json()['errorMessage'] != "No such disk":
                 return None #handle file not found
             else:
-                raise MissingDiskException
+                print response.json()
+                raise MissingDiskException(self.name)
         else:
             response.raise_for_status() #raise nothing if 2XX
 
@@ -133,8 +143,56 @@ class QDisk(object):
         return self.get_file(filename)
 
     def delete_file(self, filename):
-        pass
+        response = self._connection.delete(
+            get_url('update file', name=self.name, path=filename))
 
+        if response.status_code == 404:
+            if response.json()['errorMessage'] != "No such disk":
+                return False #handle file not found
+            else:
+                print response.json()
+                raise MissingDiskException(self.name)
+        else:
+            response.raise_for_status() #raise nothing if 2XX
+
+        return response.status_code == 200
+
+    def get_archive(self, extension, output=None):
+        """retreive an archive of this disk's content
+
+        Parameters:
+
+        extension : in {'tar', 'tgz', 'zip'},
+          format of the archive to get
+        output : string, name of the file to output to
+
+        returns :
+         the filename of the retreived archive
+
+        raises :
+
+        UnauthorizedException: invalid credentials
+        MissingDiskException: this disk doesn't represent a valid disk
+        ValueError: invalid extension format
+        HTTPError: unhandled http return code
+        """
+        response = self._connection.get(
+            get_url('get disk', name=self.name, ext=extension),
+            stream=True)
+
+        if response.status_code == 404:
+            raise MissingDiskException(self.name)
+        elif response.status_code == 400:
+            raise ValueError('invalid file format : {}'.extension)
+        else:
+            response.raise_for_status()
+
+        output = output or ".".join([self.name, extension])
+
+        with open(output, 'w') as f:
+            for elt in response.iter_content():
+                f.write(elt)
+        return output
 
 ###################
 # Utility Classes #
@@ -142,6 +200,7 @@ class QDisk(object):
 
 FileInfo = collections.namedtuple('FileInfo',
                                   ['creation_date', 'name', 'size'])
+"""Named tuple containing the informations on a file"""
 
 ##############
 # Exceptions #

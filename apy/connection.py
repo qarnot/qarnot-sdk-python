@@ -22,8 +22,8 @@ class QConnection(object):
             raise UnauthorizedException(self.auth)
         return ret
 
-    def post(self, url, data=None, json=None,**kwargs):
-        ret =  self._http.post(self.qnode + url, json=json, **kwargs)
+    def post(self, url, json=None,**kwargs):
+        ret = self._http.post(self.qnode + url, json=json, **kwargs)
         if ret.status_code == 401:
             raise UnauthorizedException(self.auth)
         return ret
@@ -33,7 +33,6 @@ class QConnection(object):
         if ret.status_code == 401:
             raise UnauthorizedException(self.auth)
         return ret
-
 
     #move to a better place (session)
     def disks(self):
