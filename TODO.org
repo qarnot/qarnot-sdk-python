@@ -6,6 +6,8 @@
     custom exception checked at each request
 *** 404 Not found
     404 is a frequent error -> specific handling
+*** TODO 403 Forbidden
+    for disks and tasks when quota overflow
 *** others
     use raise_for_status()
 ** misc

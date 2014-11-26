@@ -28,10 +28,17 @@ class QConnection(object):
             raise UnauthorizedException(self.auth)
         return ret
 
-    def delete(self, url, data=None, json=None,**kwargs):
+    def delete(self, url, **kwargs):
         ret = self._http.delete(self.qnode + url, **kwargs)
         if ret.status_code == 401:
             raise UnauthorizedException(self.auth)
+        return ret
+
+    def user_info(self):
+        resp = self.get(get_url('user'))
+        resp.raise_for_status()
+        ret = resp.json()
+        ret['disks'] = [QDisk(data, self) for data in ret['disks']]
         return ret
 
     #move to a better place (session)
