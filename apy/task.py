@@ -7,6 +7,7 @@ class QTask(object):
         self.name = name
         self.profile = profile
         self.frameCount = frameNbr
+        self.priority = 0
         self._resourceDisk = None
         self._resultDisk = None
         self._connction = connection
@@ -36,7 +37,15 @@ class QTask(object):
             return self.status
 
     def _update(self, jsonTask):
-        pass
+        self.name = jsonTask['name']
+        self.profile = jsonTask['profile']
+        self.framecount = jsonTask['numberOfFrame']
+        self._resourceDisk = disk.QDisk.retreive(
+            jsonTask['resourceDisk'])
+        #question : what to do upon change of disk
+        self._resultDisk = disk.QDisk.retreive(jsonTask['resultDisk'])
+        self.priority = jsonTask['priority']
+        self.uuid = jsonTask['id']
 
     def wait(self):
         pass
@@ -46,7 +55,24 @@ class QTask(object):
 
     @property
     def resources(self):
+        if self._resourceDisk is None:
+            disk = disk.QDisk.create(self._connection,
+                                     "task {}".format(self.name))
+            self._resourcedisk = disk
         return self._resourceDisk
 
     def _to_json(self):
-        pass #to json object
+        """get a dictionnary ready to be json serialized from this task"""
+        const_list = [
+            {'key': key, 'value': value}
+            for key, value in self.constants.items()
+        ]
+
+        jsonTask = {
+            'name': self.name,
+            'profile': self.profile,
+            'numberOfFrame': self.frameCount,
+            'resourceDisk': self._ressourcedisk.name,
+            'constant': const_list
+        }
+        return jsonTask

@@ -4,9 +4,6 @@ __all__ = ["task", "connection", "disk"]
 
 __version__ = 'O.0.1'
 
-from connection import QConnection
-from task import QTask
-
 def get_url(key, **kwargs):
     """get and format the url for the given key"""
     Urls = {
@@ -21,3 +18,6 @@ def get_url(key, **kwargs):
         'task snapshot': '/tasks/{uuid}/snapshot' #GET -> snapshot
     }
     return Urls[key].format(**kwargs)
+
+from connection import QConnection
+from task import QTask

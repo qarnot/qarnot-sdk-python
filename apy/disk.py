@@ -7,6 +7,7 @@ import collections
 
 class QDisk(object):
     """represents a ressource disk on the qnode"""
+    #Creation#
     def __init__(self, jsondisk, connection):
         """
         initialize a disk from a dictionnary.
@@ -74,6 +75,8 @@ class QDisk(object):
 
         return QDisk(response.json(), connection)
 
+    #Disk Manangment#
+
     def delete(self):
         """delete the disk represented by this Qdisk"""
         response = self._connection.delete(
@@ -81,79 +84,6 @@ class QDisk(object):
 
         if (response.status_code == 404):
             raise MissingDiskException(self.name)
-
-        return response.status_code == 200
-
-    def add_file(self, filename): #TODO finish with api
-        """add a file to the disk
-
-        Parameters:
-        filename: string, name of the remote file
-        """
-        with open(filename) as f:
-            response = self._connection.post(
-                get_url('update file', name=self.name, path=""),
-                files={'filedata': (path.basename(filename),f)})
-            #change once session requests accept files
-
-            if (response.status_code == 404):
-                raise MissingDiskException(self.name)
-            else:
-                response.raise_for_status()
-            return response.status_code == 200
-
-
-    def list_files(self):
-        response = self._connection.get(
-            get_url('ls disk', name=self.name))
-        if (response.status_code == 404):
-            raise MissingDiskException(self.name)
-        elif response.status_code != 200:
-            response.raise_for_status()
-            print response.status_code()
-        return [FileInfo._make(f.values()) for f in response.json()]
-
-
-    def get_file(self, filename, outputfile = None):
-        """get a file from the disk, you can also use disk['file']
-
-        returns the name of the output file
-        """
-        if outputfile is None:
-            outputfile = filename
-        response = self._connection.get(
-            get_url('update file', name=self.name, path=filename),
-            stream=True)
-
-        if response.status_code == 404:
-            if response.json()['errorMessage'] != "No such disk":
-                return None #handle file not found
-            else:
-                print response.json()
-                raise MissingDiskException(self.name)
-        else:
-            response.raise_for_status() #raise nothing if 2XX
-
-        with open(outputfile, 'w') as f:
-            for elt in response.iter_content():
-                f.write(elt)
-        return outputfile
-
-    def __getitem__(self, filename):
-        return self.get_file(filename)
-
-    def delete_file(self, filename):
-        response = self._connection.delete(
-            get_url('update file', name=self.name, path=filename))
-
-        if response.status_code == 404:
-            if response.json()['errorMessage'] != "No such disk":
-                return False #handle file not found
-            else:
-                print response.json()
-                raise MissingDiskException(self.name)
-        else:
-            response.raise_for_status() #raise nothing if 2XX
 
         return response.status_code == 200
 
@@ -193,6 +123,97 @@ class QDisk(object):
             for elt in response.iter_content():
                 f.write(elt)
         return output
+
+
+    def list_files(self):
+        """list files on the disk as FileInfo named Tuples"""
+        response = self._connection.get(
+            get_url('ls disk', name=self.name))
+        if (response.status_code == 404):
+            raise MissingDiskException(self.name)
+        elif response.status_code != 200:
+            response.raise_for_status()
+            print response.status_code()
+        return [FileInfo._make(f.values()) for f in response.json()]
+
+    def add_file(self, filename, dest=None):
+        """add a file to the disk (<=> self[dest] = filename)
+
+        Parameters:
+        filename: string, name of the local file file
+        dest: string, name of the remote file
+          (defaults to filename)
+        """
+        dest = dest or filename
+        with open(filename) as f:
+            response = self._connection.post(
+                get_url('update file', name=self.name, path=""),
+                files={'filedata': (path.basename(dest),f)})
+
+            if (response.status_code == 404):
+                raise MissingDiskException(self.name)
+            else:
+                response.raise_for_status()
+            return response.status_code == 200
+
+
+    def get_file(self, filename, outputfile = None):
+        """get a file from the disk, you can also use disk['file']
+
+        Parameters:
+        filename: string, the name of the remote file
+        outputfile: string, local name o retrived file
+          (defaults to filename)
+
+        Return:
+        the name of the output file
+        """
+        if outputfile is None:
+            outputfile = filename
+        response = self._connection.get(
+            get_url('update file', name=self.name, path=filename),
+            stream=True)
+
+        if response.status_code == 404:
+            if response.json()['errorMessage'] != "No such disk":
+                return None #handle file not found
+            else:
+                print response.json()
+                raise MissingDiskException(self.name)
+        else:
+            response.raise_for_status() #raise nothing if 2XX
+
+        with open(outputfile, 'w') as f:
+            for elt in response.iter_content():
+                f.write(elt)
+        return outputfile
+
+    def delete_file(self, filename):
+        response = self._connection.delete(
+            get_url('update file', name=self.name, path=filename))
+
+        if response.status_code == 404:
+            if response.json()['errorMessage'] != "No such disk":
+                return False #handle file not found
+            else:
+                print response.json()
+                raise MissingDiskException(self.name)
+        else:
+            response.raise_for_status() #raise nothing if 2XX
+
+        return response.status_code == 200
+
+    #operators#
+
+    def __getitem__(self, filename):
+        return self.get_file(filename)
+
+    def __setitem__(self, dest, filename):
+        return self.add_file(filename, dest)
+
+    def __delitem__(self, filename):
+        return self.delete_file(filename)
+
 
 ###################
 # Utility Classes #
