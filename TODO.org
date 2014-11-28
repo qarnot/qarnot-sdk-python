@@ -1,43 +1,52 @@
 # Api-python
 * error handling
 ** TODO timeout handling
+   *ASK*
 ** http response code checking
 *** DONE 401 Untauthorised
     custom exception checked at each request
-*** 404 Not found
+*** DONE 404 Not found
     404 is a frequent error -> specific handling
-*** TODO 403 Forbidden
+*** DONE 403 Forbidden
     for disks and tasks when quota overflow
-*** others
-    use raise_for_status()
+*** TODO others
+    use raise_for_status() evrywhere
 ** misc
 * main features
 ** connection
-*** TODO proper authentication
-*** TODO proper cert whitelist
-*** TODO add user functions
-*** TODO POST request -> handle redirections
-** disks
+*** TODO proper cert whitelist / proper cert
+*** DONE add user functions
+** DONE disks
 *** DONE Add files
     add directory handling once permitted by api
 *** DONE get files
 *** DONE list files
 *** DONE get archive
 *** DONE delete file
-*** operator[] :
+*** DONE operator[] :
 **** DONE getitem
-**** TODO setitem
-**** TODO delitem
+**** DONE setitem
+**** DONE delitem
 ** tasks
 *** DONE contants
     constants are a python dictionary
-*** TODO ressources
-    should be a wrapper on disk
-*** TODO submission
-*** retreiving
-*** creation
-*** updating with dict
+*** DONE ressources
+    property for disk
+*** DONE submission
+*** DONE retreiving
+*** DONE creation
+*** DONE updating with dict
     what to do with the old ressourcedisk on change?
+    for now user is not supposed to change it
+*** wait
+    for now active waiting w/ request every 10 sec -> to change
+** TODO session
+   - Note taken on [2014-11-28 ven. 10:28] \\
+     This as not been done on the rest API yet,
+     Cannot implement until then
 * TODO style
  - have a coherent style (pep 8?)
- - classmethod -> functions *?*
+* Doc
+** disks
+*** TODO add raise section
+** TODO task

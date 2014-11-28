@@ -20,7 +20,7 @@ class QDisk(object):
             description : string, a short description of the disk
             nbFiles : integer, number of files on the disk
             readOnly : boolean, is the disk read only
-        connection : Qconnection, the qnode on which the disk is
+        connection : Qconnection, the qnode on which the disk isw
         """
         self.name = jsondisk["id"]
         self.description = jsondisk["description"]
@@ -41,6 +41,9 @@ class QDisk(object):
         Return Value:
 
         Qdisk corresponding to created disk
+
+        Raises:
+        HTTPError: unhandled http return code
         """
         data = {
             "description" : description
@@ -48,7 +51,7 @@ class QDisk(object):
         response = connection.post(get_url('disk folder'), json=data)
 
         if response.status_code != 200: #raise unexpected status code
-            return None
+            response.raise_for_status()
 
         disk_id = response.json()
         return cls.retreive(connection, disk_id['guid'])
@@ -65,20 +68,31 @@ class QDisk(object):
 
         Return value :
         Qdisk corresponding to the retreived info
+
+        Raises:
+        MissingDiskException : the disk is not on the server
+        HTTPError: unhandled http return code
+        UnauthorizedException: invalid credentials
         """
         response = connection.get(get_url('disk info', name=disk_id))
 
         if response.status_code == 404:
             raise MissingDiskException(disk_id)
         elif response.status_code != 200:
-            return None
+            response.raise_for_status()
 
         return QDisk(response.json(), connection)
 
     #Disk Manangment#
 
     def delete(self):
-        """delete the disk represented by this Qdisk"""
+        """delete the disk represented by this Qdisk
+
+        Raises :
+        MissingDiskException: the disk is not on the server
+        UnauthorizedException: invalid credentials
+        HTTPError: unhandled http return code
+        """
         response = self._connection.delete(
             get_url('disk info', name=self.name))
 
@@ -144,6 +158,9 @@ class QDisk(object):
         dest: string, name of the remote file
           (defaults to filename)
         """
+        if self.readonly:
+            raise ValueError("tried to write on Read only disk")
+
         dest = dest or filename
         with open(filename) as f:
             response = self._connection.post(
@@ -152,6 +169,8 @@ class QDisk(object):
 
             if (response.status_code == 404):
                 raise MissingDiskException(self.name)
+            elif response.status_code == 403:
+                raise IOError("disk full")
             else:
                 response.raise_for_status()
             return response.status_code == 200
@@ -167,6 +186,11 @@ class QDisk(object):
 
         Return:
         the name of the output file
+
+        Raises:
+        ValueError : no such file
+          (KeyError with disk['file']) syntax
+        MissingDiskException: this disk doesn't represent a remote one
         """
         if outputfile is None:
             outputfile = filename
@@ -176,7 +200,7 @@ class QDisk(object):
 
         if response.status_code == 404:
             if response.json()['errorMessage'] != "No such disk":
-                return None #handle file not found
+                raise ValueError('unknown file {}'.format(filename))
             else:
                 print response.json()
                 raise MissingDiskException(self.name)
@@ -189,12 +213,17 @@ class QDisk(object):
         return outputfile
 
     def delete_file(self, filename):
+        """delete a file from the disk, equivalent to del disk['file']
+
+        Parameters:
+        filename: string, the name of the remote file
+        """
         response = self._connection.delete(
             get_url('update file', name=self.name, path=filename))
 
         if response.status_code == 404:
             if response.json()['errorMessage'] != "No such disk":
-                return False #handle file not found
+                raise ValueError('unknown file {}'.format(filename))
             else:
                 print response.json()
                 raise MissingDiskException(self.name)
@@ -206,13 +235,19 @@ class QDisk(object):
     #operators#
 
     def __getitem__(self, filename):
-        return self.get_file(filename)
+        try:
+            return self.get_file(filename)
+        except ValueError:#change error into keyerror if missing file
+            raise KeyError(filename)
 
     def __setitem__(self, dest, filename):
         return self.add_file(filename, dest)
 
     def __delitem__(self, filename):
-        return self.delete_file(filename)
+        try:
+            return self.delete_file(filename)
+        except ValueError: #change error into keyerror if missing file
+            raise KeyError(filename)
 
 
 ###################
@@ -228,6 +263,7 @@ FileInfo = collections.namedtuple('FileInfo',
 ##############
 
 class MissingDiskException(Exception):
+    """Non existant disk"""
     def __init__(self, name):
         super(MissingDiskException, self).__init__(
             "Disk {} does not exist or has been deleted".format(name))

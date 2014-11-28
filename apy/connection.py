@@ -2,6 +2,7 @@
 
 from apy import get_url
 from disk import QDisk
+from task import QTask
 import requests
 
 #########
@@ -58,10 +59,13 @@ class QConnection(object):
 
     def tasks(self): #todo finish when running task possible
         response = self.get(get_url('tasks'))
-        if response.status_code != 200:
-            print(response.status_code)
-            return None
-        return response.json()
+        response.raise_for_status()
+        ret = []
+        for t in response.json():
+            t2 = QTask(self, "stub", None, 0)
+            t2._update(t)
+            ret.append(t2)
+        return ret
 
 ##############
 # Exceptions #
