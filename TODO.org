@@ -1,16 +1,15 @@
 # Api-python
 * error handling
-** TODO timeout handling
-   *ASK*
-** http response code checking
+** DONE timeout handling
+** DONE http response code checking
 *** DONE 401 Untauthorised
     custom exception checked at each request
 *** DONE 404 Not found
     404 is a frequent error -> specific handling
 *** DONE 403 Forbidden
     for disks and tasks when quota overflow
-*** TODO others
-    use raise_for_status() evrywhere
+*** DONE others
+    use raise_for_status() everywhere
 ** misc
 * main features
 ** connection
@@ -44,9 +43,11 @@
    - Note taken on [2014-11-28 ven. 10:28] \\
      This as not been done on the rest API yet,
      Cannot implement until then
-* TODO style
- - have a coherent style (pep 8?)
 * Doc
-** disks
-*** TODO add raise section
-** TODO task
+** DONE disks
+*** DONE add raise section
+*** DONE check documented return values
+** DONE task
+*** DONE add raise section
+*** DONE check doc return values
+** DONE connection

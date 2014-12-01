@@ -14,7 +14,7 @@ class QDisk(object):
 
         Parameters :
 
-        jsondisk : dictionnary representing the disk,
+        jsondisk : dict representing the disk,
           must contain following keys :
             id : string, the disk's UUID
             description : string, a short description of the disk
@@ -44,6 +44,7 @@ class QDisk(object):
 
         Raises:
         HTTPError: unhandled http return code
+        UnauthorizedException : invalid credentials
         """
         data = {
             "description" : description
@@ -66,7 +67,7 @@ class QDisk(object):
             to get the disk from
           disk_id : the UUID of the disk to retreive
 
-        Return value :
+        Return value : QDisk
         Qdisk corresponding to the retreived info
 
         Raises:
@@ -88,6 +89,9 @@ class QDisk(object):
     def delete(self):
         """delete the disk represented by this Qdisk
 
+        Return value:bool
+        whether or not deletion was successful
+
         Raises :
         MissingDiskException: the disk is not on the server
         UnauthorizedException: invalid credentials
@@ -98,6 +102,8 @@ class QDisk(object):
 
         if (response.status_code == 404):
             raise MissingDiskException(self.name)
+
+        response.raise_for_status()
 
         return response.status_code == 200
 
@@ -110,10 +116,10 @@ class QDisk(object):
           format of the archive to get
         output : string, name of the file to output to
 
-        returns :
+        Return value :
          the filename of the retreived archive
 
-        raises :
+        Raises :
 
         UnauthorizedException: invalid credentials
         MissingDiskException: this disk doesn't represent a valid disk
@@ -140,14 +146,22 @@ class QDisk(object):
 
 
     def list_files(self):
-        """list files on the disk as FileInfo named Tuples"""
+        """list files on the disk as FileInfo named Tuples
+
+        Return: list of FileInfo
+        list of the files on the disk
+
+        Raises:
+        MissingDiskException: this disk doesn't represent a remote one
+        HTTPError: unhandled http return code
+        UnauthorizedException: invalid credentials
+        """
         response = self._connection.get(
             get_url('ls disk', name=self.name))
         if (response.status_code == 404):
             raise MissingDiskException(self.name)
         elif response.status_code != 200:
             response.raise_for_status()
-            print response.status_code()
         return [FileInfo._make(f.values()) for f in response.json()]
 
     def add_file(self, filename, dest=None):
@@ -157,6 +171,16 @@ class QDisk(object):
         filename: string, name of the local file file
         dest: string, name of the remote file
           (defaults to filename)
+
+        Return : bool
+        whether the file has been successfully added
+
+        Raises:
+        ValueError: trying to write on a R/O disk
+        UnauthorizedException: invalid credentials
+        MissingDiskException: this disk doesn't represent a valid disk
+        HTTPError: unhandled http return code
+        IOError : user space quota reached
         """
         if self.readonly:
             raise ValueError("tried to write on Read only disk")
@@ -181,7 +205,7 @@ class QDisk(object):
 
         Parameters:
         filename: string, the name of the remote file
-        outputfile: string, local name o retrived file
+        outputfile: string, local name of retrived file
           (defaults to filename)
 
         Return:
@@ -191,6 +215,8 @@ class QDisk(object):
         ValueError : no such file
           (KeyError with disk['file']) syntax
         MissingDiskException: this disk doesn't represent a remote one
+        HTTPError: unhandled http return code
+        UnauthorizedException: invalid credentials
         """
         if outputfile is None:
             outputfile = filename
@@ -217,6 +243,16 @@ class QDisk(object):
 
         Parameters:
         filename: string, the name of the remote file
+
+        Return:
+        whether or not the deletion was successful (bool)
+
+        Raises:
+        ValueError : no such file
+          (KeyError with disk['file']) syntax
+        MissingDiskException: this disk doesn't represent a remote one
+        HTTPError: unhandled http return code
+        UnauthorizedException: invalid credentials
         """
         response = self._connection.delete(
             get_url('update file', name=self.name, path=filename))
@@ -256,7 +292,7 @@ class QDisk(object):
 
 FileInfo = collections.namedtuple('FileInfo',
                                   ['creation_date', 'name', 'size'])
-"""Named tuple containing the informations on a file"""
+#"""Named tuple containing the informations on a file"""
 
 ##############
 # Exceptions #
