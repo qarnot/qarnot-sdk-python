@@ -1,0 +1,9 @@
+site_name: Qarnot Python Job API
+theme: readthedocs
+pages:
+- [index.md, Home]
+- [about.md, About]
+- [qapy.md, Qapy]
+- [task.md, Task]
+- [disk.md, Disk]
+- [connection.md, Connection]

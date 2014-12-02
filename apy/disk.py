@@ -60,7 +60,7 @@ class QDisk(object):
 
     @classmethod
     def retrieve(cls, connection, disk_id):
-        """retrive information of a disk on a qnode
+        """retrieve information of a disk on a qnode
 
         Parameters :
           connection : QConnection, represents the qnode
