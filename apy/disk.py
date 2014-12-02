@@ -182,10 +182,15 @@ class QDisk(object):
         HTTPError: unhandled http return code
         IOError : user space quota reached
         """
+
         if self.readonly:
             raise ValueError("tried to write on Read only disk")
 
         dest = dest or filename
+
+        if isinstance(dest, FileInfo):
+            dest = dest.name
+
         with open(filename) as f:
             response = self._connection.post(
                 get_url('update file', name=self.name, path=""),
@@ -218,8 +223,15 @@ class QDisk(object):
         HTTPError: unhandled http return code
         UnauthorizedException: invalid credentials
         """
+
+        if isinstance(filename , FileInfo):
+            filename = filename.name
+
+        filename = filename.lstrip('/')
+
         if outputfile is None:
             outputfile = filename
+
         response = self._connection.get(
             get_url('update file', name=self.name, path=filename),
             stream=True)
@@ -254,6 +266,9 @@ class QDisk(object):
         HTTPError: unhandled http return code
         UnauthorizedException: invalid credentials
         """
+        if isinstance(filename , FileInfo):
+            filename = filename.name
+
         response = self._connection.delete(
             get_url('update file', name=self.name, path=filename))
 
@@ -293,6 +308,27 @@ class QDisk(object):
 FileInfo = collections.namedtuple('FileInfo',
                                   ['creation_date', 'name', 'size'])
 #"""Named tuple containing the informations on a file"""
+
+class QDir(object):
+    """Class for handling files in a disk"""
+    def __init__(self, disk):
+        self._disk = disk
+
+    def __getitem__(self, filename):
+        return self._disk.__getitem__(filename)
+
+    def __setitem__(self, target, filename):
+        return self._disk.__setitem__(target, filename)
+
+    def __delitem__(self, filename):
+        return self._disk.__delitem__(target, filename)
+
+    def __getattribute__(self, name):
+        if name in {'add_file', 'delete_file', 'get_file',
+                    'list_files' }:
+            return getattr(self._disk, name)
+        else:
+            return super(QDir, self).__getattribute__(name)
 
 ##############
 # Exceptions #

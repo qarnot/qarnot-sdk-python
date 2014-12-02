@@ -1,8 +1,8 @@
-"""Rest API for submitting qarnot job in python"""
+"""Rest API for submitting qarnot jobs in python"""
 
 __all__ = ["task", "connection", "disk"]
 
-__version__ = 'O.0.1'
+__version__ = '0.0.1'
 
 def get_url(key, **kwargs):
     """get and format the url for the given key"""

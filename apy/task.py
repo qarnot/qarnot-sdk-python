@@ -5,12 +5,12 @@ from apy import get_url
 import time
 
 class QTask(object):
-    """represent a task running or not"""
+    """class to represent a qarnot job"""
     def __init__(self, connection, name, profile, frameNbr):
         """create a new Qtask
 
         Parameters :
-        connection: the qnode on which to send the task
+        connection: Qconnection, the qnode on which to send the task
         name: string, given name of the task
         profile: which profile to use with this task
         frameNbr: int, number of frame on which to run task
@@ -28,13 +28,13 @@ class QTask(object):
 
 
     @classmethod
-    def retreive(cls, connection, uuid):
+    def retrieve(cls, connection, uuid):
         """retreive a submited task given it's uuid
 
         Parameters:
 
-        connection: QConnection, the qnode to retreive the task from
-        uuid: string, the uuid of the task to retreive
+        connection: QConnection, the qnode to retrieve the task from
+        uuid: string, the uuid of the task to retrieve
 
         Return: Qtask
         the retreived task
@@ -42,8 +42,11 @@ class QTask(object):
         Raises:
         HTTPError: unhandled http return code
         UnauthorizedException: invalid credentials
+        MissingTaskException: no such task
         """
         resp = connection.get(get_url('task update', uuid=uuid))
+        if resp.status_code == 404:
+            raise MissingTaskException(uuid)
         resp.raise_for_status()#replace by missing task
         t = QTask(connection, "stub", None, 0)
         t._update(resp.json())
@@ -58,6 +61,7 @@ class QTask(object):
         Raises:
         HTTPError: unhandled http return code
         UnauthorizedException: invalid credentials
+        MissingDiskException: resource disk is not a valid disk
         """
         if self.uuid is not None:
             return self.status
@@ -65,7 +69,9 @@ class QTask(object):
         resp = self._connection.post(get_url('tasks'), json=payload)
 
         if resp.status_code == 404:
-            raise disk.MissingDiskException(self._resourceDisk.name)
+            msg = self._resourceDisk.name
+            self._resourceDisk = None
+            raise disk.MissingDiskException(msg)
         elif resp.status_code == 403:
             raise MaxTaskException()
         else:
@@ -123,10 +129,12 @@ class QTask(object):
             self.abort
 
         if purge:
-            self._resourceDisk.delete()
-            self._resourceDisk = None
-            self._resultDisk.delete()
-            self._resultDisk = None
+            if self._resourceDisk:
+                self._resourceDisk.delete()
+                self._resourceDisk = None
+            if self._resultDisk:
+                self._resultDisk.delete()
+                self._resultDisk = None
 
         resp = self._connection.delete(
             get_url('task update', uuid=self.uuid))
@@ -165,7 +173,7 @@ class QTask(object):
     def _update(self, jsonTask):
         self.name = jsonTask['name']
         self.profile = jsonTask['profile']
-        self.framecount = jsonTask['numberOfFrame']
+        self.framecount = jsonTask['frameCount']
         self._resourceDisk = disk.QDisk.retreive(self._connection,
             jsonTask['resourceDisk'])
         #question : what to do upon change of disk
@@ -200,14 +208,14 @@ class QTask(object):
                                       "task {}".format(self.name))
             self._resourceDisk = _disk
 
-        return self._resourceDisk
+        return disk.QDir(self._resourceDisk)
 
     @property
     def results(self):
         """Qdisk for task results"""
         if self.uuid is not None: #wait for result when needed
             self.wait()
-        return self._resultDisk
+        return disk.QDir(self._resultDisk)
 
     def _to_json(self):
         """get a dictionnary ready to be json packed from this task"""
@@ -220,7 +228,7 @@ class QTask(object):
         jsonTask = {
             'name': self.name,
             'profile': self.profile,
-            'numberOfFrame': self.frameCount,
+            'frameCount': self.frameCount,
             'resourceDisk': self._resourceDisk.name,
             'constants': const_list
         }
