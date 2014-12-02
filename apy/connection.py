@@ -91,7 +91,7 @@ class QConnection(object):
         return ret
 
     def user_info(self):
-        """retreive information of the current user on the qnode
+        """retrieve information of the current user on the qnode
 
         Return value: dict
         a dict containing required information

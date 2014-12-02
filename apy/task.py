@@ -29,7 +29,7 @@ class QTask(object):
 
     @classmethod
     def retrieve(cls, connection, uuid):
-        """retreive a submited task given it's uuid
+        """retrieve a submited task given it's uuid
 
         Parameters:
 
@@ -37,7 +37,7 @@ class QTask(object):
         uuid: string, the uuid of the task to retrieve
 
         Return: Qtask
-        the retreived task
+        the retrieved task
 
         Raises:
         HTTPError: unhandled http return code
@@ -174,11 +174,11 @@ class QTask(object):
         self.name = jsonTask['name']
         self.profile = jsonTask['profile']
         self.framecount = jsonTask['frameCount']
-        self._resourceDisk = disk.QDisk.retreive(self._connection,
+        self._resourceDisk = disk.QDisk.retrieve(self._connection,
             jsonTask['resourceDisk'])
         #question : what to do upon change of disk
         if jsonTask['resultDisk'] is not None:
-            self._resultDisk = disk.QDisk.retreive(self._connection,
+            self._resultDisk = disk.QDisk.retrieve(self._connection,
                                                jsonTask['resultDisk'])
         self.priority = jsonTask['priority']
         self.uuid = jsonTask['id']

@@ -55,20 +55,20 @@ class QDisk(object):
             response.raise_for_status()
 
         disk_id = response.json()
-        return cls.retreive(connection, disk_id['guid'])
+        return cls.retrieve(connection, disk_id['guid'])
 
 
     @classmethod
-    def retreive(cls, connection, disk_id):
+    def retrieve(cls, connection, disk_id):
         """retrive information of a disk on a qnode
 
         Parameters :
           connection : QConnection, represents the qnode
             to get the disk from
-          disk_id : the UUID of the disk to retreive
+          disk_id : the UUID of the disk to retrieve
 
         Return value : QDisk
-        Qdisk corresponding to the retreived info
+        Qdisk corresponding to the retrieved info
 
         Raises:
         MissingDiskException : the disk is not on the server
@@ -108,7 +108,7 @@ class QDisk(object):
         return response.status_code == 200
 
     def get_archive(self, extension, output=None):
-        """retreive an archive of this disk's content
+        """retrieve an archive of this disk's content
 
         Parameters:
 
@@ -117,7 +117,7 @@ class QDisk(object):
         output : string, name of the file to output to
 
         Return value :
-         the filename of the retreived archive
+         the filename of the retrieved archive
 
         Raises :
 
