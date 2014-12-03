@@ -70,7 +70,7 @@ class QTask(object):
         """
         if self.uuid is not None:
             return self.status
-        self._resourceDir.push()
+        self.resources.push()
         payload = self._to_json()
         resp = self._connection.post(get_url('tasks'), json=payload)
 
@@ -234,8 +234,60 @@ class QTask(object):
             self._resultDir = disk.QDir(self._resultDisk)
         return self._resultDir
 
+    @property
+    def stdout(self):
+        """get the standard output of the task
+        each call will return the standard output
+        since the submission of the task
+
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
+        """
+        if self.uuid is None:
+            return ""
+        resp = self._connection.get(
+            get_url('task stdout', uuid=self.uuid))
+
+        if resp.status_code == 404:
+            raise MissingTaskException(self.name)
+        else:
+            resp.raise_for_status()
+
+        return resp.text
+
+
+    @property
+    def stderr(self):
+        """get the standard error of the task
+        each call will return the standard error
+        since the submission of the task
+
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
+        """
+        if self.uuid is None:
+            return ""
+        resp = self._connection.get(
+            get_url('task stderr', uuid=self.uuid))
+
+        if resp.status_code == 404:
+            raise MissingTaskException(self.name)
+        else:
+            resp.raise_for_status()
+
+        return resp.text
+
+
     def _to_json(self):
-        """get a dictionnary ready to be json packed from this task"""
+        """get a dict ready to be json packed from this task"""
         self.resources #init ressource_disk if not done
         const_list = [
             {'key': key, 'value': value}
