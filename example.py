@@ -11,6 +11,6 @@ if __name__ == "__main__":
     task.submit()
     task.wait()
     for fInfo in task.results.list_files():
-        with open(task.results[fInfo.name]) as f:
+        with open(task.results[fInfo]) as f:
             print(f.read())
     task.delete()

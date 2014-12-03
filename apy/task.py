@@ -20,7 +20,9 @@ class QTask(object):
         self.frameCount = frameNbr
         self.priority = 0
         self._resourceDisk = None
+        self._resourceDir = None
         self._resultDisk = None
+        self._resultDir = None
         self._connection = connection
         self.constants = {}
         self.status = 'UnSubmitted'
@@ -65,6 +67,7 @@ class QTask(object):
         """
         if self.uuid is not None:
             return self.status
+        self._resourceDir.push()
         payload = self._to_json()
         resp = self._connection.post(get_url('tasks'), json=payload)
 
@@ -93,7 +96,7 @@ class QTask(object):
         MissingTaskException: no such task
         """
         if self.uuid is None or self.status != "Submitted":
-            return False
+            return True
         resp = self._connection.delete(
             get_url('task update', uuid=self.uuid))
 
@@ -207,15 +210,18 @@ class QTask(object):
             _disk = disk.QDisk.create(self._connection,
                                       "task {}".format(self.name))
             self._resourceDisk = _disk
+            self._resourceDir = disk.QDir(_disk)
 
-        return disk.QDir(self._resourceDisk)
+        return self._resourceDir
 
     @property
     def results(self):
         """Qdisk for task results"""
         if self.uuid is not None: #wait for result when needed
             self.wait()
-        return disk.QDir(self._resultDisk)
+        if self._resultDir is None:
+            self._resultDir = disk.QDir(self._resultDisk)
+        return self._resultDir
 
     def _to_json(self):
         """get a dictionnary ready to be json packed from this task"""

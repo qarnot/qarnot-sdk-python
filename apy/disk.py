@@ -313,22 +313,62 @@ class QDir(object):
     """Class for handling files in a disk"""
     def __init__(self, disk):
         self._disk = disk
+        self._files = {}
+
 
     def __getitem__(self, filename):
-        return self._disk.__getitem__(filename)
+        try:
+            return self.get_file(filename)
+        except ValueError:#change error into keyerror if missing file
+            raise KeyError(filename)
 
-    def __setitem__(self, target, filename):
-        return self._disk.__setitem__(target, filename)
+    def __setitem__(self, dest, filename):
+        return self.add_file(filename, dest)
 
     def __delitem__(self, filename):
-        return self._disk.__delitem__(target, filename)
+        try:
+            return self.delete_file(filename)
+        except ValueError: #change error into keyerror if missing file
+            raise KeyError(filename)
 
-    def __getattribute__(self, name):
-        if name in {'add_file', 'delete_file', 'get_file',
-                    'list_files' }:
-            return getattr(self._disk, name)
-        else:
-            return super(QDir, self).__getattribute__(name)
+    def add_file(self, filename, dest=None):
+        if dest is None:
+            dest = filename
+        self._files[dest] = filename
+
+    def get_file(self, filename, outputfile=None):
+        if filename not in self._files:
+            self._files[filename] = self._disk[filename]
+        return self._files[filename]
+
+    def delete_file(self, filename):
+        local = False
+        remote = False
+        try:
+            del self._disk[filename]
+            local = True
+        except KeyError: pass
+
+        try:
+            del self._disk[filename]
+            remote = True
+        except KeyError: pass
+
+        if not (local or remote):
+            raise ValueError('unknown file {}'.format(filename))
+
+    def list_files(self):
+        ret = [f.name for f in self._disk.list_files()]
+        ret.extend(self._files.keys())
+        return ret
+
+    def push(self):
+        for key, value in self._files.items():
+            self._disk[key] = value
+
+    def pull(self):
+        for filename in [f.name for f in self._disk.list_files()]:
+            self._files[filename] = self._disk[filename]
 
 ##############
 # Exceptions #
