@@ -337,8 +337,8 @@ class QDir(object):
         self._files[dest] = filename
 
     def get_file(self, filename, outputfile=None):
-        if filename not in self._files:
-            self._files[filename] = self._disk[filename]
+        if filename in [f.name for f in self._disk.list_files()]:
+            return self._disk[filename]
         return self._files[filename]
 
     def delete_file(self, filename):
@@ -365,10 +365,7 @@ class QDir(object):
     def push(self):
         for key, value in self._files.items():
             self._disk[key] = value
-
-    def pull(self):
-        for filename in [f.name for f in self._disk.list_files()]:
-            self._files[filename] = self._disk[filename]
+            del self._files[key]
 
 ##############
 # Exceptions #
