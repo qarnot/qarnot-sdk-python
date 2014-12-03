@@ -14,10 +14,10 @@ class QConnection(object):
     def __init__(self, qnode, auth, timeout=None):
         """create a connection to given qnode with given credentials
 
-        Parameters:
-        qnode: string, the url of the qnode to connect to
-        auth: string, authorization of a valid user for this qnode
-        timeout: how long to wait for the server response
+        :param qnode: :class:`string`, the url of the qnode to connect to
+        :param auth: :class:`string`,
+          authorization of a valid user for this qnode
+        :param timeout: :class:`int` how long to wait for the server response
           (for all requests)
         """
         self.qnode = qnode
@@ -30,17 +30,17 @@ class QConnection(object):
     def get(self, url, **kwargs):
         """perform a GET request on the qnode
 
-        Parameters:
-        url: string, relative url of the file (given the qnode url)
+        :param url: :class:`string`,
+          relative url of the file (given the qnode url)
 
-        Keyword arguments are passed to the underlying
-        requests.Session.get() function
+        :rtype: :class:`requests.Response`
+        :returns: the response to the given request
 
-        Return value: requests.Response
-        the response to the given request
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
 
-        Raises:
-        UnauthorizedException : invalid credentials
+        :note: additional keyword arguments are passed to the underlying
+          :attr:`requests.Session.get()`
         """
         ret = self._http.get(self.qnode + url, timeout=self.timeout, **kwargs)
         if ret.status_code == 401:
@@ -50,18 +50,18 @@ class QConnection(object):
     def post(self, url, json=None,**kwargs):
         """perform a POST request on the qnode
 
-        Parameters:
-        url: string, relative url of the file (given the qnode url)
-        json: the data to json serialize and post
+        :param url: :class:`string`,
+          relative url of the file (given the qnode url)
+        :param json: the data to json serialize and post
 
-        Keyword arguments are passed to the underlying
-        requests.Session.post() function
+        :rtype: :class:`requests.Response`
+        :returns: the response to the given request
 
-        Return value: requests.Response
-        the response to the given request
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
 
-        Raises:
-        UnauthorizedException : invalid credentials
+        :note: additional keyword arguments are passed to the underlying
+          :attr:`requests.Session.post()`
         """
         ret = self._http.post(self.qnode + url, json=json,
                               timeout=self.timeout, **kwargs)
@@ -72,17 +72,17 @@ class QConnection(object):
     def delete(self, url, **kwargs):
         """perform a DELETE request on the qnode
 
-        Parameters:
-        url: string, relative url of the file (given the qnode url)
+        :param url: :class:`string`,
+          relative url of the file (given the qnode url)
 
-        Keyword arguments are passed to the underlying
-        requests.Session.delete() function
+        :rtype: :class:`requests.Response`
+        :returns: the response to the given request
 
-        Return value: requests.Response
-        the response to the given request
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
 
-        Raises:
-        UnauthorizedException : invalid credentials
+        :note: additional keyword arguments are passed to the underlying
+          :attr:`requests.Session.delete()`
         """
         ret = self._http.delete(self.qnode + url,
                                 timeout=self.timeout, **kwargs)
@@ -93,12 +93,13 @@ class QConnection(object):
     def user_info(self):
         """retrieve information of the current user on the qnode
 
-        Return value: dict
-        a dict containing required information
+        :rtype: dict
+        :returns: a dict containing required information
 
-        Raises:
-        UnauthorizedException : invalid credentials
-        HTTPError: unhandled http return code
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
+
+          :exc:`HTTPError`: unhandled http return code
         """
         resp = self.get(get_url('user'))
         resp.raise_for_status()
@@ -110,12 +111,13 @@ class QConnection(object):
     def disks(self):
         """get the list of disks on this qnode for this user
 
-        Return value: list of QDisk
-        disks on the qnode owned by the user
+        :rtype: list of :class:`QDisk`
+        :returns: disks on the qnode owned by the user
 
-        Raises:
-        UnauthorizedException : invalid credentials
-        HTTPError: unhandled http return code
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
+
+          :exc:`HTTPError`: unhandled http return code
         """
         response = self.get(get_url('disk folder'))
         if response.status_code != 200:
@@ -126,12 +128,13 @@ class QConnection(object):
     def profiles(self):
         """list availables profiles for submitting tasks
 
-        Return value: list of string
-        list of the profile names
+        :rtype: list of str
+        :returns: list of the profile names
 
-        Raises:
-        UnauthorizedException : invalid credentials
-        HTTPError: unhandled http return code
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
+
+          :exc:`HTTPError`: unhandled http return code
         """
         response = self.get(get_url('list profiles'))
         if response.status_code != 200:
@@ -142,12 +145,13 @@ class QConnection(object):
     def tasks(self): #todo finish when running task possible
         """list tasks stored on this qnode for this user
 
-        Return value: list of QTask
-        tasks stored on the qnode owned by the user
+        :rtype: list of QTask
+        :returns: tasks stored on the qnode owned by the user
 
-        Raises:
-        UnauthorizedException : invalid credentials
-        HTTPError: unhandled http return code
+        :raises:
+          :exc:`UnauthorizedException`: invalid credentials
+
+          :exc:`HTTPError`: unhandled http return code
         """
         response = self.get(get_url('tasks'))
         response.raise_for_status()

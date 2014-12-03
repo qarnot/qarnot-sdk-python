@@ -9,11 +9,11 @@ class QTask(object):
     def __init__(self, connection, name, profile, frameNbr):
         """create a new Qtask
 
-        Parameters :
-        connection: Qconnection, the qnode on which to send the task
-        name: string, given name of the task
-        profile: which profile to use with this task
-        frameNbr: int, number of frame on which to run task
+        :param connection: :class:`Qconnectionn`,
+          the qnode on which to send the task
+        :param name: :class:`string`, given name of the task
+        :param profile: :class:`string`, which profile to use with this task
+        :param frameNbr: :class:`int`, number of frame on which to run task
         """
         self.name = name
         self.profile = profile
@@ -33,18 +33,18 @@ class QTask(object):
     def retrieve(cls, connection, uuid):
         """retrieve a submited task given it's uuid
 
-        Parameters:
+        :param connection: QConnection, the qnode to retrieve the task from
+        :param uuid: string, the uuid of the task to retrieve
 
-        connection: QConnection, the qnode to retrieve the task from
-        uuid: string, the uuid of the task to retrieve
+        :rtype: Qtask
+        :returns: the retrieved task
 
-        Return: Qtask
-        the retrieved task
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
-        MissingTaskException: no such task
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: no such task
         """
         resp = connection.get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
@@ -57,13 +57,16 @@ class QTask(object):
     def submit(self):
         """submit task to the qnode if not already submitted
 
-        Return : string
-        the current state of the task
+        :rtype: string
+        :returns: the current state of the task
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
-        MissingDiskException: resource disk is not a valid disk
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`apy.disk.MissingDiskException`:
+          resource disk is not a valid disk
         """
         if self.uuid is not None:
             return self.status
@@ -86,14 +89,16 @@ class QTask(object):
     def abort(self):
         """abort this task if running
 
-        Return : bool
-        whether or not task successfully aborted
-        will be false if this task is not running
+        :rtype: bool
+        :returns: whether or not task successfully aborted
+          will be false if this task is not running
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
-        MissingTaskException: no such task
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
         """
         if self.uuid is None or self.status != "Submitted":
             return True
@@ -113,18 +118,19 @@ class QTask(object):
         """delete task from the server,
         does nothing if already deleted
 
-        Paramters :
-        purge : bool (optional), if true
+        :param purge: :class:`bool` (optional), if true
           delete also result and ressource disks
           Defaults to True
 
-        Return : bool
-        whether or not the deletion was successful
+        :rtype: bool
+        :returns: whether or not the deletion was successful
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
-        MissingTaskException: no such task
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
         """
         if self.uuid is None:
             return
@@ -152,13 +158,15 @@ class QTask(object):
     def update(self):
         """get the current state of this task and return it's status
 
-        Return value: string
-        current status of the task
+        :rtype: string
+        :returns: current status of the task
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
-        MissingTaskException: no such task
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
         """
         if self.uuid is None:
             return self.status
@@ -174,6 +182,7 @@ class QTask(object):
         return self.status
 
     def _update(self, jsonTask):
+        """update this task from retrieved info"""
         self.name = jsonTask['name']
         self.profile = jsonTask['profile']
         self.framecount = jsonTask['frameCount']
@@ -190,10 +199,12 @@ class QTask(object):
     def wait(self):
         """wait for this task to complete
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
-        MissingTaskException: no such task
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
         """
         self.update()
         while self.status == 'Submitted':
@@ -205,7 +216,7 @@ class QTask(object):
 
     @property
     def resources(self):
-        """Qdisk for resource files"""
+        """Qdir for resource files"""
         if self._resourceDisk is None:
             _disk = disk.QDisk.create(self._connection,
                                       "task {}".format(self.name))
@@ -216,7 +227,7 @@ class QTask(object):
 
     @property
     def results(self):
-        """Qdisk for task results"""
+        """Qdir for task results"""
         if self.uuid is not None: #wait for result when needed
             self.wait()
         if self._resultDir is None:

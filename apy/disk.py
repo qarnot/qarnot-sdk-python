@@ -12,9 +12,7 @@ class QDisk(object):
         """
         initialize a disk from a dictionnary.
 
-        Parameters :
-
-        jsondisk : dict representing the disk,
+        :param jsondisk: dict representing the disk,
           must contain following keys :
             id : string, the disk's UUID
             description : string, a short description of the disk
@@ -32,19 +30,17 @@ class QDisk(object):
         """
         create a disk on a qnode
 
-        Parameters :
-
-        connection : QConnection, represents the qnode
+        :param connection: QConnection, represents the qnode
             on which to create the disk
-        description : string, a short description of the disk
+        :param description: string, a short description of the disk
 
-        Return Value:
+        :rtype: :class:`QDisk`
+        :returns: the created disk
 
-        Qdisk corresponding to created disk
 
-        Raises:
-        HTTPError: unhandled http return code
-        UnauthorizedException : invalid credentials
+        :raises: :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
         """
         data = {
             "description" : description
@@ -62,18 +58,19 @@ class QDisk(object):
     def retrieve(cls, connection, disk_id):
         """retrieve information of a disk on a qnode
 
-        Parameters :
-          connection : QConnection, represents the qnode
+        :param connection: :class:`QConnection`, the qnode
             to get the disk from
-          disk_id : the UUID of the disk to retrieve
+        :param disk_id: the UUID of the disk to retrieve
 
-        Return value : QDisk
-        Qdisk corresponding to the retrieved info
+        :rtype: :class:`QDisk`
+        :returns: the retrieved disk
 
-        Raises:
-        MissingDiskException : the disk is not on the server
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
         """
         response = connection.get(get_url('disk info', name=disk_id))
 
@@ -89,13 +86,15 @@ class QDisk(object):
     def delete(self):
         """delete the disk represented by this Qdisk
 
-        Return value:bool
-        whether or not deletion was successful
+        :rtype: bool
+        :returns: whether or not deletion was successful
 
-        Raises :
-        MissingDiskException: the disk is not on the server
-        UnauthorizedException: invalid credentials
-        HTTPError: unhandled http return code
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
         """
         response = self._connection.delete(
             get_url('disk info', name=self.name))
@@ -110,21 +109,23 @@ class QDisk(object):
     def get_archive(self, extension, output=None):
         """retrieve an archive of this disk's content
 
-        Parameters:
-
-        extension : in {'tar', 'tgz', 'zip'},
+        :param extension: in {'tar', 'tgz', 'zip'},
           format of the archive to get
-        output : string, name of the file to output to
+        :param output: :class:`str`, name of the file to output to
 
-        Return value :
+        :rtype: :class:`str`
+        :returns:
          the filename of the retrieved archive
 
-        Raises :
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
 
-        UnauthorizedException: invalid credentials
-        MissingDiskException: this disk doesn't represent a valid disk
-        ValueError: invalid extension format
-        HTTPError: unhandled http return code
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`ValueError`: invalid extension format
+
         """
         response = self._connection.get(
             get_url('get disk', name=self.name, ext=extension),
@@ -148,13 +149,15 @@ class QDisk(object):
     def list_files(self):
         """list files on the disk as FileInfo named Tuples
 
-        Return: list of FileInfo
-        list of the files on the disk
+        :rtype: list of :class:`FileInfo`
+        :returns: list of the files on the disk
 
-        Raises:
-        MissingDiskException: this disk doesn't represent a remote one
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
         """
         response = self._connection.get(
             get_url('ls disk', name=self.name))
@@ -167,20 +170,23 @@ class QDisk(object):
     def add_file(self, filename, dest=None):
         """add a file to the disk (<=> self[dest] = filename)
 
-        Parameters:
-        filename: string, name of the local file file
-        dest: string, name of the remote file
+        :param filename: :class:`string`, name of the local file
+        :param dest: :class:`string`, name of the remote file
           (defaults to filename)
 
-        Return : bool
-        whether the file has been successfully added
+        :rtype: :class:`bool`
+        :returns: whether the file has been successfully added
 
-        Raises:
-        ValueError: trying to write on a R/O disk
-        UnauthorizedException: invalid credentials
-        MissingDiskException: this disk doesn't represent a valid disk
-        HTTPError: unhandled http return code
-        IOError : user space quota reached
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`ValueError`: trying to write on a R/O disk
+
+          :exc:`IOError`: user space quota reached
         """
 
         if self.readonly:
@@ -208,20 +214,22 @@ class QDisk(object):
     def get_file(self, filename, outputfile = None):
         """get a file from the disk, you can also use disk['file']
 
-        Parameters:
-        filename: string, the name of the remote file
-        outputfile: string, local name of retrived file
+        :param filename: :class:`string`, the name of the remote file
+        :param outputfile: :class:`string`, local name of retrived file
           (defaults to filename)
 
-        Return:
-        the name of the output file
+        :rtype: :class:`string`
+        :returns: the name of the output file
 
-        Raises:
-        ValueError : no such file
-          (KeyError with disk['file']) syntax
-        MissingDiskException: this disk doesn't represent a remote one
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`ValueError`: no such file
+            (KeyError with disk['file'] syntax)
+
         """
 
         if isinstance(filename , FileInfo):
@@ -253,19 +261,21 @@ class QDisk(object):
     def delete_file(self, filename):
         """delete a file from the disk, equivalent to del disk['file']
 
-        Parameters:
-        filename: string, the name of the remote file
+        :param filename: string, the name of the remote file
 
-        Return:
-        whether or not the deletion was successful (bool)
+        :rtype: :class:`bool`
+        :returns: whether or not the deletion was successful
 
-        Raises:
-        ValueError : no such file
-          (KeyError with disk['file']) syntax
-        MissingDiskException: this disk doesn't represent a remote one
-        HTTPError: unhandled http return code
-        UnauthorizedException: invalid credentials
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`ValueError`: no such file
+            (KeyError with disk['file'] syntax)
         """
+
         if isinstance(filename , FileInfo):
             filename = filename.name
 
@@ -332,16 +342,59 @@ class QDir(object):
             raise KeyError(filename)
 
     def add_file(self, filename, dest=None):
+        """register a file as to be sent to the disk
+
+        :param filename: :class:`string`, name of the local file
+        :param dest: :class:`string`, name of the remote file
+          (defaults to filename)
+        """
         if dest is None:
             dest = filename
         self._files[dest] = filename
 
     def get_file(self, filename, outputfile=None):
+        """get a file from the disk, you can also use disk['file']
+        if given file is not on the disk but registered to be sent,
+        return it instead
+
+        :param filename: :class:`string`, the name of the remote file
+        :param outputfile: :class:`string`, local name of retrived file
+          (defaults to filename)
+
+        :rtype: :class:`string`
+        :returns: the name of the output file
+
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`ValueError`: no such file
+            (KeyError with disk['file'] syntax)
+        """
         if filename in [f.name for f in self._disk.list_files()]:
             return self._disk[filename]
         return self._files[filename]
 
     def delete_file(self, filename):
+        """delete a file from the disk, and unregister it
+        equivalent to del disk['file']
+
+        :param filename: string, the name of the remote file
+
+        :rtype: :class:`bool`
+        :returns: whether or not the deletion was successful
+
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`ValueError`: no such file (KeyError with disk['file'] syntax)
+        """
         local = False
         remote = False
         try:
@@ -358,11 +411,32 @@ class QDir(object):
             raise ValueError('unknown file {}'.format(filename))
 
     def list_files(self):
+        """list files on the disk, and registered files
+
+        :rtype: list of :class:`FileInfo`
+        :returns: list of the files on the disk
+
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+        """
         ret = [f.name for f in self._disk.list_files()]
         ret.extend(self._files.keys())
         return ret
 
     def push(self):
+        """send registered files to the disk
+
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+        """
         for key, value in self._files.items():
             self._disk[key] = value
             del self._files[key]

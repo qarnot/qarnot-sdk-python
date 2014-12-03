@@ -1,0 +1,23 @@
+.. apy documentation master file, created by
+   sphinx-quickstart on Wed Dec  3 12:07:13 2014.
+   You can adapt this file completely to your liking, but it should at least
+   contain the root `toctree` directive.
+
+Welcome to apy's documentation!
+===============================
+
+Contents:
+
+.. toctree::
+   :maxdepth: 4
+
+   apy
+
+
+Indices and tables
+==================
+
+* :ref:`genindex`
+* :ref:`modindex`
+* :ref:`search`
+
