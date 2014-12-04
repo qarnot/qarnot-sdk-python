@@ -14,11 +14,16 @@ class QDisk(object):
 
         :param jsondisk: dict representing the disk,
           must contain following keys :
-            id : string, the disk's UUID
-            description : string, a short description of the disk
-            nbFiles : integer, number of files on the disk
-            readOnly : boolean, is the disk read only
-        connection : Qconnection, the qnode on which the disk isw
+
+            * id: string, the disk's UUID
+
+            * description : string, a short description of the disk
+
+            * nbFiles : integer, number of files on the disk
+
+            * readOnly : boolean, is the disk read only
+
+        :param connection: Qconnection, the qnode on which the disk isw
         """
         self.name = jsondisk["id"]
         self.description = jsondisk["description"]
@@ -227,8 +232,9 @@ class QDisk(object):
           :exc:`HTTPError`: unhandled http return code
 
           :exc:`apy.connection.UnauthorizedException`: invalid credentials
-          :exc:`ValueError`: no such file
-            (KeyError with disk['file'] syntax)
+
+          :exc:`ValueError`:
+          no such file (:exc:`KeyError` with disk['file'] syntax)
 
         """
 
@@ -272,8 +278,10 @@ class QDisk(object):
           :exc:`HTTPError`: unhandled http return code
 
           :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
           :exc:`ValueError`: no such file
-            (KeyError with disk['file'] syntax)
+          (:exc:`KeyError` with disk['file'] syntax)
+
         """
 
         if isinstance(filename , FileInfo):
@@ -317,7 +325,7 @@ class QDisk(object):
 
 FileInfo = collections.namedtuple('FileInfo',
                                   ['creation_date', 'name', 'size'])
-#"""Named tuple containing the informations on a file"""
+"""Named tuple containing the informations on a file"""
 
 class QDir(object):
     """Class for handling files in a disk"""
@@ -370,8 +378,10 @@ class QDir(object):
           :exc:`HTTPError`: unhandled http return code
 
           :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
           :exc:`ValueError`: no such file
-            (KeyError with disk['file'] syntax)
+          (:exc:`KeyError` with disk['file'] syntax)
+
         """
         if filename in [f.name for f in self._disk.list_files()]:
             return self._disk[filename]
@@ -393,7 +403,9 @@ class QDir(object):
 
           :exc:`apy.connection.UnauthorizedException`: invalid credentials
 
-          :exc:`ValueError`: no such file (KeyError with disk['file'] syntax)
+          :exc:`ValueError`: no such file
+          (:exc:`KeyError` with disk['file'] syntax)
+
         """
         local = False
         remote = False
@@ -413,7 +425,7 @@ class QDir(object):
     def list_files(self):
         """list files on the disk, and registered files
 
-        :rtype: list of :class:`FileInfo`
+        :rtype: list of :class:`str`
         :returns: list of the files on the disk
 
         :raises:

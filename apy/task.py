@@ -266,6 +266,9 @@ class QTask(object):
         each call will return the standard error
         since the submission of the task
 
+        :note: This is *Not* the standard error from the payload
+          it is the output for task level errors
+
         :raises:
           :exc:`HTTPError`: unhandled http return code
 

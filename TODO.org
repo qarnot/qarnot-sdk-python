@@ -38,8 +38,8 @@
 *** DONE updating with dict
     what to do with the old ressourcedisk on change?
     for now user is not supposed to change it
-*** TODO stdout
-*** TODO stderr
+*** DONE stdout
+*** DONE stderr
 *** TODO snapshot
 *** DONE wait
     for now active waiting w/ request every 10 sec -> to change
