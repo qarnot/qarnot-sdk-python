@@ -15,7 +15,7 @@ def get_url(key, **kwargs):
         'list profiles': '/tasks/profiles', #GET -> possible profiles
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task
         'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort
-        'task snapshot': '/tasks/{uuid}/snapshot', #GET -> snapshot
+        'task snapshot': '/tasks/{uuid}/snapshot', #POST -> snapshot
         'task stdout': '/tasks/{uuid}/stdout',
         'task stderr': '/tasks/{uuid}/stderr',
         'user': '/info' #GET -> user info

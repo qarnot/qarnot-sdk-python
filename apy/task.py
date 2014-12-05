@@ -27,6 +27,7 @@ class QTask(object):
         self.constants = {}
         self.status = 'UnSubmitted'
         self.uuid = None
+        self._snapshots = False
 
 
     @classmethod
@@ -84,6 +85,10 @@ class QTask(object):
             resp.raise_for_status()
 
         self.uuid = resp.json()['guid']
+
+        if not isinstance(self._snapshots, bool):
+            self.snapshot(self._snapshots)
+
         return self.update()
 
     def abort(self):
@@ -102,6 +107,7 @@ class QTask(object):
         """
         if self.uuid is None or self.status != "Submitted":
             return True
+
         resp = self._connection.delete(
             get_url('task update', uuid=self.uuid))
 
@@ -135,7 +141,7 @@ class QTask(object):
         if self.uuid is None:
             return
         if self.status == 'Submitted':
-            self.abort
+            print self.abort()
 
         if purge:
             if self._resourceDisk:
@@ -144,6 +150,7 @@ class QTask(object):
             if self._resultDisk:
                 self._resultDisk.delete()
                 self._resultDisk = None
+                self._resultDir= None
 
         resp = self._connection.delete(
             get_url('task update', uuid=self.uuid))
@@ -151,6 +158,7 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(self.name)
         else:
+            print resp.status_code
             resp.raise_for_status()
 
         self.uuid = None
@@ -211,8 +219,40 @@ class QTask(object):
             time.sleep(10)
             self.update()
 
-    def snapshot(self):#yet undocumented on rest api
-        return NotImplemented
+    def snapshot(self, interval):
+        """start snapshooting results
+        if called, this task's results will be periodically
+        updated, instead of only being available at the end.
+
+        the snapshots will be taken every *interval* second from the time
+        the task is submitted
+
+        :note: this alters the behavior of results making it's access
+          non blocking
+
+        :param interval: the interval in seconds at which to take snapshots
+
+        :raises:
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`MissingTaskException`: task does not represent a valid one
+        """
+        if self.uuid is None:
+            self._snapshots = interval
+            return
+        resp = self._connection.post(get_url('task snapshot', uuid=self.uuid),
+                                     json={"interval" : interval})
+
+        if resp.status_code == 400:
+            raise ValueError(interval)
+        elif resp.status_code == 404:
+            raise MissingTaskException(self.name)
+        else:
+            resp.raise_for_status()
+
+        self._snapshots = True
 
     @property
     def resources(self):
@@ -227,10 +267,15 @@ class QTask(object):
 
     @property
     def results(self):
-        """Qdir for task results"""
-        if self.uuid is not None: #wait for result when needed
-            self.wait()
-        if self._resultDir is None:
+        """Qdir for task results
+        will wait for the task to end unless snapshot has been called
+        """
+        if self.uuid is not None:
+            if self._snapshots is not True:
+                self.wait()
+            else:
+                self.update()
+        if self._resultDir is None and self._resultDisk is not None:
             self._resultDir = disk.QDir(self._resultDisk)
         return self._resultDir
 

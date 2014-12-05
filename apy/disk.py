@@ -23,7 +23,8 @@ class QDisk(object):
 
             * readOnly : boolean, is the disk read only
 
-        :param connection: Qconnection, the qnode on which the disk isw
+        :param connection:  :class:`apy.connection.QConnection`,
+          the qnode on which the disk is
         """
         self.name = jsondisk["id"]
         self.description = jsondisk["description"]
@@ -35,9 +36,9 @@ class QDisk(object):
         """
         create a disk on a qnode
 
-        :param connection: QConnection, represents the qnode
-            on which to create the disk
-        :param description: string, a short description of the disk
+        :param connection:  :class:`apy.connection.QConnection`,
+          represents the qnode on which to create the disk
+        :param description: :class:`string`, a short description of the disk
 
         :rtype: :class:`QDisk`
         :returns: the created disk
@@ -63,7 +64,7 @@ class QDisk(object):
     def retrieve(cls, connection, disk_id):
         """retrieve information of a disk on a qnode
 
-        :param connection: :class:`QConnection`, the qnode
+        :param connection: :class:`apy.connection.QConnection`, the qnode
             to get the disk from
         :param disk_id: the UUID of the disk to retrieve
 
@@ -348,6 +349,13 @@ class QDir(object):
             return self.delete_file(filename)
         except ValueError: #change error into keyerror if missing file
             raise KeyError(filename)
+
+    def __contains__(self, item):
+        """D.__contains__(k) -> True if D has a key k, else False"""
+        return item in self.list_files()
+
+    def __iter__(self):
+        return iter(self.list_files())
 
     def add_file(self, filename, dest=None):
         """register a file as to be sent to the disk
