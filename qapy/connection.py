@@ -1,6 +1,6 @@
 """Module describing a connection"""
 
-from apy import get_url
+from qapy import get_url
 from disk import QDisk
 from task import QTask
 import requests
@@ -24,7 +24,7 @@ class QConnection(object):
         self._http = requests.session()
         self._http.headers.update({"Authorization": auth})
         self.auth = auth
-        self._http.verify=False #s/False/`file of auth certificates`
+        self._http.verify=False
         self.timeout = timeout
 
     def get(self, url, **kwargs):

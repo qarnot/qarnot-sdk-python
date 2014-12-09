@@ -16,8 +16,8 @@ def get_url(key, **kwargs):
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task
         'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort
         'task snapshot': '/tasks/{uuid}/snapshot', #POST -> snapshot
-        'task stdout': '/tasks/{uuid}/stdout',
-        'task stderr': '/tasks/{uuid}/stderr',
+        'task stdout': '/tasks/{uuid}/stdout', #GET -> task stdout
+        'task stderr': '/tasks/{uuid}/stderr', #GET -> task stderr
         'user': '/info' #GET -> user info
     }
     return Urls[key].format(**kwargs)

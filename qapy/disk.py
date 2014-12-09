@@ -1,6 +1,6 @@
 """module for disk object"""
 
-from apy import get_url
+from qapy import get_url
 import os.path as path
 import json
 import collections
@@ -19,16 +19,14 @@ class QDisk(object):
 
             * description : string, a short description of the disk
 
-            * nbFiles : integer, number of files on the disk
-
             * readOnly : boolean, is the disk read only
 
-        :param connection:  :class:`apy.connection.QConnection`,
+        :param connection:  :class:`qapy.connection.QConnection`,
           the qnode on which the disk is
         """
-        self.name = jsondisk["id"]
+        self._name = jsondisk["id"]
         self.description = jsondisk["description"]
-        self.readonly = jsondisk["readOnly"]
+        self.readonly = jsondisk["readOnly"] #make these 3 R/O properties ?
         self._connection = connection
 
     @classmethod
@@ -36,7 +34,7 @@ class QDisk(object):
         """
         create a disk on a qnode
 
-        :param connection:  :class:`apy.connection.QConnection`,
+        :param connection:  :class:`qapy.connection.QConnection`,
           represents the qnode on which to create the disk
         :param description: :class:`string`, a short description of the disk
 
@@ -46,7 +44,7 @@ class QDisk(object):
 
         :raises: :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
         data = {
             "description" : description
@@ -64,7 +62,7 @@ class QDisk(object):
     def retrieve(cls, connection, disk_id):
         """retrieve information of a disk on a qnode
 
-        :param connection: :class:`apy.connection.QConnection`, the qnode
+        :param connection: :class:`qapy.connection.QConnection`, the qnode
             to get the disk from
         :param disk_id: the UUID of the disk to retrieve
 
@@ -76,7 +74,7 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
         response = connection.get(get_url('disk info', name=disk_id))
 
@@ -85,7 +83,7 @@ class QDisk(object):
         elif response.status_code != 200:
             response.raise_for_status()
 
-        return QDisk(response.json(), connection)
+        return cls(response.json(), connection)
 
     #Disk Manangment#
 
@@ -100,13 +98,13 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
         response = self._connection.delete(
-            get_url('disk info', name=self.name))
+            get_url('disk info', name=self._name))
 
         if (response.status_code == 404):
-            raise MissingDiskException(self.name)
+            raise MissingDiskException(self._name)
 
         response.raise_for_status()
 
@@ -128,23 +126,23 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`ValueError`: invalid extension format
 
         """
         response = self._connection.get(
-            get_url('get disk', name=self.name, ext=extension),
+            get_url('get disk', name=self._name, ext=extension),
             stream=True)
 
         if response.status_code == 404:
-            raise MissingDiskException(self.name)
+            raise MissingDiskException(self._name)
         elif response.status_code == 400:
             raise ValueError('invalid file format : {}'.extension)
         else:
             response.raise_for_status()
 
-        output = output or ".".join([self.name, extension])
+        output = output or ".".join([self._name, extension])
 
         with open(output, 'w') as f:
             for elt in response.iter_content():
@@ -163,12 +161,12 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
         response = self._connection.get(
-            get_url('ls disk', name=self.name))
+            get_url('ls disk', name=self._name))
         if (response.status_code == 404):
-            raise MissingDiskException(self.name)
+            raise MissingDiskException(self._name)
         elif response.status_code != 200:
             response.raise_for_status()
         return [FileInfo._make(f.values()) for f in response.json()]
@@ -188,7 +186,7 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`ValueError`: trying to write on a R/O disk
 
@@ -198,18 +196,18 @@ class QDisk(object):
         if self.readonly:
             raise ValueError("tried to write on Read only disk")
 
-        dest = dest or filename
+        dest = dest or path.basename(filename)
 
         if isinstance(dest, FileInfo):
             dest = dest.name
 
         with open(filename) as f:
             response = self._connection.post(
-                get_url('update file', name=self.name, path=""),
+                get_url('update file', name=self._name, path=path.dirname(dest)),
                 files={'filedata': (path.basename(dest),f)})
 
             if (response.status_code == 404):
-                raise MissingDiskException(self.name)
+                raise MissingDiskException(self._name)
             elif response.status_code == 403:
                 raise IOError("disk full")
             else:
@@ -232,7 +230,7 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`ValueError`:
           no such file (:exc:`KeyError` with disk['file'] syntax)
@@ -248,7 +246,7 @@ class QDisk(object):
             outputfile = filename
 
         response = self._connection.get(
-            get_url('update file', name=self.name, path=filename),
+            get_url('update file', name=self._name, path=filename),
             stream=True)
 
         if response.status_code == 404:
@@ -256,7 +254,7 @@ class QDisk(object):
                 raise ValueError('unknown file {}'.format(filename))
             else:
                 print response.json()
-                raise MissingDiskException(self.name)
+                raise MissingDiskException(self._name)
         else:
             response.raise_for_status() #raise nothing if 2XX
 
@@ -278,7 +276,7 @@ class QDisk(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`ValueError`: no such file
           (:exc:`KeyError` with disk['file'] syntax)
@@ -289,18 +287,22 @@ class QDisk(object):
             filename = filename.name
 
         response = self._connection.delete(
-            get_url('update file', name=self.name, path=filename))
+            get_url('update file', name=self._name, path=filename))
 
         if response.status_code == 404:
             if response.json()['errorMessage'] != "No such disk":
                 raise ValueError('unknown file {}'.format(filename))
             else:
                 print response.json()
-                raise MissingDiskException(self.name)
+                raise MissingDiskException(self._name)
         else:
             response.raise_for_status() #raise nothing if 2XX
 
         return response.status_code == 200
+
+    @property
+    def name(self):
+        return self._name
 
     #operators#
 
@@ -364,8 +366,7 @@ class QDir(object):
         :param dest: :class:`string`, name of the remote file
           (defaults to filename)
         """
-        if dest is None:
-            dest = filename
+        dest = dest or path.basename(filename)
         self._files[dest] = filename
 
     def get_file(self, filename, outputfile=None):
@@ -385,7 +386,7 @@ class QDir(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`ValueError`: no such file
           (:exc:`KeyError` with disk['file'] syntax)
@@ -409,7 +410,7 @@ class QDir(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`ValueError`: no such file
           (:exc:`KeyError` with disk['file'] syntax)
@@ -441,7 +442,7 @@ class QDir(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
         ret = [f.name for f in self._disk.list_files()]
         ret.extend(self._files.keys())
@@ -455,7 +456,7 @@ class QDir(object):
 
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
         for key, value in self._files.items():
             self._disk[key] = value

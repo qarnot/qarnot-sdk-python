@@ -15,7 +15,7 @@
 ** connection
 *** TODO proper cert whitelist / proper cert
 *** DONE add user functions
-*** TODO factory functions
+*** factory functions
 ** DONE disks
 *** DONE Add files
     add directory handling once permitted by api
@@ -40,7 +40,7 @@
     for now user is not supposed to change it
 *** DONE stdout
 *** DONE stderr
-*** TODO snapshot
+*** DONE snapshot
 *** DONE wait
     for now active waiting w/ request every 10 sec -> to change
 ** TODO session

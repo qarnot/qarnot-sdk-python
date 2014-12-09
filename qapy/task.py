@@ -1,7 +1,7 @@
 """module to handle a Task"""
 
 import disk
-from apy import get_url
+from qapy import get_url
 import time
 
 class QTask(object):
@@ -15,7 +15,7 @@ class QTask(object):
         :param profile: :class:`string`, which profile to use with this task
         :param frameNbr: :class:`int`, number of frame on which to run task
         """
-        self.name = name
+        self.name = name #RO property? R/W until submission ? (same for 3 below)
         self.profile = profile
         self.frameCount = frameNbr
         self.priority = 0
@@ -25,7 +25,7 @@ class QTask(object):
         self._resultDir = None
         self._connection = connection
         self.constants = {}
-        self.status = 'UnSubmitted'
+        self._status = 'UnSubmitted' # RO property same for below
         self.uuid = None
         self._snapshots = False
 
@@ -43,7 +43,7 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: no such task
         """
@@ -51,7 +51,7 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(uuid)
         resp.raise_for_status()#replace by missing task
-        t = QTask(connection, "stub", None, 0)
+        t = cls(connection, "stub", None, 0)
         t._update(resp.json())
         return t
 
@@ -64,13 +64,13 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
-          :exc:`apy.disk.MissingDiskException`:
+          :exc:`qapy.disk.MissingDiskException`:
           resource disk is not a valid disk
         """
         if self.uuid is not None:
-            return self.status
+            return self._status
         self.resources.push()
         payload = self._to_json()
         resp = self._connection.post(get_url('tasks'), json=payload)
@@ -101,11 +101,11 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """
-        if self.uuid is None or self.status != "Submitted":
+        if self.uuid is None or self._status != "Submitted":
             return True
 
         resp = self._connection.delete(
@@ -134,14 +134,14 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """
         if self.uuid is None:
             return
-        if self.status == 'Submitted':
-            print self.abort()
+        if self._status == 'Submitted':
+            self.abort()
 
         if purge:
             if self._resourceDisk:
@@ -158,7 +158,6 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(self.name)
         else:
-            print resp.status_code
             resp.raise_for_status()
 
         self.uuid = None
@@ -172,12 +171,12 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """
         if self.uuid is None:
-            return self.status
+            return self._status
 
         resp = self._connection.get(
             get_url('task update', uuid=self.uuid))
@@ -187,7 +186,7 @@ class QTask(object):
             resp.raise_for_status()
         self._update(resp.json())
 
-        return self.status
+        return self._status
 
     def _update(self, jsonTask):
         """update this task from retrieved info"""
@@ -196,13 +195,13 @@ class QTask(object):
         self.framecount = jsonTask['frameCount']
         self._resourceDisk = disk.QDisk.retrieve(self._connection,
             jsonTask['resourceDisk'])
-        #question : what to do upon change of disk
+
         if jsonTask['resultDisk'] is not None:
             self._resultDisk = disk.QDisk.retrieve(self._connection,
                                                jsonTask['resultDisk'])
         self.priority = jsonTask['priority']
         self.uuid = jsonTask['id']
-        self.status = jsonTask['state']
+        self._status = jsonTask['state']
 
     def wait(self):
         """wait for this task to complete
@@ -210,12 +209,14 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """
+        if self.uuid is None:
+            return
         self.update()
-        while self.status == 'Submitted':
+        while self._status == 'Submitted':
             time.sleep(10)
             self.update()
 
@@ -235,7 +236,7 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """
@@ -253,6 +254,11 @@ class QTask(object):
             resp.raise_for_status()
 
         self._snapshots = True
+
+    @property
+    def status(self):
+        "current task status (updates the task)"
+        return self.update()
 
     @property
     def resources(self):
@@ -288,7 +294,7 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """
@@ -317,7 +323,7 @@ class QTask(object):
         :raises:
           :exc:`HTTPError`: unhandled http return code
 
-          :exc:`apy.connection.UnauthorizedException`: invalid credentials
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
           :exc:`MissingTaskException`: task does not represent a valid one
         """

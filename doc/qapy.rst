@@ -1,29 +1,29 @@
-apy package
-===========
+qapy package
+============
 
 Submodules
 ----------
 
-apy.connection module
----------------------
+qapy.connection module
+----------------------
 
-.. automodule:: apy.connection
+.. automodule:: qapy.connection
     :members:
     :undoc-members:
     :show-inheritance:
 
-apy.disk module
----------------
+qapy.disk module
+----------------
 
-.. automodule:: apy.disk
+.. automodule:: qapy.disk
     :members:
     :undoc-members:
     :show-inheritance:
 
-apy.task module
----------------
+qapy.task module
+----------------
 
-.. automodule:: apy.task
+.. automodule:: qapy.task
     :members:
     :undoc-members:
     :show-inheritance:
@@ -32,7 +32,7 @@ apy.task module
 Module contents
 ---------------
 
-.. automodule:: apy
+.. automodule:: qapy
     :members:
     :undoc-members:
     :show-inheritance:
