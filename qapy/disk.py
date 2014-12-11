@@ -2,11 +2,12 @@
 
 from qapy import get_url
 import os.path as path
+import os
 import json
 import collections
 
 class QDisk(object):
-    """represents a ressource disk on the qnode"""
+    """represents a ressource disk on the cluster"""
     #Creation#
     def __init__(self, jsondisk, connection):
         """
@@ -22,7 +23,7 @@ class QDisk(object):
             * readOnly : boolean, is the disk read only
 
         :param connection:  :class:`qapy.connection.QConnection`,
-          the qnode on which the disk is
+          the cluster on which the disk is
         """
         self._name = jsondisk["id"]
         self.description = jsondisk["description"]
@@ -30,12 +31,12 @@ class QDisk(object):
         self._connection = connection
 
     @classmethod
-    def create(cls, connection, description):
+    def _create(cls, connection, description):
         """
-        create a disk on a qnode
+        create a disk on a cluster
 
         :param connection:  :class:`qapy.connection.QConnection`,
-          represents the qnode on which to create the disk
+          represents the cluster on which to create the disk
         :param description: :class:`string`, a short description of the disk
 
         :rtype: :class:`QDisk`
@@ -49,7 +50,7 @@ class QDisk(object):
         data = {
             "description" : description
             }
-        response = connection.post(get_url('disk folder'), json=data)
+        response = connection._post(get_url('disk folder'), json=data)
 
         if response.status_code != 200: #raise unexpected status code
             response.raise_for_status()
@@ -60,9 +61,9 @@ class QDisk(object):
 
     @classmethod
     def retrieve(cls, connection, disk_id):
-        """retrieve information of a disk on a qnode
+        """retrieve information of a disk on a cluster
 
-        :param connection: :class:`qapy.connection.QConnection`, the qnode
+        :param connection: :class:`qapy.connection.QConnection`, the cluster
             to get the disk from
         :param disk_id: the UUID of the disk to retrieve
 
@@ -76,7 +77,7 @@ class QDisk(object):
 
           :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
-        response = connection.get(get_url('disk info', name=disk_id))
+        response = connection._get(get_url('disk info', name=disk_id))
 
         if response.status_code == 404:
             raise MissingDiskException(disk_id)
@@ -100,7 +101,7 @@ class QDisk(object):
 
           :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
-        response = self._connection.delete(
+        response = self._connection._delete(
             get_url('disk info', name=self._name))
 
         if (response.status_code == 404):
@@ -131,7 +132,7 @@ class QDisk(object):
           :exc:`ValueError`: invalid extension format
 
         """
-        response = self._connection.get(
+        response = self._connection._get(
             get_url('get disk', name=self._name, ext=extension),
             stream=True)
 
@@ -163,7 +164,7 @@ class QDisk(object):
 
           :exc:`qapy.connection.UnauthorizedException`: invalid credentials
         """
-        response = self._connection.get(
+        response = self._connection._get(
             get_url('ls disk', name=self._name))
         if (response.status_code == 404):
             raise MissingDiskException(self._name)
@@ -172,7 +173,7 @@ class QDisk(object):
         return [FileInfo._make(f.values()) for f in response.json()]
 
     def add_file(self, filename, dest=None):
-        """add a file to the disk (<=> self[dest] = filename)
+        """add a file to the disk (yo can also use disk[dest] = filename)
 
         :param filename: :class:`string`, name of the local file
         :param dest: :class:`string`, name of the remote file
@@ -188,13 +189,13 @@ class QDisk(object):
 
           :exc:`qapy.connection.UnauthorizedException`: invalid credentials
 
-          :exc:`ValueError`: trying to write on a R/O disk
+          :exc:`TypeError`: trying to write on a R/O disk
 
           :exc:`IOError`: user space quota reached
         """
 
         if self.readonly:
-            raise ValueError("tried to write on Read only disk")
+            raise TypeError("tried to write on Read only disk")
 
         dest = dest or path.basename(filename)
 
@@ -202,7 +203,7 @@ class QDisk(object):
             dest = dest.name
 
         with open(filename) as f:
-            response = self._connection.post(
+            response = self._connection._post(
                 get_url('update file', name=self._name, path=path.dirname(dest)),
                 files={'filedata': (path.basename(dest),f)})
 
@@ -214,6 +215,29 @@ class QDisk(object):
                 response.raise_for_status()
             return response.status_code == 200
 
+    def add_dir(self, local, remote=""):
+        """ add a directory to the disk, do not follow symlinks
+        the internal structure is preserved
+
+        :param local: path of the local directory to add
+        :param remote: path of the directory on remote node
+
+        :raises:
+          :exc:`MissingDiskException` : the disk is not on the server
+
+          :exc:`HTTPError`: unhandled http return code
+
+          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
+
+          :exc:`TypeError`: trying to write on a R/O disk
+
+          :exc:`IOError`: user space quota reached
+        """
+        for dirpath, dirs, files in os.walk(local):
+            remote_loc = dirpath.replace(local, remote, 1)
+            for filename in files:
+                self.add_file(path.join(dirpath, filename),
+                              path.join(remote, filename))
 
     def get_file(self, filename, outputfile = None):
         """get a file from the disk, you can also use disk['file']
@@ -245,7 +269,7 @@ class QDisk(object):
         if outputfile is None:
             outputfile = filename
 
-        response = self._connection.get(
+        response = self._connection._get(
             get_url('update file', name=self._name, path=filename),
             stream=True)
 
@@ -286,7 +310,7 @@ class QDisk(object):
         if isinstance(filename , FileInfo):
             filename = filename.name
 
-        response = self._connection.delete(
+        response = self._connection._delete(
             get_url('update file', name=self._name, path=filename))
 
         if response.status_code == 404:

@@ -15,18 +15,24 @@
 ** connection
 *** TODO proper cert whitelist / proper cert
 *** DONE add user functions
-*** factory functions
+*** DONE factory functions
+*** DONE rename qnode to cluster
 ** DONE disks
 *** DONE Add files
-    add directory handling once permitted by api
-*** DONE get files
+*** DONE add directory
+*** get files
+    rename params
 *** DONE list files
-*** DONE get archive
-*** DONE delete file
+*** get archive
+    rename params
+*** delete file
+    rename params
 *** DONE operator[] :
 **** DONE getitem
 **** DONE setitem
 **** DONE delitem
+*** remove Qdir
+*** rename fileinfo QfileInfo
 ** tasks
 *** DONE contants
     constants are a python dictionary

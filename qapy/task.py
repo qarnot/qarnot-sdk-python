@@ -7,10 +7,10 @@ import time
 class QTask(object):
     """class to represent a qarnot job"""
     def __init__(self, connection, name, profile, frameNbr):
-        """create a new Qtask
+        """create a new :class:`QTask`
 
-        :param connection: :class:`Qconnectionn`,
-          the qnode on which to send the task
+        :param connection: :class:`Qconnection`,
+          the cluster on which to send the task
         :param name: :class:`string`, given name of the task
         :param profile: :class:`string`, which profile to use with this task
         :param frameNbr: :class:`int`, number of frame on which to run task
@@ -34,7 +34,7 @@ class QTask(object):
     def retrieve(cls, connection, uuid):
         """retrieve a submited task given it's uuid
 
-        :param connection: QConnection, the qnode to retrieve the task from
+        :param connection: QConnection, the cluster to retrieve the task from
         :param uuid: string, the uuid of the task to retrieve
 
         :rtype: Qtask
@@ -47,16 +47,17 @@ class QTask(object):
 
           :exc:`MissingTaskException`: no such task
         """
-        resp = connection.get(get_url('task update', uuid=uuid))
+        resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
             raise MissingTaskException(uuid)
-        resp.raise_for_status()#replace by missing task
+        resp.raise_for_status()
         t = cls(connection, "stub", None, 0)
         t._update(resp.json())
+        t._resourceDir = disk.QDir(t._resourceDisk)
         return t
 
     def submit(self):
-        """submit task to the qnode if not already submitted
+        """submit task to the cluster if not already submitted
 
         :rtype: string
         :returns: the current state of the task
@@ -73,7 +74,7 @@ class QTask(object):
             return self._status
         self.resources.push()
         payload = self._to_json()
-        resp = self._connection.post(get_url('tasks'), json=payload)
+        resp = self._connection._post(get_url('tasks'), json=payload)
 
         if resp.status_code == 404:
             msg = self._resourceDisk.name
@@ -108,7 +109,7 @@ class QTask(object):
         if self.uuid is None or self._status != "Submitted":
             return True
 
-        resp = self._connection.delete(
+        resp = self._connection._delete(
             get_url('task update', uuid=self.uuid))
 
         if resp.status_code == 404:
@@ -152,7 +153,7 @@ class QTask(object):
                 self._resultDisk = None
                 self._resultDir= None
 
-        resp = self._connection.delete(
+        resp = self._connection._delete(
             get_url('task update', uuid=self.uuid))
 
         if resp.status_code == 404:
@@ -178,7 +179,7 @@ class QTask(object):
         if self.uuid is None:
             return self._status
 
-        resp = self._connection.get(
+        resp = self._connection._get(
             get_url('task update', uuid=self.uuid))
         if resp.status_code == 404:
             return MissingTaskException(self.name)
@@ -243,7 +244,7 @@ class QTask(object):
         if self.uuid is None:
             self._snapshots = interval
             return
-        resp = self._connection.post(get_url('task snapshot', uuid=self.uuid),
+        resp = self._connection._post(get_url('task snapshot', uuid=self.uuid),
                                      json={"interval" : interval})
 
         if resp.status_code == 400:
@@ -264,8 +265,7 @@ class QTask(object):
     def resources(self):
         """Qdir for resource files"""
         if self._resourceDisk is None:
-            _disk = disk.QDisk.create(self._connection,
-                                      "task {}".format(self.name))
+            _disk = self._connection.create_disk("task {}".format(self.name))
             self._resourceDisk = _disk
             self._resourceDir = disk.QDir(_disk)
 
@@ -300,7 +300,7 @@ class QTask(object):
         """
         if self.uuid is None:
             return ""
-        resp = self._connection.get(
+        resp = self._connection._get(
             get_url('task stdout', uuid=self.uuid))
 
         if resp.status_code == 404:
