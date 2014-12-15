@@ -334,5 +334,5 @@ epub_exclude_files = ['search.html']
 #epub_use_index = True
 
 # ---------------------Autodoc ------------
-autoclass_content = 'both'
+#autoclass_content = 'both'
 autodoc_member_order= 'bysource'

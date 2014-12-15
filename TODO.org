@@ -1,5 +1,5 @@
 # Api-python
-* error handling
+* DONE error handling
 ** DONE timeout handling
 ** DONE http response code checking
 *** DONE 401 Untauthorised
@@ -10,7 +10,7 @@
     for disks and tasks when quota overflow
 *** DONE others
     use raise_for_status() everywhere
-** misc
+** DONE misc
 * main features
 ** connection
 *** TODO proper cert whitelist / proper cert
@@ -20,18 +20,18 @@
 ** DONE disks
 *** DONE Add files
 *** DONE add directory
-*** get files
+*** DONE get files
     rename params
 *** DONE list files
 *** get archive
     rename params
-*** delete file
+*** DONE delete file
     rename params
 *** DONE operator[] :
 **** DONE getitem
 **** DONE setitem
 **** DONE delitem
-*** remove Qdir
+*** DONE remove Qdir
 *** rename fileinfo QfileInfo
 ** tasks
 *** DONE contants
@@ -39,7 +39,7 @@
 *** DONE ressources
     property for disk
 *** DONE submission
-*** DONE retreiving
+*** DONE retrieving
 *** DONE creation
 *** DONE updating with dict
     what to do with the old ressourcedisk on change?
