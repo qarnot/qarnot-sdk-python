@@ -8,10 +8,10 @@ qapy.connection module
 ----------------------
 
 .. automodule:: qapy.connection
-    :members:
-    :undoc-members:
-    :show-inheritance:
-    :special-members: __init__
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 
 qapy.disk module
 ----------------
