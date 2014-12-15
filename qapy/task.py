@@ -24,9 +24,8 @@ class QTask(object):
         self._connection = connection
         self.constants = {}
         self._status = 'UnSubmitted' # RO property same for below
-        self.uuid = None
+        self._uuid = None
         self._snapshots = False
-
 
     @classmethod
     def retrieve(cls, connection, uuid):
@@ -63,7 +62,7 @@ class QTask(object):
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
         """
-        if self.uuid is not None:
+        if self._uuid is not None:
             return self._status
         self.resources.sync()
         payload = self._to_json()
@@ -78,7 +77,7 @@ class QTask(object):
         else:
             resp.raise_for_status()
 
-        self.uuid = resp.json()['guid']
+        self._uuid = resp.json()['guid']
 
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
@@ -96,11 +95,11 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None or self._status != "Submitted":
+        if self._uuid is None or self._status != "Submitted":
             return True
 
         resp = self._connection._delete(
-            get_url('task update', uuid=self.uuid))
+            get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(self.name)
@@ -126,7 +125,7 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None:
+        if self._uuid is None:
             return
         if self._status == 'Submitted':
             self.abort()
@@ -140,14 +139,14 @@ class QTask(object):
                 self._resultDisk = None
 
         resp = self._connection._delete(
-            get_url('task update', uuid=self.uuid))
+            get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(self.name)
         else:
             resp.raise_for_status()
 
-        self.uuid = None
+        self._uuid = None
 
     def update(self):
         """get the current state of this task and return it's status
@@ -159,11 +158,11 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None:
+        if self._uuid is None:
             return self._status
 
         resp = self._connection._get(
-            get_url('task update', uuid=self.uuid))
+            get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
             return MissingTaskException(self.name)
         else:
@@ -184,7 +183,7 @@ class QTask(object):
             self._resultDisk = disk.QDisk.retrieve(self._connection,
                                                jsonTask['resultDisk'])
         self.priority = jsonTask['priority']
-        self.uuid = jsonTask['id']
+        self._uuid = jsonTask['id']
         self._status = jsonTask['state']
 
     def wait(self):
@@ -194,7 +193,7 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None:
+        if self._uuid is None:
             return
         self.update()
         while self._status == 'Submitted':
@@ -218,10 +217,10 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None:
+        if self._uuid is None:
             self._snapshots = interval
             return
-        resp = self._connection._post(get_url('task snapshot', uuid=self.uuid),
+        resp = self._connection._post(get_url('task snapshot', uuid=self._uuid),
                                      json={"interval" : interval})
 
         if resp.status_code == 400:
@@ -240,19 +239,24 @@ class QTask(object):
 
     @property
     def resources(self):
-        """Qdir for resource files"""
+        """:class:`~qapy.disk.QDisk` for resource files"""
         if self._resourceDisk is None:
             _disk = self._connection.create_disk("task {}".format(self.name))
             self._resourceDisk = _disk
 
         return self._resourceDisk
 
+    @resources.setter
+    def resources(self, value):
+        #question delete current disk ?
+        self._resourceDisk = value
+
     @property
     def results(self):
-        """Qdir for task results
+        """:class:`~qapy.disk.QDisk` for task results
         will wait for the task to end unless snapshot has been called
         """
-        if self.uuid is not None:
+        if self._uuid is not None:
             if self._snapshots is not True:
                 self.wait()
             else:
@@ -270,10 +274,10 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None:
+        if self._uuid is None:
             return ""
         resp = self._connection._get(
-            get_url('task stdout', uuid=self.uuid))
+            get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(self.name)
@@ -296,10 +300,10 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
-        if self.uuid is None:
+        if self._uuid is None:
             return ""
         resp = self._connection.get(
-            get_url('task stderr', uuid=self.uuid))
+            get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(self.name)
@@ -307,6 +311,10 @@ class QTask(object):
             resp.raise_for_status()
 
         return resp.text
+
+    @property
+    def uuid(self):
+        return self._uuid
 
 
     def _to_json(self):

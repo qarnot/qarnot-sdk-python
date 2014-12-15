@@ -17,7 +17,9 @@ else:
 #########
 
 class QConnection(object):
-    """represent the couple cluster/user to submit task"""
+    """represent the couple cluster/user to submit task
+    .. automethod:: __init__
+    """
     def __init__(self, conf):
         """create a connection to a cluster with given config file
 
@@ -160,7 +162,7 @@ class QConnection(object):
             t2 = QTask(self, "stub", None, 0)
             t2._update(t)
             ret.append(t2)
-            return ret
+        return ret
 
     def create_disk(self, description):
         """

@@ -2,13 +2,21 @@
 
 from qapy import get_url
 import os.path as path
+import posixpath as ppath
 import os
 import json
 import collections
 import threading
 
 class QDisk(object):
-    """represents a ressource disk on the cluster"""
+    """represents a ressource disk on the cluster
+
+    this class is the interface to manage ressources or results from a
+    :class:`qapy.task.Qtask`
+
+    .. note::
+       paths given as 'remote' arguments **Must** be valid unix-like paths
+    """
     #Creation#
     def __init__(self, jsondisk, connection):
         """
@@ -88,9 +96,6 @@ class QDisk(object):
     def delete(self):
         """delete the disk represented by this Qdisk
 
-        :rtype: bool
-        :returns: whether or not deletion was successful
-
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -102,8 +107,6 @@ class QDisk(object):
             raise MissingDiskException(self._name)
 
         response.raise_for_status()
-
-        return response.status_code == 200
 
     def get_archive(self, extension='zip', output=None):
         """retrieve an archive of this disk's content
@@ -133,6 +136,8 @@ class QDisk(object):
             response.raise_for_status()
 
         output = output or ".".join([self._name, extension])
+        if path.isdir(output):
+            output = path.join(output, ".".join([self._name, extension]))
 
         with open(output, 'w') as f:
             for elt in response.iter_content():
@@ -141,9 +146,9 @@ class QDisk(object):
 
 
     def list_files(self):
-        """list files on the disk as FileInfo named Tuples
+        """list files on the disk as QFileInfo named Tuples
 
-        :rtype: list of :class:`FileInfo`
+        :rtype: list of :class:`QFileInfo`
         :returns: list of the files on the disk
 
         :raises MissingDiskException: the disk is not on the server
@@ -156,7 +161,7 @@ class QDisk(object):
             raise MissingDiskException(self._name)
         elif response.status_code != 200:
             response.raise_for_status()
-        return [FileInfo._make(f.values()) for f in response.json()]
+        return [QFileInfo._make(f.values()) for f in response.json()]
 
     def sync(self):
         for k, t in self._filethreads.items():
@@ -181,7 +186,7 @@ class QDisk(object):
         """
         remote = remote or path.basename(local)
 
-        if isinstance(remote, FileInfo):
+        if isinstance(remote, QFileInfo):
             remote = remote.name
 
         previous = self._filethreads.get(remote)
@@ -214,7 +219,8 @@ class QDisk(object):
 
         with open(filename) as f:
             response = self._connection._post(
-                get_url('update file', name=self._name, path=path.dirname(dest)),
+                get_url('update file', name=self._name,
+                        path=path.dirname(dest)),
                 files={'filedata': (path.basename(dest),f)})
 
             if (response.status_code == 404):
@@ -242,7 +248,7 @@ class QDisk(object):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
                 self.add_file(path.join(dirpath, filename),
-                              path.join(remote_loc, filename))
+                              ppath.join(remote_loc, filename))
 
     def get_file(self, remote, local=None):
         """get a file from the disk, you can also use disk['file']
@@ -260,7 +266,7 @@ class QDisk(object):
         :raises ValueError: no such file
           (:exc:`KeyError` with disk['file'] syntax)
         """
-        if isinstance(remote , FileInfo):
+        if isinstance(remote , QFileInfo):
             remote = remote.name
 
         pending = self._filethreads.get(remote)
@@ -270,7 +276,10 @@ class QDisk(object):
         remote = remote.lstrip('/')
 
         if local is None:
-            local = remote
+            local = path.basename(remote)
+
+        if path.isdir(local):
+            local = path.join(local, path.basename(remote))
 
         response = self._connection._get(
             get_url('update file', name=self._name, path=remote),
@@ -305,7 +314,7 @@ class QDisk(object):
         if pending is not None: #ensure 2 threads don't use the same file
             pending.join()
 
-        if isinstance(remote , FileInfo):
+        if isinstance(remote , QFileInfo):
             remote = remote.name
 
         response = self._connection._delete(
@@ -353,7 +362,7 @@ class QDisk(object):
 # Utility Classes #
 ###################
 
-FileInfo = collections.namedtuple('FileInfo',
+QFileInfo = collections.namedtuple('QFileInfo',
                                   ['creation_date', 'name', 'size'])
 """Named tuple containing the informations on a file"""
 
