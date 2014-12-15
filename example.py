@@ -8,7 +8,7 @@ import warnings
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
 if __name__ == "__main__":
-    warnings.simplefilter("ignore", InsecureRequestWarning)
+    warnings.simplefilter("once", InsecureRequestWarning)
     #remporary workaround for certificate issue
     q = qapy.QConnection('example/qarnot.conf')
     with q.create_task("example task", "python", 3) as task:
