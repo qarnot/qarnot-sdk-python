@@ -22,5 +22,5 @@ def get_url(key, **kwargs):
     }
     return Urls[key].format(**kwargs)
 
-from connection import QConnection
-from task import QTask
+from qapy.connection import QConnection
+from qapy.task import QTask

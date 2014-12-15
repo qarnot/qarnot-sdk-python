@@ -5,6 +5,7 @@ import os.path as path
 import os
 import json
 import collections
+import threading
 
 class QDisk(object):
     """represents a ressource disk on the cluster"""
@@ -13,7 +14,7 @@ class QDisk(object):
         """
         initialize a disk from a dictionnary.
 
-        :param jsondisk: dict representing the disk,
+        :param dict jsondisk: dictionnary representing the disk,
           must contain following keys :
 
             * id: string, the disk's UUID
@@ -22,30 +23,29 @@ class QDisk(object):
 
             * readOnly : boolean, is the disk read only
 
-        :param connection:  :class:`qapy.connection.QConnection`,
+        :param qapy.connection.QConnection connection:
           the cluster on which the disk is
         """
         self._name = jsondisk["id"]
         self.description = jsondisk["description"]
         self.readonly = jsondisk["readOnly"] #make these 3 R/O properties ?
         self._connection = connection
+        self._filethreads = {}
 
     @classmethod
     def _create(cls, connection, description):
         """
         create a disk on a cluster
 
-        :param connection:  :class:`qapy.connection.QConnection`,
+        :param qapy.connection.QConnection connection:
           represents the cluster on which to create the disk
-        :param description: :class:`string`, a short description of the disk
+        :param str description: a short description of the disk
 
         :rtype: :class:`QDisk`
         :returns: the created disk
 
-
-        :raises: :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         data = {
             "description" : description
@@ -63,19 +63,16 @@ class QDisk(object):
     def retrieve(cls, connection, disk_id):
         """retrieve information of a disk on a cluster
 
-        :param connection: :class:`qapy.connection.QConnection`, the cluster
+        :param qapy.connection.QConnection connection: the cluster
             to get the disk from
-        :param disk_id: the UUID of the disk to retrieve
+        :param str disk_id: the UUID of the disk to retrieve
 
         :rtype: :class:`QDisk`
         :returns: the retrieved disk
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = connection._get(get_url('disk info', name=disk_id))
 
@@ -94,12 +91,9 @@ class QDisk(object):
         :rtype: bool
         :returns: whether or not deletion was successful
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._delete(
             get_url('disk info', name=self._name))
@@ -111,26 +105,21 @@ class QDisk(object):
 
         return response.status_code == 200
 
-    def get_archive(self, extension, output=None):
+    def get_archive(self, extension='zip', output=None):
         """retrieve an archive of this disk's content
 
-        :param extension: in {'tar', 'tgz', 'zip'},
+        :param str extension: in {'tar', 'tgz', 'zip'},
           format of the archive to get
-        :param output: :class:`str`, name of the file to output to
+        :param str output: name of the file to output to
 
         :rtype: :class:`str`
         :returns:
          the filename of the retrieved archive
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`ValueError`: invalid extension format
-
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises ValueError: invalid extension format
         """
         response = self._connection._get(
             get_url('get disk', name=self._name, ext=extension),
@@ -157,12 +146,9 @@ class QDisk(object):
         :rtype: list of :class:`FileInfo`
         :returns: list of the files on the disk
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._get(
             get_url('ls disk', name=self._name))
@@ -172,35 +158,59 @@ class QDisk(object):
             response.raise_for_status()
         return [FileInfo._make(f.values()) for f in response.json()]
 
-    def add_file(self, filename, dest=None):
+    def sync(self):
+        for k, t in self._filethreads.items():
+            t.join()
+            del self._filethreads[k]
+
+    def add_file(self, local, remote=None): #self.thread
         """add a file to the disk (yo can also use disk[dest] = filename)
 
-        :param filename: :class:`string`, name of the local file
-        :param dest: :class:`string`, name of the remote file
+        :param str filename: name of the local file
+        :param str dest: name of the remote file
           (defaults to filename)
 
         :rtype: :class:`bool`
         :returns: whether the file has been successfully added
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises TypeError: trying to write on a R/O disk
+        :raises IOError: user space quota reached
+        """
+        remote = remote or path.basename(local)
 
-          :exc:`HTTPError`: unhandled http return code
+        if isinstance(remote, FileInfo):
+            remote = remote.name
 
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
+        previous = self._filethreads.get(remote)
+        if previous is not None: #ensure 2 threads write on the same file
+            previous.join()
 
-          :exc:`TypeError`: trying to write on a R/O disk
+        t = threading.Thread(None, self._add_file, remote, (local, remote))
+        t.start()
+        self._filethreads[remote] = t
 
-          :exc:`IOError`: user space quota reached
+    def _add_file(self, filename, dest):
+        """add a file to the disk (yo can also use disk[dest] = filename)
+
+        :param str filename: name of the local file
+        :param str dest: name of the remote file
+          (defaults to filename)
+
+        :rtype: :class:`bool`
+        :returns: whether the file has been successfully added
+
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises TypeError: trying to write on a R/O disk
+        :raises IOError: user space quota reached
         """
 
         if self.readonly:
             raise TypeError("tried to write on Read only disk")
-
-        dest = dest or path.basename(filename)
-
-        if isinstance(dest, FileInfo):
-            dest = dest.name
 
         with open(filename) as f:
             response = self._connection._post(
@@ -219,147 +229,102 @@ class QDisk(object):
         """ add a directory to the disk, do not follow symlinks
         the internal structure is preserved
 
-        :param local: path of the local directory to add
-        :param remote: path of the directory on remote node
+        :param str local: path of the local directory to add
+        :param str remote: path of the directory on remote node
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`TypeError`: trying to write on a R/O disk
-
-          :exc:`IOError`: user space quota reached
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises TypeError: trying to write on a R/O disk
+        :raises IOError: user space quota reached
         """
         for dirpath, dirs, files in os.walk(local):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
                 self.add_file(path.join(dirpath, filename),
-                              path.join(remote, filename))
+                              path.join(remote_loc, filename))
 
-    def get_file(self, filename, outputfile = None):
+    def get_file(self, remote, local=None):
         """get a file from the disk, you can also use disk['file']
 
-        :param filename: :class:`string`, the name of the remote file
-        :param outputfile: :class:`string`, local name of retrived file
+        :param str filename: the name of the remote file
+        :param str outputfile: local name of retrived file
           (defaults to filename)
 
         :rtype: :class:`string`
         :returns: the name of the output file
 
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`ValueError`:
-          no such file (:exc:`KeyError` with disk['file'] syntax)
-
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises ValueError: no such file
+          (:exc:`KeyError` with disk['file'] syntax)
         """
+        if isinstance(remote , FileInfo):
+            remote = remote.name
 
-        if isinstance(filename , FileInfo):
-            filename = filename.name
+        pending = self._filethreads.get(remote)
+        if pending is not None: #ensure filr is done uploading
+            pending.join()
 
-        filename = filename.lstrip('/')
+        remote = remote.lstrip('/')
 
-        if outputfile is None:
-            outputfile = filename
+        if local is None:
+            local = remote
 
         response = self._connection._get(
-            get_url('update file', name=self._name, path=filename),
+            get_url('update file', name=self._name, path=remote),
             stream=True)
 
         if response.status_code == 404:
             if response.json()['errorMessage'] != "No such disk":
-                raise ValueError('unknown file {}'.format(filename))
+                raise ValueError('unknown file {}'.format(remote))
             else:
-                print response.json()
                 raise MissingDiskException(self._name)
         else:
             response.raise_for_status() #raise nothing if 2XX
 
-        with open(outputfile, 'w') as f:
-            for elt in response.iter_content():
+        with open(local, 'w') as f:
+            for elt in response.iter_content(512):
                 f.write(elt)
-        return outputfile
+        return local
 
-    def delete_file(self, filename):
+    def delete_file(self, remote):
         """delete a file from the disk, equivalent to del disk['file']
 
-        :param filename: string, the name of the remote file
+        :param str remote: the name of the remote file
 
-        :rtype: :class:`bool`
-        :returns: whether or not the deletion was successful
-
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`ValueError`: no such file
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises ValueError: no such file
           (:exc:`KeyError` with disk['file'] syntax)
 
         """
+        pending = self._filethreads.get(remote)
+        if pending is not None: #ensure 2 threads don't use the same file
+            pending.join()
 
-        if isinstance(filename , FileInfo):
-            filename = filename.name
+        if isinstance(remote , FileInfo):
+            remote = remote.name
 
         response = self._connection._delete(
-            get_url('update file', name=self._name, path=filename))
+            get_url('update file', name=self._name, path=remote))
 
         if response.status_code == 404:
             if response.json()['errorMessage'] != "No such disk":
-                raise ValueError('unknown file {}'.format(filename))
+                raise ValueError('unknown file {}'.format(remote))
             else:
-                print response.json()
                 raise MissingDiskException(self._name)
         else:
             response.raise_for_status() #raise nothing if 2XX
 
-        return response.status_code == 200
-
     @property
     def name(self):
+        """the disk's UUID"""
         return self._name
 
     #operators#
-
-    def __getitem__(self, filename):
-        try:
-            return self.get_file(filename)
-        except ValueError:#change error into keyerror if missing file
-            raise KeyError(filename)
-
-    def __setitem__(self, dest, filename):
-        return self.add_file(filename, dest)
-
-    def __delitem__(self, filename):
-        try:
-            return self.delete_file(filename)
-        except ValueError: #change error into keyerror if missing file
-            raise KeyError(filename)
-
-
-###################
-# Utility Classes #
-###################
-
-FileInfo = collections.namedtuple('FileInfo',
-                                  ['creation_date', 'name', 'size'])
-"""Named tuple containing the informations on a file"""
-
-class QDir(object):
-    """Class for handling files in a disk"""
-    def __init__(self, disk):
-        self._disk = disk
-        self._files = {}
-
 
     def __getitem__(self, filename):
         try:
@@ -383,108 +348,14 @@ class QDir(object):
     def __iter__(self):
         return iter(self.list_files())
 
-    def add_file(self, filename, dest=None):
-        """register a file as to be sent to the disk
 
-        :param filename: :class:`string`, name of the local file
-        :param dest: :class:`string`, name of the remote file
-          (defaults to filename)
-        """
-        dest = dest or path.basename(filename)
-        self._files[dest] = filename
+###################
+# Utility Classes #
+###################
 
-    def get_file(self, filename, outputfile=None):
-        """get a file from the disk, you can also use disk['file']
-        if given file is not on the disk but registered to be sent,
-        return it instead
-
-        :param filename: :class:`string`, the name of the remote file
-        :param outputfile: :class:`string`, local name of retrived file
-          (defaults to filename)
-
-        :rtype: :class:`string`
-        :returns: the name of the output file
-
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`ValueError`: no such file
-          (:exc:`KeyError` with disk['file'] syntax)
-
-        """
-        if filename in [f.name for f in self._disk.list_files()]:
-            return self._disk[filename]
-        return self._files[filename]
-
-    def delete_file(self, filename):
-        """delete a file from the disk, and unregister it
-        equivalent to del disk['file']
-
-        :param filename: string, the name of the remote file
-
-        :rtype: :class:`bool`
-        :returns: whether or not the deletion was successful
-
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`ValueError`: no such file
-          (:exc:`KeyError` with disk['file'] syntax)
-
-        """
-        local = False
-        remote = False
-        try:
-            del self._disk[filename]
-            local = True
-        except KeyError: pass
-
-        try:
-            del self._disk[filename]
-            remote = True
-        except KeyError: pass
-
-        if not (local or remote):
-            raise ValueError('unknown file {}'.format(filename))
-
-    def list_files(self):
-        """list files on the disk, and registered files
-
-        :rtype: list of :class:`str`
-        :returns: list of the files on the disk
-
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-        """
-        ret = [f.name for f in self._disk.list_files()]
-        ret.extend(self._files.keys())
-        return ret
-
-    def push(self):
-        """send registered files to the disk
-
-        :raises:
-          :exc:`MissingDiskException` : the disk is not on the server
-
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-        """
-        for key, value in self._files.items():
-            self._disk[key] = value
-            del self._files[key]
+FileInfo = collections.namedtuple('FileInfo',
+                                  ['creation_date', 'name', 'size'])
+"""Named tuple containing the informations on a file"""
 
 ##############
 # Exceptions #

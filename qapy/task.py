@@ -1,6 +1,6 @@
 """module to handle a Task"""
 
-import disk
+import qapy.disk as disk
 from qapy import get_url
 import time
 
@@ -20,9 +20,7 @@ class QTask(object):
         self.frameCount = frameNbr
         self.priority = 0
         self._resourceDisk = None
-        self._resourceDir = None
         self._resultDisk = None
-        self._resultDir = None
         self._connection = connection
         self.constants = {}
         self._status = 'UnSubmitted' # RO property same for below
@@ -34,18 +32,16 @@ class QTask(object):
     def retrieve(cls, connection, uuid):
         """retrieve a submited task given it's uuid
 
-        :param connection: QConnection, the cluster to retrieve the task from
-        :param uuid: string, the uuid of the task to retrieve
+        :param qapy.connection.QConnection connection:
+          the cluster to retrieve the task from
+        :param str uuid: the uuid of the task to retrieve
 
         :rtype: Qtask
         :returns: the retrieved task
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: no such task
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: no such task
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
@@ -62,17 +58,14 @@ class QTask(object):
         :rtype: string
         :returns: the current state of the task
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`qapy.disk.MissingDiskException`:
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
         """
         if self.uuid is not None:
             return self._status
-        self.resources.push()
+        self.resources.sync()
         payload = self._to_json()
         resp = self._connection._post(get_url('tasks'), json=payload)
 
@@ -99,12 +92,9 @@ class QTask(object):
         :returns: whether or not task successfully aborted
           will be false if this task is not running
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None or self._status != "Submitted":
             return True
@@ -125,19 +115,16 @@ class QTask(object):
         """delete task from the server,
         does nothing if already deleted
 
-        :param purge: :class:`bool` (optional), if true
+        :param bool purge: *optional*, if true
           delete also result and ressource disks
           Defaults to True
 
         :rtype: bool
         :returns: whether or not the deletion was successful
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None:
             return
@@ -151,7 +138,6 @@ class QTask(object):
             if self._resultDisk:
                 self._resultDisk.delete()
                 self._resultDisk = None
-                self._resultDir= None
 
         resp = self._connection._delete(
             get_url('task update', uuid=self.uuid))
@@ -169,12 +155,9 @@ class QTask(object):
         :rtype: string
         :returns: current status of the task
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None:
             return self._status
@@ -207,12 +190,9 @@ class QTask(object):
     def wait(self):
         """wait for this task to complete
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None:
             return
@@ -229,17 +209,14 @@ class QTask(object):
         the snapshots will be taken every *interval* second from the time
         the task is submitted
 
-        :note: this alters the behavior of results making it's access
-          non blocking
+        .. note:: this alters the behavior of results making it's access
+           non blocking
 
         :param interval: the interval in seconds at which to take snapshots
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None:
             self._snapshots = interval
@@ -267,9 +244,8 @@ class QTask(object):
         if self._resourceDisk is None:
             _disk = self._connection.create_disk("task {}".format(self.name))
             self._resourceDisk = _disk
-            self._resourceDir = disk.QDir(_disk)
 
-        return self._resourceDir
+        return self._resourceDisk
 
     @property
     def results(self):
@@ -281,9 +257,8 @@ class QTask(object):
                 self.wait()
             else:
                 self.update()
-        if self._resultDir is None and self._resultDisk is not None:
-            self._resultDir = disk.QDir(self._resultDisk)
-        return self._resultDir
+
+        return self._resultDisk
 
     @property
     def stdout(self):
@@ -291,12 +266,9 @@ class QTask(object):
         each call will return the standard output
         since the submission of the task
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None:
             return ""
@@ -317,15 +289,12 @@ class QTask(object):
         each call will return the standard error
         since the submission of the task
 
-        :note: This is *Not* the standard error from the payload
-          it is the output for task level errors
+        .. note:: This is *Not* the standard error from the payload
+           it is the output for task level errors
 
-        :raises:
-          :exc:`HTTPError`: unhandled http return code
-
-          :exc:`qapy.connection.UnauthorizedException`: invalid credentials
-
-          :exc:`MissingTaskException`: task does not represent a valid one
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
         """
         if self.uuid is None:
             return ""
@@ -356,6 +325,16 @@ class QTask(object):
             'constants': const_list
         }
         return jsonTask
+
+    #context manager#
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if (exc_type is None) or exc_type != MissingTaskException:
+            self.delete()
+        return True
 
 
 ##############
