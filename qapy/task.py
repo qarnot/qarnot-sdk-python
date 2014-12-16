@@ -342,7 +342,7 @@ class QTask(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         if (exc_type is None) or exc_type != MissingTaskException:
             self.delete()
-        return True
+        return False
 
 
 ##############

@@ -4,15 +4,12 @@
 from __future__ import print_function
 
 import qapy
-import warnings
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from qapy.disk import QAddMode
 
 if __name__ == "__main__":
-    warnings.simplefilter("once", InsecureRequestWarning)
-    #remporary workaround for certificate issue
     q = qapy.QConnection('example/qarnot.conf')
     with q.create_task("example task", "python", 3) as task:
-        task.resources.add_file("example/script.py")
+        task.resources.add_file("example/script.py", mode=QAddMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
         task.submit()
         task.wait()

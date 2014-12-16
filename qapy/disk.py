@@ -7,6 +7,7 @@ import os
 import json
 import collections
 import threading
+from enum import Enum
 
 class QDisk(object):
     """represents a ressource disk on the cluster
@@ -39,6 +40,8 @@ class QDisk(object):
         self.readonly = jsondisk["readOnly"] #make these 3 R/O properties ?
         self._connection = connection
         self._filethreads = {}
+        self._filecache = {}
+        self._add_mode = QAddMode.blocking
 
     @classmethod
     def _create(cls, connection, description):
@@ -164,19 +167,7 @@ class QDisk(object):
         return [QFileInfo._make(f.values()) for f in response.json()]
 
     def sync(self):
-        for k, t in self._filethreads.items():
-            t.join()
-            del self._filethreads[k]
-
-    def add_file(self, local, remote=None): #self.thread
-        """add a file to the disk (yo can also use disk[dest] = filename)
-
-        :param str filename: name of the local file
-        :param str dest: name of the remote file
-          (defaults to filename)
-
-        :rtype: :class:`bool`
-        :returns: whether the file has been successfully added
+        """ensure all fille added through add file are on the disk
 
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -184,18 +175,51 @@ class QDisk(object):
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
         """
+        for k, t in self._filethreads.items():
+            t.join()
+            del self._filethreads[k]
+        for remote, local in self._filecache.items():
+            self._add_file(local, remote)
+            del self._filecache[remote]
+
+    def add_file(self, local, remote=None, mode=None):
+        """add a file to the disk (you can also use disk[remote] = local)
+
+        :param str filename: name of the local file
+        :param str dest: name of the remote file
+          (defaults to filename)
+        :param mode: the mode with hich to add the file
+          (defaults to disk.add_mode)
+        :type mode: :class:`QAddMode`
+
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises TypeError: trying to write on a R/O disk
+        :raises IOError: user space quota reached
+        """
+        mode = mode or self._add_mode
         remote = remote or path.basename(local)
 
         if isinstance(remote, QFileInfo):
             remote = remote.name
 
         previous = self._filethreads.get(remote)
-        if previous is not None: #ensure 2 threads write on the same file
+        if previous is not None: #ensure no 2 threads write on the same file
             previous.join()
+            del self._filethreads[remote]
 
-        t = threading.Thread(None, self._add_file, remote, (local, remote))
-        t.start()
-        self._filethreads[remote] = t
+        if remote in self._filecache: #do not delay a file added differently
+            del self._filecache[remote]
+
+        if mode is QAddMode.blocking:
+            return self._add_file(local, remote)
+        elif mode is QAddMode.delayed:
+            self._filecache[remote] = local
+        else:
+            t = threading.Thread(None, self._add_file, remote, (local, remote))
+            t.start()
+            self._filethreads[remote] = t
 
     def _add_file(self, filename, dest):
         """add a file to the disk (yo can also use disk[dest] = filename)
@@ -229,14 +253,15 @@ class QDisk(object):
                 raise IOError("disk full")
             else:
                 response.raise_for_status()
-            return response.status_code == 200
 
-    def add_dir(self, local, remote=""):
+    def add_dir(self, local, remote="", mode=None):
         """ add a directory to the disk, do not follow symlinks
         the internal structure is preserved
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
+        :param QAddMode mode: the mode with hich to add the file
+          (defaults to disk.add_mode)
 
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -248,7 +273,7 @@ class QDisk(object):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
                 self.add_file(path.join(dirpath, filename),
-                              ppath.join(remote_loc, filename))
+                              ppath.join(remote_loc, filename), mode)
 
     def get_file(self, remote, local=None):
         """get a file from the disk, you can also use disk['file']
@@ -272,6 +297,10 @@ class QDisk(object):
         pending = self._filethreads.get(remote)
         if pending is not None: #ensure filr is done uploading
             pending.join()
+
+        if remote in self._filecache:
+            self._add_file(remote, self._filecache[remote])
+            del self._filecache[remote]
 
         remote = remote.lstrip('/')
 
@@ -314,6 +343,10 @@ class QDisk(object):
         if pending is not None: #ensure 2 threads don't use the same file
             pending.join()
 
+        if remote in self._filecache:
+            self._add_file(remote, self._filecache[remote])
+            del self._filecache[remote]
+
         if isinstance(remote , QFileInfo):
             remote = remote.name
 
@@ -332,6 +365,18 @@ class QDisk(object):
     def name(self):
         """the disk's UUID"""
         return self._name
+
+    @property
+    def add_mode(self):
+        """default mode for adding files"""
+        return self._add_mode
+
+    @add_mode.setter
+    def add_mode(self, value):
+        if isinstance(value, QAddMode):
+            self._add_mode = value
+        else:
+            raise TypeError('add_mode must be a QAddMode value')
 
     #operators#
 
@@ -365,6 +410,13 @@ class QDisk(object):
 QFileInfo = collections.namedtuple('QFileInfo',
                                   ['creation_date', 'name', 'size'])
 """Named tuple containing the informations on a file"""
+
+class QAddMode(Enum):
+    """How to add files in a :class:`QDisk`"""
+    blocking = 0 #: call to add_file blocks until file is done uploading
+    background = 1 #: launch a background thread
+    delayed = 2
+    """actual uploading is made by the :func:`QDisk.sync` method call"""
 
 ##############
 # Exceptions #
