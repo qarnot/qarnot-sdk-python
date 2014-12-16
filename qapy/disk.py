@@ -1,5 +1,7 @@
 """module for disk object"""
 
+from __future__ import print_function
+
 from qapy import get_url
 import os.path as path
 import posixpath as ppath
@@ -32,7 +34,7 @@ class QDisk(object):
 
             * readOnly : boolean, is the disk read only
 
-        :param qapy.connection.QConnection connection:
+        :param qapy.connection.QApy connection:
           the cluster on which the disk is
         """
         self._name = jsondisk["id"]
@@ -48,7 +50,7 @@ class QDisk(object):
         """
         create a disk on a cluster
 
-        :param qapy.connection.QConnection connection:
+        :param qapy.connection.QApy connection:
           represents the cluster on which to create the disk
         :param str description: a short description of the disk
 
@@ -74,7 +76,7 @@ class QDisk(object):
     def retrieve(cls, connection, disk_id):
         """retrieve information of a disk on a cluster
 
-        :param qapy.connection.QConnection connection: the cluster
+        :param qapy.connection.QApy connection: the cluster
             to get the disk from
         :param str disk_id: the UUID of the disk to retrieve
 
@@ -142,7 +144,7 @@ class QDisk(object):
         if path.isdir(output):
             output = path.join(output, ".".join([self._name, extension]))
 
-        with open(output, 'w') as f:
+        with open(output, 'wb') as f:
             for elt in response.iter_content():
                 f.write(elt)
         return output
@@ -164,7 +166,8 @@ class QDisk(object):
             raise MissingDiskException(self._name)
         elif response.status_code != 200:
             response.raise_for_status()
-        return [QFileInfo._make(f.values()) for f in response.json()]
+        return [QFileInfo(f['creationDate'], f['fileName'], f['size'])
+                for f in response.json()]
 
     def sync(self):
         """ensure all fille added through add file are on the disk
@@ -177,10 +180,13 @@ class QDisk(object):
         """
         for k, t in self._filethreads.items():
             t.join()
-            del self._filethreads[k]
+
+        self._filethreads.clear()
+
         for remote, local in self._filecache.items():
             self._add_file(local, remote)
-            del self._filecache[remote]
+
+        self._filecache.clear()
 
     def add_file(self, local, remote=None, mode=None):
         """add a file to the disk (you can also use disk[remote] = local)
@@ -241,7 +247,7 @@ class QDisk(object):
         if self.readonly:
             raise TypeError("tried to write on Read only disk")
 
-        with open(filename) as f:
+        with open(filename, 'rb') as f:
             response = self._connection._post(
                 get_url('update file', name=self._name,
                         path=path.dirname(dest)),
@@ -302,7 +308,7 @@ class QDisk(object):
             self._add_file(remote, self._filecache[remote])
             del self._filecache[remote]
 
-        remote = remote.lstrip('/')
+        #remote = remote.lstrip('/')
 
         if local is None:
             local = path.basename(remote)
@@ -322,7 +328,7 @@ class QDisk(object):
         else:
             response.raise_for_status() #raise nothing if 2XX
 
-        with open(local, 'w') as f:
+        with open(local, 'wb') as f:
             for elt in response.iter_content(512):
                 f.write(elt)
         return local

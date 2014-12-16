@@ -7,7 +7,7 @@ import qapy
 from qapy.disk import QAddMode
 
 if __name__ == "__main__":
-    q = qapy.QConnection('example/qarnot.conf')
+    q = qapy.QApy('example/qarnot.conf')
     with q.create_task("example task", "python", 3) as task:
         task.resources.add_file("example/script.py", mode=QAddMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"

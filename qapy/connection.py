@@ -16,7 +16,7 @@ else:
 # class #
 #########
 
-class QConnection(object):
+class QApy(object):
     """represent the couple cluster/user to submit task
     .. automethod:: __init__
     """
