@@ -38,8 +38,8 @@ class QDisk(object):
           the cluster on which the disk is
         """
         self._name = jsondisk["id"]
-        self.description = jsondisk["description"]
-        self.readonly = jsondisk["readOnly"] #make these 3 R/O properties ?
+        self._description = jsondisk["description"]
+        self._ro = jsondisk["readOnly"]
         self._connection = connection
         self._filethreads = {}
         self._filecache = {}
@@ -249,7 +249,7 @@ class QDisk(object):
         :raises IOError: user space quota reached
         """
 
-        if self.readonly:
+        if self._ro:
             raise TypeError("tried to write on Read only disk")
 
         with open(filename, 'rb') as f:
@@ -392,6 +392,17 @@ class QDisk(object):
         else:
             raise TypeError('add_mode must be a QAddMode value')
 
+    @property
+    def readonly(self):
+        """whether or not the disk is read only
+        not that trying to add a file on a readonly disk will raise
+        a :exc:`TypeError`
+        """
+        return self._ro
+
+    @property
+    def description(self):
+        return self._description
     #operators#
 
     def __getitem__(self, filename):
