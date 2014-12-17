@@ -9,8 +9,8 @@ def get_url(key, **kwargs):
     Urls = {
         'disk folder' : '/disks', #GET -> list; POST -> add
         'disk info' : '/disks/{name}', # DELETE  -> remove
-        'get disk' : '/disks/get/{name}.{ext}', #GET-> disk archive
-        'ls disk' : '/disks/list/{name}', #GET -> ls on the disk
+        'get disk' : '/disks/archive/{name}.{ext}', #GET-> disk archive
+        'tree disk' : '/disks/tree/{name}', #GET -> ls on the disk
         'update file' : '/disks/{name}/{path}', #POST; GET; DELETE
         'list profiles': '/tasks/profiles', #GET -> possible profiles
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task

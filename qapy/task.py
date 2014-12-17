@@ -44,7 +44,7 @@ class QTask(object):
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(uuid)
+            raise MissingTaskException(resp.json()['message'], uuid)
         resp.raise_for_status()
         t = cls(connection, "stub", None, 0)
         t._update(resp.json())
@@ -73,7 +73,7 @@ class QTask(object):
             self._resourceDisk = None
             raise disk.MissingDiskException(msg)
         elif resp.status_code == 403:
-            raise MaxTaskException()
+            raise MaxTaskException(resp.json()['message'])
         else:
             resp.raise_for_status()
 
@@ -102,7 +102,7 @@ class QTask(object):
             get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(self.name)
+            raise MissingTaskException(resp.json()['message'], self.name)
         else:
             resp.raise_for_status()
 
@@ -142,7 +142,7 @@ class QTask(object):
             get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(self.name)
+            raise MissingTaskException(resp.json()['message'], self.name)
         else:
             resp.raise_for_status()
 
@@ -164,7 +164,7 @@ class QTask(object):
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            return MissingTaskException(self.name)
+            return MissingTaskException(resp.json()['message'], self.name)
         else:
             resp.raise_for_status()
         self._update(resp.json())
@@ -226,7 +226,7 @@ class QTask(object):
         if resp.status_code == 400:
             raise ValueError(interval)
         elif resp.status_code == 404:
-            raise MissingTaskException(self.name)
+            raise MissingTaskException(resp.json()['message'], self.name)
         else:
             resp.raise_for_status()
 
@@ -280,7 +280,7 @@ class QTask(object):
             get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(self.name)
+            raise MissingTaskException(resp.json()['message'], self.name)
         else:
             resp.raise_for_status()
 
@@ -302,11 +302,11 @@ class QTask(object):
         """
         if self._uuid is None:
             return ""
-        resp = self._connection.get(
+        resp = self._connection._get(
             get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(self.name)
+            raise MissingTaskException(resp.json()['message'], self.name)
         else:
             resp.raise_for_status()
 
@@ -351,12 +351,10 @@ class QTask(object):
 
 class MissingTaskException(Exception):
     """Non existant task"""
-    def __init__(self, name):
+    def __init__(self, message, name):
         super(MissingTaskException, self).__init__(
-            "No such task : {}".format(name))
+            "{}: {}".format(message, name))
 
 class MaxTaskException(Exception):
     """max number of tasks reached"""
-    def __init__(self):
-        super(MaxTaskException, self).__init__(
-            "max number of running tasks reached")
+    pass

@@ -111,7 +111,6 @@ class QApy(object):
         resp = self._get(get_url('user'))
         resp.raise_for_status()
         ret = resp.json()
-        ret['disks'] = [QDisk(data, self) for data in ret['disks']]
         return ret
 
     #move to a better place (session)

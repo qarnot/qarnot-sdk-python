@@ -13,7 +13,7 @@ if __name__ == "__main__":
         task.constants['PYTHON_SCRIPT'] = "script.py"
         task.submit()
         task.wait()
-        print(task.stdout, end='')
+        print(task.stderr, end='')
         for fInfo in task.results.list_files():
             with open(task.results[fInfo]) as f:
                 print(f.read())
