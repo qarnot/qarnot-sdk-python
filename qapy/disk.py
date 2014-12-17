@@ -18,7 +18,9 @@ class QDisk(object):
     :class:`qapy.task.Qtask`
 
     .. note::
-       paths given as 'remote' arguments **Must** be valid unix-like paths
+       paths given as 'remote' arguments,
+       (or as path arguments for :func:`QDisk.ls`)
+       **Must** be valid unix-like paths
     """
     #Creation#
     def __init__(self, jsondisk, connection):
@@ -69,11 +71,11 @@ class QDisk(object):
             response.raise_for_status()
 
         disk_id = response.json()
-        return cls.retrieve(connection, disk_id['guid'])
+        return cls._retrieve(connection, disk_id['guid'])
 
 
     @classmethod
-    def retrieve(cls, connection, disk_id):
+    def _retrieve(cls, connection, disk_id):
         """retrieve information of a disk on a cluster
 
         :param qapy.connection.QApy connection: the cluster
@@ -163,6 +165,9 @@ class QDisk(object):
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
+
+        self.sync()
+
         response = self._connection._get(
             get_url('tree disk', name=self._name))
         if (response.status_code == 404):
@@ -175,11 +180,26 @@ class QDisk(object):
                 for f in response.json()]
 
     def ls(self, path=''):
+        """list files in a directory of the disk
+
+        :param str path: the path of the directory to examine
+
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+
+        self.sync()
+
         response = self._connection._get(
             get_url('ls disk', name=self._name, path=path))
         if (response.status_code == 404):
-            raise MissingDiskException(response.json()['message'],
-                                       self._name)
+            if response.json()['message'] == 'no such disk':
+                raise MissingDiskException(response.json()['message'],
+                                           self._name)
+            else:
+                raise ValueError('{}: {}'.format(response.json()['message'],
+                                                 path))
         elif response.status_code != 200:
             response.raise_for_status()
         return [QFileInfo(f['creationDate'], f['name'], f['size'],
@@ -259,6 +279,7 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
+        :raises ValueError: file could not be created
         """
 
         with open(filename, 'rb') as f:
@@ -271,7 +292,9 @@ class QDisk(object):
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
             elif response.status_code == 403:
-                raise IOError("disk full")
+                raise IOError(response.json()['message'])
+            elif response.status_code == 400:
+                raise ValueError(response.json()['message'])
             else:
                 response.raise_for_status()
 
@@ -439,7 +462,7 @@ QFileInfo = collections.namedtuple('QFileInfo',
 """Named tuple containing the informations on a file"""
 
 class QAddMode(Enum):
-    """How to add files in a :class:`QDisk`"""
+    """How to add files on a :class:`QDisk`"""
     blocking = 0 #: call to add_file blocks until file is done uploading
     background = 1 #: launch a background thread
     delayed = 2

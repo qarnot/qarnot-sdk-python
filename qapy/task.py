@@ -175,11 +175,11 @@ class QTask(object):
         self._name = jsonTask['name']
         self._profile = jsonTask['profile']
         self._framecount = jsonTask['frameCount']
-        self._resourceDisk = disk.QDisk.retrieve(self._connection,
+        self._resourceDisk = disk.QDisk._retrieve(self._connection,
             jsonTask['resourceDisk'])
 
         if jsonTask['resultDisk'] is not None:
-            self._resultDisk = disk.QDisk.retrieve(self._connection,
+            self._resultDisk = disk.QDisk._retrieve(self._connection,
                                                jsonTask['resultDisk'])
         self.priority = jsonTask['priority']
         self._uuid = jsonTask['id']
