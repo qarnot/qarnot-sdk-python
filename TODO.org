@@ -33,8 +33,8 @@
 **** DONE setitem
 **** DONE delitem
 *** DONE remove Qdir
-*** rename fileinfo QfileInfo
-** tasks
+*** DONE rename fileinfo QfileInfo
+** DONE tasks
 *** DONE contants
     constants are a python dictionary
 *** DONE ressources

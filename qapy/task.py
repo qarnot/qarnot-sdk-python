@@ -15,10 +15,9 @@ class QTask(object):
         :param profile: :class:`string`, which profile to use with this task
         :param frameNbr: :class:`int`, number of frame on which to run task
         """
-        self.name = name #RO property? R/W until submission ? (same for 3 below)
-        self.profile = profile
-        self.frameCount = frameNbr
-        self.priority = 0
+        self._name = name
+        self._profile = profile
+        self._framecount = frameNbr
         self._resourceDisk = None
         self._resultDisk = None
         self._connection = connection
@@ -102,7 +101,7 @@ class QTask(object):
             get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self.name)
+            raise MissingTaskException(resp.json()['message'], self._name)
         else:
             resp.raise_for_status()
 
@@ -142,7 +141,7 @@ class QTask(object):
             get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self.name)
+            raise MissingTaskException(resp.json()['message'], self._name)
         else:
             resp.raise_for_status()
 
@@ -164,7 +163,7 @@ class QTask(object):
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            return MissingTaskException(resp.json()['message'], self.name)
+            return MissingTaskException(resp.json()['message'], self._name)
         else:
             resp.raise_for_status()
         self._update(resp.json())
@@ -173,9 +172,9 @@ class QTask(object):
 
     def _update(self, jsonTask):
         """update this task from retrieved info"""
-        self.name = jsonTask['name']
-        self.profile = jsonTask['profile']
-        self.framecount = jsonTask['frameCount']
+        self._name = jsonTask['name']
+        self._profile = jsonTask['profile']
+        self._framecount = jsonTask['frameCount']
         self._resourceDisk = disk.QDisk.retrieve(self._connection,
             jsonTask['resourceDisk'])
 
@@ -226,7 +225,7 @@ class QTask(object):
         if resp.status_code == 400:
             raise ValueError(interval)
         elif resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self.name)
+            raise MissingTaskException(resp.json()['message'], self._name)
         else:
             resp.raise_for_status()
 
@@ -241,7 +240,7 @@ class QTask(object):
     def resources(self):
         """:class:`~qapy.disk.QDisk` for resource files"""
         if self._resourceDisk is None:
-            _disk = self._connection.create_disk("task {}".format(self.name))
+            _disk = self._connection.create_disk("task {}".format(self._name))
             self._resourceDisk = _disk
 
         return self._resourceDisk
@@ -280,7 +279,7 @@ class QTask(object):
             get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self.name)
+            raise MissingTaskException(resp.json()['message'], self._name)
         else:
             resp.raise_for_status()
 
@@ -306,7 +305,7 @@ class QTask(object):
             get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self.name)
+            raise MissingTaskException(resp.json()['message'], self._name)
         else:
             resp.raise_for_status()
 
@@ -315,6 +314,39 @@ class QTask(object):
     @property
     def uuid(self):
         return self._uuid
+
+    @property
+    def name(self):
+        return self._name
+
+    @name.setter
+    def name(self, value):
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        else:
+            self._name = value
+
+    @property
+    def profile(self):
+        return self._profile
+
+    @profile.setter
+    def name(self, value):
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        else:
+            self._profile = value
+
+    @property
+    def framecount(self):
+        return self._framecount
+
+    @framecount.setter
+    def name(self, value):
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        else:
+            self._profile = value
 
 
     def _to_json(self):
@@ -326,9 +358,9 @@ class QTask(object):
         ]
 
         jsonTask = {
-            'name': self.name,
-            'profile': self.profile,
-            'frameCount': self.frameCount,
+            'name': self._name,
+            'profile': self._profile,
+            'frameCount': self._framecount,
             'resourceDisk': self._resourceDisk.name,
             'constants': const_list
         }

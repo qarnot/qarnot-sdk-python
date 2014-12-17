@@ -39,7 +39,6 @@ class QDisk(object):
         """
         self._name = jsondisk["id"]
         self._description = jsondisk["description"]
-        self._ro = jsondisk["readOnly"]
         self._connection = connection
         self._filethreads = {}
         self._filecache = {}
@@ -171,7 +170,20 @@ class QDisk(object):
                                        self._name)
         elif response.status_code != 200:
             response.raise_for_status()
-        return [QFileInfo(f['creationDate'], f['fileName'], f['size'])
+        return [QFileInfo(f['creationDate'], f['name'], f['size'],
+                          f['fileFlags'])
+                for f in response.json()]
+
+    def ls(self, path=''):
+        response = self._connection._get(
+            get_url('ls disk', name=self._name, path=path))
+        if (response.status_code == 404):
+            raise MissingDiskException(response.json()['message'],
+                                       self._name)
+        elif response.status_code != 200:
+            response.raise_for_status()
+        return [QFileInfo(f['creationDate'], f['name'], f['size'],
+                          f['fileFlags'])
                 for f in response.json()]
 
     def sync(self):
@@ -249,9 +261,6 @@ class QDisk(object):
         :raises IOError: user space quota reached
         """
 
-        if self._ro:
-            raise TypeError("tried to write on Read only disk")
-
         with open(filename, 'rb') as f:
             response = self._connection._post(
                 get_url('update file', name=self._name,
@@ -307,14 +316,12 @@ class QDisk(object):
             remote = remote.name
 
         pending = self._filethreads.get(remote)
-        if pending is not None: #ensure filr is done uploading
+        if pending is not None: #ensure file is done uploading
             pending.join()
 
         if remote in self._filecache:
             self._add_file(remote, self._filecache[remote])
             del self._filecache[remote]
-
-        #remote = remote.lstrip('/')
 
         if local is None:
             local = path.basename(remote)
@@ -327,7 +334,7 @@ class QDisk(object):
             stream=True)
 
         if response.status_code == 404:
-            if response.json()['errorMessage'] != "No such disk":
+            if response.json()['message'] != "No such disk":
                 raise ValueError('unknown file {}'.format(remote))
             else:
                 raise MissingDiskException(response.json()['message'],
@@ -367,7 +374,7 @@ class QDisk(object):
             get_url('update file', name=self._name, path=remote))
 
         if response.status_code == 404:
-            if response.json()['errorMessage'] != "No such disk":
+            if response.json()['message'] != "No such disk":
                 raise ValueError('unknown file {}'.format(remote))
             else:
                 raise MissingDiskException(response.json()['message'],
@@ -393,15 +400,8 @@ class QDisk(object):
             raise TypeError('add_mode must be a QAddMode value')
 
     @property
-    def readonly(self):
-        """whether or not the disk is read only
-        not that trying to add a file on a readonly disk will raise
-        a :exc:`TypeError`
-        """
-        return self._ro
-
-    @property
     def description(self):
+        """the disk's description"""
         return self._description
     #operators#
 
@@ -412,6 +412,8 @@ class QDisk(object):
             raise KeyError(filename)
 
     def __setitem__(self, dest, filename):
+        if path.isdir(filename):
+            return self.add_dir(filename, dest)
         return self.add_file(filename, dest)
 
     def __delitem__(self, filename):
@@ -433,7 +435,7 @@ class QDisk(object):
 ###################
 
 QFileInfo = collections.namedtuple('QFileInfo',
-                                  ['creation_date', 'name', 'size'])
+                                  ['creation_date', 'name', 'size', 'type'])
 """Named tuple containing the informations on a file"""
 
 class QAddMode(Enum):
