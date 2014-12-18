@@ -8,7 +8,7 @@ def get_url(key, **kwargs):
     """get and format the url for the given key"""
     Urls = {
         'disk folder' : '/disks', #GET -> list; POST -> add
-        'disk info' : '/disks/{name}', # DELETE  -> remove
+        'disk info' : '/disks/{name}', # DELETE  -> remove #PUT -> update
         'get disk' : '/disks/archive/{name}.{ext}', #GET-> disk archive
         'tree disk' : '/disks/tree/{name}', #GET -> ls on the disk
         'ls disk': '/disks/list/{name}/{path}', #GET -> ls on the dir {path}

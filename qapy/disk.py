@@ -424,8 +424,37 @@ class QDisk(object):
 
     @property
     def description(self):
-        """the disk's description"""
+        """the disk's description
+
+        :raises MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        resp = self._connection._get(get_url('disk info', name=self._name))
+
+        if resp.status_code == 404:
+            raise MissingDiskException(resp.json()['message'],
+                                       disk_id)
+        elif resp.status_code != 200:
+            resp.raise_for_status()
+
+        self._description = resp.json()['description']
+
         return self._description
+
+    @description.setter
+    def description(self, value):
+        data = { "description" : value }
+        resp = self._connection._put(get_url('disk info', name=self._name),
+                                     json=data)
+
+        if resp.status_code == 404:
+            raise MissingDiskException(resp.json()['message'],
+                                       disk_id)
+        else:
+            resp.raise_for_status()
+
+
     #operators#
 
     def __getitem__(self, filename):

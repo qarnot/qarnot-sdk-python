@@ -99,6 +99,14 @@ class QApy(object):
             raise UnauthorizedException(self.auth)
         return ret
 
+    def _put(self, url, **kwargs):
+        """performs a PUT on the cluster"""
+        ret = self._http.put(self.cluster + url,
+                             timeout=self.timeout, **kwargs)
+        if ret.status_code == 401:
+            raise UnauthorizedException(self.auth)
+        return ret
+
     def user_info(self):
         """retrieve information of the current user on the cluster
 
