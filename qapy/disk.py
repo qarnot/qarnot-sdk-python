@@ -22,6 +22,7 @@ class QDisk(object):
        (or as path arguments for :func:`QDisk.ls`)
        **Must** be valid unix-like paths
     """
+
     #Creation#
     def __init__(self, jsondisk, connection):
         """
@@ -117,7 +118,7 @@ class QDisk(object):
 
         response.raise_for_status()
 
-    def get_archive(self, extension='zip', output=None):
+    def get_archive(self, extension='zip', local=None):
         """retrieve an archive of this disk's content
 
         :param str extension: in {'tar', 'tgz', 'zip'},
@@ -145,9 +146,9 @@ class QDisk(object):
         else:
             response.raise_for_status()
 
-        output = output or ".".join([self._name, extension])
+        local = local or ".".join([self._name, extension])
         if path.isdir(output):
-            output = path.join(output, ".".join([self._name, extension]))
+            local = path.join(local, ".".join([self._name, extension]))
 
         with open(output, 'wb') as f:
             for elt in response.iter_content():

@@ -18,6 +18,7 @@ else:
 
 class QApy(object):
     """represent the couple cluster/user to submit task
+
     .. automethod:: __init__
     """
     def __init__(self, conf):
@@ -110,8 +111,8 @@ class QApy(object):
     def user_info(self):
         """retrieve information of the current user on the cluster
 
-        :rtype: dict
-        :returns: a dictionnary containing required information
+        :rtype: QUserInfo
+        :returns: requested information
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises HTTPError: unhandled http return code
@@ -119,7 +120,7 @@ class QApy(object):
         resp = self._get(get_url('user'))
         resp.raise_for_status()
         ret = resp.json()
-        return ret
+        return QUserInfo(ret)
 
     #move to a better place (session)
     def disks(self):
@@ -196,6 +197,21 @@ class QApy(object):
         :param int frameNbr: number of frame on which to run task
         """
         return QTask(self, name, profile, frameNbr)
+
+
+###################
+# utility Classes #
+###################
+class QUserInfo(object):
+    """Information about a qapy user"""
+    __slots__ = (
+        'diskCount', 'executionTime', 'maxDisk', 'maxInstances',
+        'maxRunningTask', 'maxTask', 'quotaBytes', 'runningTaskCount',
+        'taskCount', 'usedQuotaBytes'
+    )
+    def __init__(self, userdict):
+        for field in self.__slots__:
+            setattr(self, field, userdict[field])
 
 ##############
 # Exceptions #
