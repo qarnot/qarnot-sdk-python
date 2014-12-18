@@ -3,6 +3,7 @@
 import qapy.disk as disk
 from qapy import get_url
 import time
+import warnings
 
 class QTask(object):
     """class to represent a qarnot job"""
@@ -129,12 +130,22 @@ class QTask(object):
         if self._status == 'Submitted':
             self.abort()
 
+
+        #change MissingDisk error to warnings,
+        #since disks have to be deleted anyway
+
         if purge:
             if self._resourceDisk:
-                self._resourceDisk.delete()
+                try:
+                    self._resourceDisk.delete()
+                except disk.MissingDiskException as e:
+                    warnings.warn(e.message)
                 self._resourceDisk = None
             if self._resultDisk:
-                self._resultDisk.delete()
+                try :
+                    self._resultDisk.delete()
+                except disk.MissingDiskException as e:
+                    warnings.warn(e.message)
                 self._resultDisk = None
 
         resp = self._connection._delete(
@@ -175,12 +186,20 @@ class QTask(object):
         self._name = jsonTask['name']
         self._profile = jsonTask['profile']
         self._framecount = jsonTask['frameCount']
-        self._resourceDisk = disk.QDisk._retrieve(self._connection,
-            jsonTask['resourceDisk'])
+
+        try:
+            self._resourceDisk = disk.QDisk._retrieve(self._connection,
+                                                      jsonTask['resourceDisk'])
+        except disk.MissingDiskException:
+            self._resourceDisk = None
 
         if jsonTask['resultDisk'] is not None:
-            self._resultDisk = disk.QDisk._retrieve(self._connection,
-                                               jsonTask['resultDisk'])
+            try:
+                self._resultDisk = disk.QDisk._retrieve(self._connection,
+                                                        jsonTask['resultDisk'])
+            except disk.MissingDiskException:
+                self._resultDisk = None
+
         self.priority = jsonTask['priority']
         self._uuid = jsonTask['id']
         self._status = jsonTask['state']
@@ -233,7 +252,9 @@ class QTask(object):
 
     @property
     def status(self):
-        "current task status (updates the task)"
+        """current task status,
+        requires the task to :meth:`update`
+        """
         return self.update()
 
     @property
@@ -252,8 +273,9 @@ class QTask(object):
 
     @property
     def results(self):
-        """:class:`~qapy.disk.QDisk` for task results
-        will wait for the task to end unless snapshot has been called
+        """:class:`~qapy.disk.QDisk` for task results,
+        will wait for the task to end unless snapshot has been called,
+        requires the task to :meth:`update`
         """
         if self._uuid is not None:
             if self._snapshots is not True:
@@ -331,7 +353,7 @@ class QTask(object):
         return self._profile
 
     @profile.setter
-    def name(self, value):
+    def profile(self, value):
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
@@ -342,7 +364,7 @@ class QTask(object):
         return self._framecount
 
     @framecount.setter
-    def name(self, value):
+    def framecount(self, value):
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:

@@ -18,7 +18,7 @@
 *** DONE factory functions
 *** DONE rename qnode to cluster
 ** DONE disks
-*** Add files
+*** DONE Add files
     option for upload method
 *** DONE add directory
 *** DONE get files
