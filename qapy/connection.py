@@ -111,7 +111,7 @@ class QApy(object):
     def user_info(self):
         """retrieve information of the current user on the cluster
 
-        :rtype: QUserInfo
+        :rtype: :class:`QUserInfo`
         :returns: requested information
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -202,16 +202,31 @@ class QApy(object):
 ###################
 # utility Classes #
 ###################
+
+#would rather use a namedTuple class but no way to document it's fields
 class QUserInfo(object):
     """Information about a qapy user"""
-    __slots__ = (
-        'diskCount', 'executionTime', 'maxDisk', 'maxInstances',
-        'maxRunningTask', 'maxTask', 'quotaBytes', 'runningTaskCount',
-        'taskCount', 'usedQuotaBytes'
-    )
-    def __init__(self, userdict):
-        for field in self.__slots__:
-            setattr(self, field, userdict[field])
+    def __init__(self, info):
+        diskCount = info['diskCount']
+        """Number of disks owned by the user"""
+        maxDisk = info['maxDisk']
+        """Maximum number of disks the user is allowed to create"""
+        taskCount = info['taskCount']
+        """Total number of tasks belonging to the user"""
+        maxTask = info['maxTask']
+        """Maximum number of tasks the user is allowed to create"""
+        runningTaskCount = info['runningTaskCount']
+        """Number of tasks currently in 'Submitted' state"""
+        maxRunningTask = info['maxRunningTask']
+        """Maximum number of running tasks the user is allowed to create"""
+        quotaBytes = info['quotaBytes']
+        """total storage space allowed for the user's disks (in Bytes)"""
+        usedQuotaBytes = info['usedQuotaBytes']
+        """total storage space used by the user's disks (in Bytes)"""
+        maxInstances = info['maxInstances']
+        executionTime = info['executionTime']
+
+
 
 ##############
 # Exceptions #

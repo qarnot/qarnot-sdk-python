@@ -28,8 +28,8 @@ class QTask(object):
         self._snapshots = False
 
     @classmethod
-    def retrieve(cls, connection, uuid):
-        """retrieve a submited task given it's uuid
+    def _retrieve(cls, connection, uuid):
+        """retrieve a submited task given its uuid
 
         :param qapy.connection.QConnection connection:
           the cluster to retrieve the task from
@@ -87,16 +87,12 @@ class QTask(object):
     def abort(self):
         """abort this task if running
 
-        :rtype: bool
-        :returns: whether or not task successfully aborted
-          will be false if this task is not running
-
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None or self._status != "Submitted":
-            return True
+            return
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
@@ -108,8 +104,6 @@ class QTask(object):
 
         self.update()
 
-        return resp.status_code == 200
-
     def delete(self, purge=True):
         """delete task from the server,
         does nothing if already deleted
@@ -117,9 +111,6 @@ class QTask(object):
         :param bool purge: *optional*, if true
           delete also result and ressource disks
           Defaults to True
-
-        :rtype: bool
-        :returns: whether or not the deletion was successful
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -159,7 +150,7 @@ class QTask(object):
         self._uuid = None
 
     def update(self):
-        """get the current state of this task and return it's status
+        """get the current state of this task and return its status
 
         :rtype: string
         :returns: current status of the task
@@ -226,7 +217,7 @@ class QTask(object):
         the snapshots will be taken every *interval* second from the time
         the task is submitted
 
-        .. note:: this alters the behavior of results making it's access
+        .. note:: this alters the behavior of results making its access
            non blocking
 
         :param interval: the interval in seconds at which to take snapshots
@@ -287,7 +278,7 @@ class QTask(object):
 
     @property
     def stdout(self):
-        """get the standard output of the task
+        """get the standard output of the task,
         each call will return the standard output
         since the submission of the task
 
@@ -312,7 +303,7 @@ class QTask(object):
     def stderr(self):
         """get the standard error of the task
         each call will return the standard error
-        since the submission of the task
+        since the submission of the task,
 
         .. note:: This is *Not* the standard error from the payload
            it is the output for task level errors
@@ -335,10 +326,15 @@ class QTask(object):
 
     @property
     def uuid(self):
+        """the task's uuid"""
         return self._uuid
 
     @property
     def name(self):
+        """given name of the task
+
+        can be set until :meth:`submit` is called
+        """
         return self._name
 
     @name.setter
@@ -350,6 +346,10 @@ class QTask(object):
 
     @property
     def profile(self):
+        """profile to run the task with
+
+        can be set until :meth:`submit` is called
+        """
         return self._profile
 
     @profile.setter
@@ -361,6 +361,10 @@ class QTask(object):
 
     @property
     def framecount(self):
+        """number of frames neede for the task
+
+        can be set until :meth:`submit` is called
+        """
         return self._framecount
 
     @framecount.setter

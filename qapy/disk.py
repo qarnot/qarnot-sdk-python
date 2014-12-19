@@ -157,7 +157,7 @@ class QDisk(object):
 
 
     def list_files(self):
-        """list files on the disk as QFileInfo named Tuples
+        """list files on the whole disk
 
         :rtype: list of :class:`QFileInfo`
         :returns: list of the files on the disk
@@ -176,18 +176,23 @@ class QDisk(object):
                                        self._name)
         elif response.status_code != 200:
             response.raise_for_status()
-        return [QFileInfo(f['creationDate'], f['name'], f['size'],
-                          f['fileFlags'])
-                for f in response.json()]
+        return [QFileInfo(**f) for f in response.json()]
 
     def ls(self, path=''):
         """list files in a directory of the disk
 
         :param str path: the path of the directory to examine
 
+        :rtype: list of :class:`QFileInfo`
+        :returns: files in given directory on the qdisk
+
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
+
+        .. note::
+           paths in results are given relatively to the
+           directory *path* argument refers to
         """
 
         self.sync()
@@ -203,12 +208,10 @@ class QDisk(object):
                                                  path))
         elif response.status_code != 200:
             response.raise_for_status()
-        return [QFileInfo(f['creationDate'], f['name'], f['size'],
-                          f['fileFlags'])
-                for f in response.json()]
+        return [QFileInfo(**f) for f in response.json()]
 
     def sync(self):
-        """ensure all fille added through add file are on the disk
+        """ensure all files added through :meth:`add_file` are on the disk
 
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -232,7 +235,7 @@ class QDisk(object):
         :param str filename: name of the local file
         :param str dest: name of the remote file
           (defaults to filename)
-        :param mode: the mode with hich to add the file
+        :param mode: the mode with which to add the file
           (defaults to disk.add_mode)
         :type mode: :class:`QAddMode`
 
@@ -300,7 +303,7 @@ class QDisk(object):
                 response.raise_for_status()
 
     def add_dir(self, local, remote="", mode=None):
-        """ add a directory to the disk, do not follow symlinks
+        """ add a directory to the disk, do not follow symlinks,
         the internal structure is preserved
 
         :param str local: path of the local directory to add
@@ -487,9 +490,27 @@ class QDisk(object):
 # Utility Classes #
 ###################
 
-QFileInfo = collections.namedtuple('QFileInfo',
-                                  ['creation_date', 'name', 'size', 'type'])
-"""Named tuple containing the informations on a file"""
+#uncomment me if named tuple are choosen
+#QFileInfo = collections.namedtuple('QFileInfo',
+#                                  ['creation_date', 'name', 'size', 'type'])
+#"""Named tuple containing the informations on a file"""
+
+class QFileInfo(object):
+    """Named tuple containing the informations on a file"""
+    def __init__(self, creationDate, name, size, fileFlags):
+        self.creation= creationDate
+        """timestamp at which file was created on the :class:`QDisk`"""
+        self.name = name
+        """path to the file on the qdisk"""
+        self.size = size
+        """size of the file on the qdisk (in Bytes)"""
+        self.directory = fileFlags == 'directory'
+        """is the file a directory"""
+
+    def __repr__(self):
+        template = 'QFileInfo(creation={0}, name={1}, size={2}, directory={3}'
+        return template.format(self.creation, self.name, self.size,
+                               self.directory)
 
 class QAddMode(Enum):
     """How to add files on a :class:`QDisk`"""
