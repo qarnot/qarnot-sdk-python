@@ -6,8 +6,7 @@ from qapy import get_url
 import os.path as path
 import posixpath as ppath
 import os
-import json
-import collections
+#import collections
 import threading
 from enum import Enum
 
@@ -112,7 +111,7 @@ class QDisk(object):
         response = self._connection._delete(
             get_url('disk info', name=self._name))
 
-        if (response.status_code == 404):
+        if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
                                        self._name)
 
@@ -142,18 +141,18 @@ class QDisk(object):
             raise MissingDiskException(response.json()['message'],
                                        self._name)
         elif response.status_code == 400:
-            raise ValueError('invalid file format : {}'.extension)
+            raise ValueError('invalid file format : {}', extension)
         else:
             response.raise_for_status()
 
         local = local or ".".join([self._name, extension])
-        if path.isdir(output):
+        if path.isdir(local):
             local = path.join(local, ".".join([self._name, extension]))
 
-        with open(output, 'wb') as f:
+        with open(local, 'wb') as f_local:
             for elt in response.iter_content():
-                f.write(elt)
-        return output
+                f_local.write(elt)
+        return local
 
 
     def list_files(self):
@@ -171,14 +170,14 @@ class QDisk(object):
 
         response = self._connection._get(
             get_url('tree disk', name=self._name))
-        if (response.status_code == 404):
+        if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
                                        self._name)
         elif response.status_code != 200:
             response.raise_for_status()
         return [QFileInfo(**f) for f in response.json()]
 
-    def ls(self, path=''):
+    def directory(self, directory=''):
         """list files in a directory of the disk
 
         :param str path: the path of the directory to examine
@@ -198,14 +197,14 @@ class QDisk(object):
         self.sync()
 
         response = self._connection._get(
-            get_url('ls disk', name=self._name, path=path))
-        if (response.status_code == 404):
+            get_url('ls disk', name=self._name, path=directory))
+        if response.status_code == 404:
             if response.json()['message'] == 'no such disk':
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
             else:
                 raise ValueError('{}: {}'.format(response.json()['message'],
-                                                 path))
+                                                 directory))
         elif response.status_code != 200:
             response.raise_for_status()
         return [QFileInfo(**f) for f in response.json()]
@@ -219,8 +218,8 @@ class QDisk(object):
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
         """
-        for k, t in self._filethreads.items():
-            t.join()
+        for thread in self._filethreads.values():
+            thread.join()
 
         self._filethreads.clear()
 
@@ -264,9 +263,9 @@ class QDisk(object):
         elif mode is QAddMode.delayed:
             self._filecache[remote] = local
         else:
-            t = threading.Thread(None, self._add_file, remote, (local, remote))
-            t.start()
-            self._filethreads[remote] = t
+            thread = threading.Thread(None, self._add_file, remote, (local, remote))
+            thread.start()
+            self._filethreads[remote] = thread
 
     def _add_file(self, filename, dest):
         """add a file to the disk (yo can also use disk[dest] = filename)
@@ -286,13 +285,13 @@ class QDisk(object):
         :raises ValueError: file could not be created
         """
 
-        with open(filename, 'rb') as f:
+        with open(filename, 'rb') as f_local:
             response = self._connection._post(
                 get_url('update file', name=self._name,
                         path=path.dirname(dest)),
-                files={'filedata': (path.basename(dest),f)})
+                files={'filedata': (path.basename(dest), f_local)})
 
-            if (response.status_code == 404):
+            if response.status_code == 404:
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
             elif response.status_code == 403:
@@ -317,7 +316,7 @@ class QDisk(object):
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
         """
-        for dirpath, dirs, files in os.walk(local):
+        for dirpath, _, files in os.walk(local):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
                 self.add_file(path.join(dirpath, filename),
@@ -339,7 +338,7 @@ class QDisk(object):
         :raises ValueError: no such file
           (:exc:`KeyError` with disk['file'] syntax)
         """
-        if isinstance(remote , QFileInfo):
+        if isinstance(remote, QFileInfo):
             remote = remote.name
 
         pending = self._filethreads.get(remote)
@@ -369,9 +368,9 @@ class QDisk(object):
         else:
             response.raise_for_status() #raise nothing if 2XX
 
-        with open(local, 'wb') as f:
+        with open(local, 'wb') as f_local:
             for elt in response.iter_content(512):
-                f.write(elt)
+                f_local.write(elt)
         return local
 
     def delete_file(self, remote):
@@ -394,7 +393,7 @@ class QDisk(object):
             self._add_file(remote, self._filecache[remote])
             del self._filecache[remote]
 
-        if isinstance(remote , QFileInfo):
+        if isinstance(remote, QFileInfo):
             remote = remote.name
 
         response = self._connection._delete(
@@ -421,6 +420,7 @@ class QDisk(object):
 
     @add_mode.setter
     def add_mode(self, value):
+        """useless docstring to please pylint"""
         if isinstance(value, QAddMode):
             self._add_mode = value
         else:
@@ -438,7 +438,7 @@ class QDisk(object):
 
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
-                                       disk_id)
+                                       self.name)
         elif resp.status_code != 200:
             resp.raise_for_status()
 
@@ -448,13 +448,14 @@ class QDisk(object):
 
     @description.setter
     def description(self, value):
-        data = { "description" : value }
+        """useless docstring to please pylint"""
+        data = {"description" : value}
         resp = self._connection._put(get_url('disk info', name=self._name),
                                      json=data)
 
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
-                                       disk_id)
+                                       self.name)
         else:
             resp.raise_for_status()
 
@@ -462,17 +463,20 @@ class QDisk(object):
     #operators#
 
     def __getitem__(self, filename):
+        """x.__getitem__(y) <==> x[y]"""
         try:
             return self.get_file(filename)
         except ValueError:#change error into keyerror if missing file
             raise KeyError(filename)
 
     def __setitem__(self, dest, filename):
+        """x.__setitem__(i, y) <==> x[i]=y"""
         if path.isdir(filename):
             return self.add_dir(filename, dest)
         return self.add_file(filename, dest)
 
     def __delitem__(self, filename):
+        """x.__delitem__(y) <==> del x[y]"""
         try:
             return self.delete_file(filename)
         except ValueError: #change error into keyerror if missing file
@@ -483,6 +487,7 @@ class QDisk(object):
         return item in self.list_files()
 
     def __iter__(self):
+        """x.__iter__() <==> iter(x)"""
         return iter(self.list_files())
 
 
@@ -498,7 +503,7 @@ class QDisk(object):
 class QFileInfo(object):
     """Named tuple containing the informations on a file"""
     def __init__(self, creationDate, name, size, fileFlags):
-        self.creation= creationDate
+        self.creation = creationDate
         """timestamp at which file was created on the :class:`QDisk`"""
         self.name = name
         """path to the file on the qdisk"""

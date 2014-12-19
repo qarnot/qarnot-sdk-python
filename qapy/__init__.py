@@ -6,7 +6,7 @@ __version__ = '0.0.1'
 
 def get_url(key, **kwargs):
     """get and format the url for the given key"""
-    Urls = {
+    urls = {
         'disk folder' : '/disks', #GET -> list; POST -> add
         'disk info' : '/disks/{name}', # DELETE  -> remove #PUT -> update
         'get disk' : '/disks/archive/{name}.{ext}', #GET-> disk archive
@@ -21,7 +21,8 @@ def get_url(key, **kwargs):
         'task stderr': '/tasks/{uuid}/stderr', #GET -> task stderr
         'user': '/info' #GET -> user info
     }
-    return Urls[key].format(**kwargs)
+    return urls[key].format(**kwargs)
 
-from qapy.connection import QApy
-from qapy.task import QTask
+import qapy.connection
+
+QApy = qapy.connection.QApy

@@ -34,7 +34,7 @@ class QApy(object):
         self._http = requests.session()
         self._http.headers.update({"Authorization": cfg.get('client', 'auth')})
         self.auth = cfg.get('client', 'auth')
-        self._http.verify=False
+        self._http.verify = False
         self.timeout = None
         if cfg.has_option('cluster', 'timeout'):
             self.timeout = cfg.getint('cluster', 'timeout')
@@ -59,7 +59,7 @@ class QApy(object):
             raise UnauthorizedException(self.auth)
         return ret
 
-    def _post(self, url, json=None,**kwargs):
+    def _post(self, url, json=None, **kwargs):
         """perform a POST request on the cluster
 
         :param url: :class:`string`,
@@ -151,7 +151,7 @@ class QApy(object):
         response = self._get(get_url('list profiles'))
         if response.status_code != 200:
             return None
-        return [ prof['name'] for prof in response.json()]
+        return [prof['name'] for prof in response.json()]
 
 
     def tasks(self): #todo finish when running task possible
@@ -166,10 +166,10 @@ class QApy(object):
         response = self._get(get_url('tasks'))
         response.raise_for_status()
         ret = []
-        for t in response.json():
-            t2 = QTask(self, "stub", None, 0)
-            t2._update(t)
-            ret.append(t2)
+        for task in response.json():
+            task2 = QTask(self, "stub", None, 0)
+            task2._update(task)
+            ret.append(task2)
         return ret
 
     def create_disk(self, description):
@@ -186,7 +186,7 @@ class QApy(object):
         """
         return QDisk._create(self, description)
 
-    def create_task(self, name, profile, frameNbr):
+    def create_task(self, name, profile, frame_nbr):
         """create a new :class:`~qapy.task.QTask`
 
         :rtype: :class:`~qapy.task.QTask`
@@ -196,7 +196,7 @@ class QApy(object):
         :param str profile: which profile to use with this task
         :param int frameNbr: number of frame on which to run task
         """
-        return QTask(self, name, profile, frameNbr)
+        return QTask(self, name, profile, frame_nbr)
 
 
 ###################
@@ -207,24 +207,24 @@ class QApy(object):
 class QUserInfo(object):
     """Information about a qapy user"""
     def __init__(self, info):
-        diskCount = info['diskCount']
+        self.diskCount = info['diskCount']
         """Number of disks owned by the user"""
-        maxDisk = info['maxDisk']
+        self.maxDisk = info['maxDisk']
         """Maximum number of disks the user is allowed to create"""
-        taskCount = info['taskCount']
+        self.taskCount = info['taskCount']
         """Total number of tasks belonging to the user"""
-        maxTask = info['maxTask']
+        self.maxTask = info['maxTask']
         """Maximum number of tasks the user is allowed to create"""
-        runningTaskCount = info['runningTaskCount']
+        self.runningTaskCount = info['runningTaskCount']
         """Number of tasks currently in 'Submitted' state"""
-        maxRunningTask = info['maxRunningTask']
+        self.maxRunningTask = info['maxRunningTask']
         """Maximum number of running tasks the user is allowed to create"""
-        quotaBytes = info['quotaBytes']
+        self.quotaBytes = info['quotaBytes']
         """total storage space allowed for the user's disks (in Bytes)"""
-        usedQuotaBytes = info['usedQuotaBytes']
+        self.usedQuotaBytes = info['usedQuotaBytes']
         """total storage space used by the user's disks (in Bytes)"""
-        maxInstances = info['maxInstances']
-        executionTime = info['executionTime']
+        self.maxInstances = info['maxInstances']
+        self.executionTime = info['executionTime']
 
 
 

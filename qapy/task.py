@@ -46,10 +46,9 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
         resp.raise_for_status()
-        t = cls(connection, "stub", None, 0)
-        t._update(resp.json())
-        t._resourceDir = disk.QDir(t._resourceDisk)
-        return t
+        task = cls(connection, "stub", None, 0)
+        task._update(resp.json())
+        return task
 
     def submit(self):
         """submit task to the cluster if not already submitted
@@ -133,7 +132,7 @@ class QTask(object):
                     warnings.warn(e.message)
                 self._resourceDisk = None
             if self._resultDisk:
-                try :
+                try:
                     self._resultDisk.delete()
                 except disk.MissingDiskException as e:
                     warnings.warn(e.message)
@@ -191,7 +190,6 @@ class QTask(object):
             except disk.MissingDiskException:
                 self._resultDisk = None
 
-        self.priority = jsonTask['priority']
         self._uuid = jsonTask['id']
         self._status = jsonTask['state']
 
@@ -230,7 +228,7 @@ class QTask(object):
             self._snapshots = interval
             return
         resp = self._connection._post(get_url('task snapshot', uuid=self._uuid),
-                                     json={"interval" : interval})
+                                      json={"interval" : interval})
 
         if resp.status_code == 400:
             raise ValueError(interval)
@@ -259,6 +257,7 @@ class QTask(object):
 
     @resources.setter
     def resources(self, value):
+        """this is a setter"""
         #question delete current disk ?
         self._resourceDisk = value
 
@@ -339,6 +338,7 @@ class QTask(object):
 
     @name.setter
     def name(self, value):
+        """this is a setter docstring is useless"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
@@ -354,6 +354,7 @@ class QTask(object):
 
     @profile.setter
     def profile(self, value):
+        """setter for profile"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
@@ -369,6 +370,7 @@ class QTask(object):
 
     @framecount.setter
     def framecount(self, value):
+        """setter for framecount"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
