@@ -47,7 +47,7 @@ class QDisk(object):
         self._add_mode = QAddMode.blocking
 
     @classmethod
-    def _create(cls, connection, description):
+    def _create(cls, connection, description, force=False, lock=False):
         """
         create a disk on a cluster
 
@@ -62,9 +62,11 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         data = {
-            "description" : description
+            "description" : description,
+            "locked" : lock
             }
-        response = connection._post(get_url('disk folder'), json=data)
+        url = get_url('disk force') if force else get_url('disk folder')
+        response = connection._post(url, json=data)
         if response.status_code == 403:
             raise MaxDiskException(response.json()['message'])
         else:

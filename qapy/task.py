@@ -4,6 +4,7 @@ import qapy.disk as disk
 from qapy import get_url
 import time
 import warnings
+import os.path as path
 
 class QTask(object):
     """class to represent a qarnot job"""
@@ -50,22 +51,39 @@ class QTask(object):
         task._update(resp.json())
         return task
 
-    def submit(self):
+    def run(self, resdir, force=False):
+        """submit task wait for results and download them
+
+        :param str resdir: path to a directory that will contain the results
+        :param bool force: whether to remove old tasks
+          if reaching maximum number of allowed tasks
+        """
+        self.submit(force)
+        self.wait()
+        for fInfo in self.results:
+            outpath = path.normpath(fInfo.name.lstrip('/'))
+            self.results.get_file(fInfo, path.join(resdir, outpath))
+
+    def submit(self, force=False):
         """submit task to the cluster if not already submitted
 
         :rtype: string
         :returns: the current state of the task
+
+        :param bool force: whether to remove old tasks
+          if reaching maximum number of allowed tasks
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
         """
+        url = get_url('task force') if force else get_url('tasks')
         if self._uuid is not None:
             return self._status
         self.resources.sync()
         payload = self._to_json()
-        resp = self._connection._post(get_url('tasks'), json=payload)
+        resp = self._connection._post(url, json=payload)
 
         if resp.status_code == 404:
             msg = self._resourceDisk.name
@@ -239,6 +257,21 @@ class QTask(object):
 
         self._snapshots = True
 
+    def instant(self): #change to snapshot and other to snapshot_periodic ?
+        """make a snapshot of the current task"""
+        if self._uuid is None:
+            return
+
+        resp = self._connection._post(get_url('task instant', uuid=self._uuid),
+                                      json=None)
+
+        if resp.status_code == 404:
+            raise MissingTaskException(resp.json()['message'], self._name)
+        else:
+            resp.raise_for_status()
+
+        self.update()
+
     @property
     def status(self):
         """current task status,
@@ -264,14 +297,11 @@ class QTask(object):
     @property
     def results(self):
         """:class:`~qapy.disk.QDisk` for task results,
-        will wait for the task to end unless snapshot has been called,
+
         requires the task to :meth:`update`
         """
         if self._uuid is not None:
-            if self._snapshots is not True:
-                self.wait()
-            else:
-                self.update()
+            self.update()
 
         return self._resultDisk
 

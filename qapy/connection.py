@@ -172,11 +172,15 @@ class QApy(object):
             ret.append(task2)
         return ret
 
-    def create_disk(self, description):
+    def create_disk(self, description, force=False, lock=False):
         """
         create a disk on a cluster
 
         :param str description: a short description of the disk
+        :param bool force: delete an old, unlocked disk
+          if maximum number of disks is reached
+        :param bool lock: if true prevent the disk to be removed
+          by a subsequent :meth:`create_disk` with force set to True
 
         :rtype: :class:`qapy.disk.QDisk`
         :returns: the created disk
@@ -184,7 +188,7 @@ class QApy(object):
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        return QDisk._create(self, description)
+        return QDisk._create(self, description, force, lock)
 
     def create_task(self, name, profile, frame_nbr):
         """create a new :class:`~qapy.task.QTask`

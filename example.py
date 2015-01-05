@@ -12,6 +12,7 @@ if __name__ == "__main__":
         task.resources.add_file("example/script.py", mode=QAddMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
         task.submit()
+        task.snapshot(10)
         task.wait()
         print(task.stdout, end='')
         for fInfo in task.results.list_files():

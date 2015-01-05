@@ -8,6 +8,7 @@ def get_url(key, **kwargs):
     """get and format the url for the given key"""
     urls = {
         'disk folder' : '/disks', #GET -> list; POST -> add
+        'disk force' : '/disks/force', # POST -> force add
         'disk info' : '/disks/{name}', # DELETE  -> remove #PUT -> update
         'get disk' : '/disks/archive/{name}.{ext}', #GET-> disk archive
         'tree disk' : '/disks/tree/{name}', #GET -> ls on the disk
@@ -15,8 +16,10 @@ def get_url(key, **kwargs):
         'update file' : '/disks/{name}/{path}', #POST; GET; DELETE
         'list profiles': '/tasks/profiles', #GET -> possible profiles
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task
+        'task force' : '/tasks/force', #POST -> force add
         'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort
-        'task snapshot': '/tasks/{uuid}/snapshot', #POST -> snapshot
+        'task snapshot': '/tasks/{uuid}/snapshot/periodic', #POST -> snapshots
+        'task instant' : '/tasks/{uuid}/snapshot', #POST-> get a snapshot
         'task stdout': '/tasks/{uuid}/stdout', #GET -> task stdout
         'task stderr': '/tasks/{uuid}/stderr', #GET -> task stderr
         'user': '/info' #GET -> user info
