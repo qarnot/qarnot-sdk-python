@@ -15,6 +15,7 @@ def get_url(key, **kwargs):
         'ls disk': '/disks/list/{name}/{path}', #GET -> ls on the dir {path}
         'update file' : '/disks/{name}/{path}', #POST; GET; DELETE
         'list profiles': '/tasks/profiles', #GET -> possible profiles
+        'get profile' : '/tasks/profiles/{name}', #GET -> profile info
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task
         'task force' : '/tasks/force', #POST -> force add
         'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort

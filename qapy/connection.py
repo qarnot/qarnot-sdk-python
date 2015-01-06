@@ -149,12 +149,19 @@ class QApy(object):
         :raises HTTPError: unhandled http return code
         """
         response = self._get(get_url('list profiles'))
+        response.raise_for_status()
         if response.status_code != 200:
             return None
-        return [prof['name'] for prof in response.json()]
+        return [QProfile(prof) for prof in response.json()]
 
+    def profile_info(self, profile):
+        response = self._get(get_url('get profile', name=profile))
+        if response.status_code == 404:
+            raise ValueError('%s : %s' % (response.json()['message'], profile))
+        response.raise_for_status()
+        return QProfile(response.json())
 
-    def tasks(self): #todo finish when running task possible
+    def tasks(self):
         """list tasks stored on this cluster for this user
 
         :rtype: list of :class:`~qapy.task.QTask`
@@ -230,6 +237,17 @@ class QUserInfo(object):
         self.maxInstances = info['maxInstances']
         self.executionTime = info['executionTime']
 
+class QProfile(object):
+    """information about a profile"""
+    def __init__(self,info):
+        self.name = info['name'] #: name of the profile
+        self.constants = tuple((cst['name'], cst['value'])
+                               for cst in info['constants'])
+        """list of couples (name, value) representing constants for this profile
+        and their default values"""
+
+    def __repr__(self):
+        return 'QProfile(name=%s, constants=%r}' % (self.name, self.constants)
 
 
 ##############

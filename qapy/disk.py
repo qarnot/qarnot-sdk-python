@@ -6,7 +6,6 @@ from qapy import get_url
 import os.path as path
 import posixpath as ppath
 import os
-#import collections
 import threading
 from enum import Enum
 
@@ -41,6 +40,7 @@ class QDisk(object):
         """
         self._name = jsondisk["id"]
         self._description = jsondisk["description"]
+        self._locked = jsondisk["locked"]
         self._connection = connection
         self._filethreads = {}
         self._filecache = {}
@@ -492,7 +492,6 @@ class QDisk(object):
         """x.__iter__() <==> iter(x)"""
         return iter(self.list_files())
 
-
 ###################
 # Utility Classes #
 ###################
@@ -503,7 +502,7 @@ class QDisk(object):
 #"""Named tuple containing the informations on a file"""
 
 class QFileInfo(object):
-    """Named tuple containing the informations on a file"""
+    """Named tuple containing the information on a file"""
     def __init__(self, creationDate, name, size, fileFlags):
         self.creation = creationDate
         """timestamp at which file was created on the :class:`QDisk`"""
@@ -515,7 +514,7 @@ class QFileInfo(object):
         """is the file a directory"""
 
     def __repr__(self):
-        template = 'QFileInfo(creation={0}, name={1}, size={2}, directory={3}'
+        template = 'QFileInfo(creation={0}, name={1}, size={2}, directory={3})'
         return template.format(self.creation, self.name, self.size,
                                self.directory)
 
