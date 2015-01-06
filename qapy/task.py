@@ -327,6 +327,28 @@ class QTask(object):
 
         return resp.text
 
+    def fresh_stdout(self):
+        """get what has been writtend on the standard output since last time
+        this function was called or since the task has been submitted
+
+        :rtype: str
+        :returns: new output since last call
+
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
+        """
+        if self._uuid is None:
+            return ""
+        resp = self._connection._post(
+            get_url('task stdout', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingTaskException(resp.json()['message'], self._name)
+        else:
+            resp.raise_for_status()
+
+        return resp.text
 
     @property
     def stderr(self):
@@ -352,6 +374,30 @@ class QTask(object):
             resp.raise_for_status()
 
         return resp.text
+
+    def fresh_stderr(self):
+        """get what has been written on the standard error since last time
+        this function was called or since the task has been submitted
+
+        :rtype: str
+        :returns: new output since last call
+
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
+        """
+        if self._uuid is None:
+            return ""
+        resp = self._connection._post(
+            get_url('task stderr', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingTaskException(resp.json()['message'], self._name)
+        else:
+            resp.raise_for_status()
+
+        return resp.text
+
 
     @property
     def uuid(self):
