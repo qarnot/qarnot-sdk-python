@@ -51,20 +51,20 @@ class QTask(object):
         task._update(resp.json())
         return task
 
-    def run(self, resdir, force=False):
+    def submit(self, resdir, force=False):
         """submit task wait for results and download them
 
         :param str resdir: path to a directory that will contain the results
         :param bool force: whether to remove old tasks
           if reaching maximum number of allowed tasks
         """
-        self.submit(force)
+        self.submit_async(force)
         self.wait()
         for fInfo in self.results:
             outpath = path.normpath(fInfo.name.lstrip('/'))
             self.results.get_file(fInfo, path.join(resdir, outpath))
 
-    def submit(self, force=False):
+    def submit_async(self, force=False):
         """submit task to the cluster if not already submitted
 
         :rtype: string
