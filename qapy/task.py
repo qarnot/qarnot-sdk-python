@@ -27,6 +27,8 @@ class QTask(object):
         self._status = 'UnSubmitted' # RO property same for below
         self._uuid = None
         self._snapshots = False
+        self._resdir = None
+        self._dirty = False
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -57,14 +59,31 @@ class QTask(object):
         :param str resdir: path to a directory that will contain the results
         :param bool force: whether to remove old tasks
           if reaching maximum number of allowed tasks
-        """
-        self.submit_async(force)
-        self.wait()
-        for fInfo in self.results:
-            outpath = path.normpath(fInfo.name.lstrip('/'))
-            self.results.get_file(fInfo, path.join(resdir, outpath))
 
-    def submit_async(self, force=False):
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.disk.MissingDiskException:
+          resource disk is not a valid disk
+        """
+        self.submit_async(resdir, force)
+        self.wait()
+        return self.results
+
+    def resume(self, resdir):
+        """resume waiting for a submitted task
+        :param str resdir: path to a directory that will contain the results
+
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.disk.MissingTaskException: task does not exist
+        """
+        self._resdir = resdir
+        if self._uuid is None:
+            return resdir
+        self.wait()
+        return self.results
+
+    def submit_async(self, resdir, force=False):
         """submit task to the cluster if not already submitted
 
         :rtype: string
@@ -99,7 +118,12 @@ class QTask(object):
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
 
+        self.resdir = resdir
         return self.update()
+
+    def resume_async(self, resdir):
+        self._resdir = resdir
+        return self.results
 
     def abort(self):
         """abort this task if running
@@ -296,14 +320,20 @@ class QTask(object):
 
     @property
     def results(self):
-        """:class:`~qapy.disk.QDisk` for task results,
+        """path for the directory containing for task results,
 
-        requires the task to :meth:`update`
+        requires the task to :meth:`update` in order to get latest results
         """
         if self._uuid is not None:
             self.update()
 
-        return self._resultDisk
+            if self._resultDisk is not None and self._resdir is not None:
+                for fInfo in self._resultDisk:
+                    outpath = path.normpath(fInfo.name.lstrip('/'))
+                    self.results.get_file(fInfo, path.join(self._resdir,
+                                                           outpath))
+
+        return self._resdir
 
     @property
     def stdout(self):
