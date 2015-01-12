@@ -14,8 +14,7 @@ if __name__ == "__main__":
     with q.create_task("example task", "python", 3) as task:
         task.resources.add_file("example/script.py", mode=QAddMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
-        out = tempfile.mkdtemp()
-        task.submit(out)
+        out = task.submit(tempfile.mkdtemp())
         print(task.stdout, end='')
         for dirname, dirs, files in walk(out):
             for filename in files:

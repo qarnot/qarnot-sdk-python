@@ -29,6 +29,7 @@ class QTask(object):
         self._snapshots = False
         self._resdir = None
         self._dirty = False
+        self._rescount = -1
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -118,7 +119,7 @@ class QTask(object):
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
 
-        self.resdir = resdir
+        self._resdir = resdir
         return self.update()
 
     def resume_async(self, resdir):
@@ -235,6 +236,10 @@ class QTask(object):
         self._uuid = jsonTask['id']
         self._status = jsonTask['state']
 
+        if self._rescount < jsonTask['resultsCount']:
+            self._dirty= True
+        self._rescount = jsonTask['resultsCount']
+
     def wait(self):
         """wait for this task to complete
 
@@ -327,10 +332,11 @@ class QTask(object):
         if self._uuid is not None:
             self.update()
 
-            if self._resultDisk is not None and self._resdir is not None:
-                for fInfo in self._resultDisk:
-                    outpath = path.normpath(fInfo.name.lstrip('/'))
-                    self.results.get_file(fInfo, path.join(self._resdir,
+        if self._resultDisk is not None and \
+           self._resdir is not None and self._dirty :
+            for fInfo in self._resultDisk:
+                outpath = path.normpath(fInfo.name.lstrip('/'))
+                self._resultDisk.get_file(fInfo, path.join(self._resdir,
                                                            outpath))
 
         return self._resdir
