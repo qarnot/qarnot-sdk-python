@@ -486,7 +486,7 @@ class QTask(object):
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
-            self._profile = value
+            self._framecount = value
 
 
     def _to_json(self):
