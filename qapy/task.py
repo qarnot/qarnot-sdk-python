@@ -5,6 +5,7 @@ from qapy import get_url
 import time
 import warnings
 import os.path as path
+import os
 
 class QTask(object):
     """class to represent a qarnot job"""
@@ -331,6 +332,9 @@ class QTask(object):
         """
         if self._uuid is not None:
             self.update()
+
+        if self._resdir is not None and not path.exists(self._resdir):
+            os.makedirs(self._resdir)
 
         if self._resultDisk is not None and \
            self._resdir is not None and self._dirty :
