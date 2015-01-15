@@ -44,7 +44,7 @@ class QDisk(object):
         self._connection = connection
         self._filethreads = {}
         self._filecache = {}
-        self._add_mode = QAddMode.blocking
+        self._add_mode = QUploadMode.blocking
 
     @classmethod
     def _create(cls, connection, description, force=False, lock=False):
@@ -238,7 +238,7 @@ class QDisk(object):
           (defaults to filename)
         :param mode: the mode with which to add the file
           (defaults to disk.add_mode)
-        :type mode: :class:`QAddMode`
+        :type mode: :class:`QUploadMode`
 
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -260,9 +260,9 @@ class QDisk(object):
         if remote in self._filecache: #do not delay a file added differently
             del self._filecache[remote]
 
-        if mode is QAddMode.blocking:
+        if mode is QUploadMode.blocking:
             return self._add_file(local, remote)
-        elif mode is QAddMode.delayed:
+        elif mode is QUploadMode.delayed:
             self._filecache[remote] = local
         else:
             thread = threading.Thread(None, self._add_file, remote, (local, remote))
@@ -303,13 +303,13 @@ class QDisk(object):
             else:
                 response.raise_for_status()
 
-    def add_dir(self, local, remote="", mode=None):
+    def add_directory(self, local, remote="", mode=None):
         """ add a directory to the disk, do not follow symlinks,
         the internal structure is preserved
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
-        :param QAddMode mode: the mode with hich to add the file
+        :param QUploadMode mode: the mode with hich to add the file
           (defaults to disk.add_mode)
 
         :raises MissingDiskException: the disk is not on the server
@@ -423,10 +423,10 @@ class QDisk(object):
     @add_mode.setter
     def add_mode(self, value):
         """useless docstring to please pylint"""
-        if isinstance(value, QAddMode):
+        if isinstance(value, QUploadMode):
             self._add_mode = value
         else:
-            raise TypeError('add_mode must be a QAddMode value')
+            raise TypeError('add_mode must be a QUploadMode value')
 
     @property
     def description(self):
@@ -474,7 +474,7 @@ class QDisk(object):
     def __setitem__(self, dest, filename):
         """x.__setitem__(i, y) <==> x[i]=y"""
         if path.isdir(filename):
-            return self.add_dir(filename, dest)
+            return self.add_directory(filename, dest)
         return self.add_file(filename, dest)
 
     def __delitem__(self, filename):
@@ -518,7 +518,7 @@ class QFileInfo(object):
         return template.format(self.creation, self.name, self.size,
                                self.directory)
 
-class QAddMode(Enum):
+class QUploadMode(Enum):
     """How to add files on a :class:`QDisk`"""
     blocking = 0 #: call to add_file blocks until file is done uploading
     background = 1 #: launch a background thread

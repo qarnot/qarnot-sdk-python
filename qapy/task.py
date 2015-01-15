@@ -124,6 +124,12 @@ class QTask(object):
         return self.update()
 
     def resume_async(self, resdir):
+        """resume watching over a task
+
+        :param str resdir: the directory to put results in
+        :rtype: str
+        :returns: path to directory, now containing the results
+        """
         self._resdir = resdir
         return self.results
 
@@ -263,9 +269,6 @@ class QTask(object):
         the snapshots will be taken every *interval* second from the time
         the task is submitted
 
-        .. note:: this alters the behavior of results making its access
-           non blocking
-
         :param interval: the interval in seconds at which to take snapshots
 
         :raises HTTPError: unhandled http return code
@@ -288,7 +291,12 @@ class QTask(object):
         self._snapshots = True
 
     def instant(self): #change to snapshot and other to snapshot_periodic ?
-        """make a snapshot of the current task"""
+        """make a snapshot of the current task
+
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises MissingTaskException: task does not represent a valid one
+        """
         if self._uuid is None:
             return
 
@@ -326,7 +334,7 @@ class QTask(object):
 
     @property
     def results(self):
-        """path for the directory containing for task results,
+        """path for the directory containing task results,
 
         requires the task to :meth:`update` in order to get latest results
         """
@@ -344,6 +352,11 @@ class QTask(object):
                                                            outpath))
 
         return self._resdir
+
+    @results.setter
+    def results(self, value):
+        self._resdir = value
+        self.results
 
     @property
     def stdout(self):
@@ -395,9 +408,6 @@ class QTask(object):
         """get the standard error of the task
         each call will return the standard error
         since the submission of the task,
-
-        .. note:: This is *Not* the standard error from the payload
-           it is the output for task level errors
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -478,7 +488,7 @@ class QTask(object):
 
     @property
     def framecount(self):
-        """number of frames neede for the task
+        """number of frames needed for the task
 
         can be set until :meth:`submit` is called
         """
