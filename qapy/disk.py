@@ -233,8 +233,8 @@ class QDisk(object):
     def add_file(self, local, remote=None, mode=None):
         """add a file to the disk (you can also use disk[remote] = local)
 
-        :param str filename: name of the local file
-        :param str dest: name of the remote file
+        :param str local: name of the local file
+        :param str remote: name of the remote file
           (defaults to filename)
         :param mode: the mode with which to add the file
           (defaults to disk.add_mode)
@@ -265,7 +265,8 @@ class QDisk(object):
         elif mode is QUploadMode.delayed:
             self._filecache[remote] = local
         else:
-            thread = threading.Thread(None, self._add_file, remote, (local, remote))
+            thread = threading.Thread(None, self._add_file, remote,
+                                      (local, remote))
             thread.start()
             self._filethreads[remote] = thread
 
@@ -309,8 +310,9 @@ class QDisk(object):
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
-        :param QUploadMode mode: the mode with hich to add the file
+        :param mode: the mode with hich to add the file
           (defaults to disk.add_mode)
+        :type mode: :class:`QUploadMode`
 
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -327,8 +329,8 @@ class QDisk(object):
     def get_file(self, remote, local=None):
         """get a file from the disk, you can also use disk['file']
 
-        :param str filename: the name of the remote file
-        :param str outputfile: local name of retrived file
+        :param str remote: the name of the remote file
+        :param str local: local name of retrived file
           (defaults to filename)
 
         :rtype: :class:`string`
