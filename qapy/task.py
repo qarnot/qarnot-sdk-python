@@ -381,7 +381,7 @@ class QTask(object):
         return resp.text
 
     def fresh_stdout(self):
-        """get what has been writtend on the standard output since last time
+        """get what has been written on the standard output since last time
         this function was called or since the task has been submitted
 
         :rtype: str
