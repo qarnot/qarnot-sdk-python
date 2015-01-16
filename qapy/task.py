@@ -174,19 +174,20 @@ class QTask(object):
         #change MissingDisk error to warnings,
         #since disks have to be deleted anyway
 
-        if purge:
-            if self._resourceDisk:
+        if purge and self._resourceDisk:
                 try:
                     self._resourceDisk.delete()
                 except disk.MissingDiskException as e:
                     warnings.warn(e.message)
                 self._resourceDisk = None
-            if self._resultDisk:
-                try:
-                    self._resultDisk.delete()
-                except disk.MissingDiskException as e:
-                    warnings.warn(e.message)
-                self._resultDisk = None
+
+        #user can't acess result disk, delete it in any case
+        if self._resultDisk:
+            try:
+                self._resultDisk.delete()
+            except disk.MissingDiskException as e:
+                warnings.warn(e.message)
+            self._resultDisk = None
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))

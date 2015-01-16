@@ -525,6 +525,7 @@ class QUploadMode(Enum):
     blocking = 0 #: call to add_file blocks until file is done uploading
     background = 1 #: launch a background thread
     delayed = 2
+    lazy= 2
     """actual uploading is made by the :func:`QDisk.sync` method call"""
 
 ##############
