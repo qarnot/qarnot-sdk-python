@@ -155,6 +155,17 @@ class QApy(object):
         return [QProfile(prof) for prof in response.json()]
 
     def profile_info(self, profile):
+        """get information about a profile
+
+        :param str profile: name of the profile
+
+        :rtype: class:`QProfile`
+        :returns: the Qprofile corresponding to requested profile
+
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises HTTPError: unhandled http return code
+        :raises ValueError: no such profile
+        """
         response = self._get(get_url('get profile', name=profile))
         if response.status_code == 404:
             raise ValueError('%s : %s' % (response.json()['message'], profile))
