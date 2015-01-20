@@ -314,6 +314,8 @@ class QTask(object):
     @property
     def status(self):
         """current task status,
+
+        Value is in {'UnSubmitted', 'Cancelled', 'Success', 'Failure'}
         requires the task to :meth:`update`
         """
         return self.update()
