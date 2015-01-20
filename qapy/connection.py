@@ -205,7 +205,7 @@ class QApy(object):
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
-        :param int frameNbr: number of frame on which to run task
+        :param int frame_nbr: number of frame on which to run task
         """
         return QTask(self, name, profile, frame_nbr)
 

@@ -69,6 +69,9 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
+
+        .. note:: will ensure all added file are on the ressource disk
+           regardless of their uploading mode
         """
         self.submit_async(resdir, force)
         self.wait()
@@ -102,6 +105,9 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
+
+        .. note:: will ensure all added file are on the ressource disk
+           regardless of their uploading mode
         """
         url = get_url('task force') if force else get_url('tasks')
         if self._uuid is not None:
