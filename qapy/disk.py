@@ -271,7 +271,7 @@ class QDisk(object):
             self._filethreads[remote] = thread
 
     def _add_file(self, filename, dest):
-        """add a file to the disk (yo can also use disk[dest] = filename)
+        """add a file to the disk (you can also use disk[dest] = filename)
 
         :param str filename: name of the local file
         :param str dest: name of the remote file
@@ -307,6 +307,7 @@ class QDisk(object):
     def add_directory(self, local, remote="", mode=None):
         """ add a directory to the disk, do not follow symlinks,
         the internal structure is preserved
+        (you can also use disk[dest] = filename)
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
