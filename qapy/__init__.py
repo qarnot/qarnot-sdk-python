@@ -2,7 +2,7 @@
 
 __all__ = ["task", "connection", "disk"]
 
-__version__ = '0.0.1'
+__version__ = '0.1.0'
 
 def get_url(key, **kwargs):
     """get and format the url for the given key"""

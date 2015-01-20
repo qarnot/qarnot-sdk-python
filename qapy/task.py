@@ -62,6 +62,9 @@ class QTask(object):
         :param bool force: whether to remove old tasks
           if reaching maximum number of allowed tasks
 
+        :rtype: string
+        :returns: path to the directory now containing the results
+
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
@@ -73,6 +76,7 @@ class QTask(object):
 
     def resume(self, resdir):
         """resume waiting for a submitted task
+
         :param str resdir: path to a directory that will contain the results
 
         :raises HTTPError: unhandled http return code
