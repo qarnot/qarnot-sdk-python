@@ -55,12 +55,14 @@ class QTask(object):
         task._update(resp.json())
         return task
 
-    def submit(self, resdir, force=False):
+    def submit(self, resdir, force=False, job_timeout=None):
         """submit task wait for results and download them
 
         :param str resdir: path to a directory that will contain the results
         :param bool force: whether to remove old tasks
           if reaching maximum number of allowed tasks
+        :param float job_timeout: delay after which abort the task
+          if it has not yet finished
 
         :rtype: string
         :returns: path to the directory now containing the results
@@ -74,7 +76,9 @@ class QTask(object):
            regardless of their uploading mode
         """
         self.submit_async(resdir, force)
-        self.wait()
+        self.wait(timeout=job_timeout)
+        if job_timeout is not None:
+            self.abort()
         return self.results()
 
     def resume(self, resdir):
@@ -260,19 +264,37 @@ class QTask(object):
             self._dirty= True
         self._rescount = jsonTask['resultsCount']
 
-    def wait(self):
+    def wait(self, timeout=None):
         """wait for this task to complete
+
+        :param float timeout: maximum time to wait before returning in seconds
+          (optionnal)
+
+        :rtype: string
+        :rvalue: Status of the task (see :attr:`status`)
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises MissingTaskException: task does not represent a valid one
         """
+        start = time.time()
         if self._uuid is None:
-            return
+            return self.status
+
+        nap = min(10, timeout) if timeout is not None else 10
+
         self.update()
         while self._status == 'Submitted':
-            time.sleep(10)
+            time.sleep(nap)
             self.update()
+
+            if timeout is not None:
+                elapsed = time.time() - start
+                if timeout <= elapsed:
+                    return self.status
+                else:
+                    nap = min(10, timeout - elapsed)
+        return self.status
 
     def snapshot(self, interval):
         """start snapshooting results
