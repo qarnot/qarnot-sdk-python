@@ -75,7 +75,7 @@ class QTask(object):
         """
         self.submit_async(resdir, force)
         self.wait()
-        return self.results
+        return self.results()
 
     def resume(self, resdir):
         """resume waiting for a submitted task
@@ -90,7 +90,7 @@ class QTask(object):
         if self._uuid is None:
             return resdir
         self.wait()
-        return self.results
+        return self.results()
 
     def submit_async(self, resdir, force=False):
         """submit task to the cluster if not already submitted
@@ -108,6 +108,8 @@ class QTask(object):
 
         .. note:: will ensure all added file are on the ressource disk
            regardless of their uploading mode
+
+        .. note:: To recover results, call :meth:`results`
         """
         url = get_url('task force') if force else get_url('tasks')
         if self._uuid is not None:
@@ -141,7 +143,7 @@ class QTask(object):
         :returns: path to directory, now containing the results
         """
         self._resdir = resdir
-        return self.results
+        return self.results()
 
     def abort(self):
         """abort this task if running
@@ -346,7 +348,6 @@ class QTask(object):
         #question delete current disk ?
         self._resourceDisk = value
 
-    @property
     def results(self):
         """path for the directory containing task results,
 
@@ -366,11 +367,6 @@ class QTask(object):
                                                            outpath))
 
         return self._resdir
-
-    @results.setter
-    def results(self, value):
-        self._resdir = value
-        self.results
 
     @property
     def stdout(self):

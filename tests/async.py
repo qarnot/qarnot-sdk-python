@@ -17,7 +17,7 @@ if __name__ == "__main__":
         task.submit_async(tempfile.mkdtemp())
         task.snapshot(10)
         task.wait()
-        out = task.results
+        out = task.results()
         print(task.stdout, end='')
         for dirname, dirs, files in walk(out):
             for filename in files:

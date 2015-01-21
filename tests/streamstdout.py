@@ -20,7 +20,7 @@ if __name__ == "__main__":
             print(task.fresh_stdout(), end='')
             time.sleep(10)
 
-        out = task.results
+        out = task.results()
 
         print(task.fresh_stdout(), end='')
         for dirname, dirs, files in walk(out):
