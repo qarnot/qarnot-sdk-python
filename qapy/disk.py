@@ -245,6 +245,7 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
+        :raises ValueError: file could not be created
         """
         mode = mode or self._add_mode
         remote = remote or path.basename(local)
@@ -320,6 +321,7 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
+        :raises ValueError: one or more file(s) could not be created
         """
         for dirpath, _, files in os.walk(local):
             remote_loc = dirpath.replace(local, remote, 1)

@@ -22,22 +22,35 @@ class QApy(object):
     .. automethod:: __init__
     """
     def __init__(self, conf):
-        """create a connection to a cluster with given config file
+        """create a connection to a cluster with given config file or
+        dictionnary
 
-        :param str conf: path to a qarnot configuration file
+        :param conf: path to a qarnot configuration file or dictionnary
+          containing corresponding keys as follow:
+          for variable var of section s key is 's_var'
         """
-        cfg = config.ConfigParser()
-        with open(conf) as cfgfile:
-            cfg.readfp(cfgfile)
-
-        self.cluster = cfg.get('cluster', 'url')
         self._http = requests.session()
-        self._http.headers.update({"Authorization": cfg.get('client', 'auth')})
-        self.auth = cfg.get('client', 'auth')
         self._http.verify = False
-        self.timeout = None
-        if cfg.has_option('cluster', 'timeout'):
-            self.timeout = cfg.getint('cluster', 'timeout')
+
+        if isinstance(conf, dict):
+            self.cluster = conf['cluster_url']
+            self._http.headers.update({"Authorization": conf['client_auth']})
+            print(self._http.headers)
+            self.auth = conf['client_auth']
+            print (self.cluster)
+            self.timeout = conf.get('cluster_timeout')
+        else:
+            cfg = config.ConfigParser()
+            with open(conf) as cfgfile:
+                cfg.readfp(cfgfile)
+
+                self.cluster = cfg.get('cluster', 'url')
+                self._http.headers.update({"Authorization": cfg.get('client',
+                                                                    'auth')})
+                self.auth = cfg.get('client', 'auth')
+                self.timeout = None
+                if cfg.has_option('cluster', 'timeout'):
+                    self.timeout = cfg.getint('cluster', 'timeout')
 
     def _get(self, url, **kwargs):
         """perform a GET request on the cluster
