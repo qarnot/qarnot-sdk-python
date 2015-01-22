@@ -415,12 +415,17 @@ class QDisk(object):
 
     @property
     def name(self):
-        """the disk's UUID"""
+        """:type: string
+
+        the disk's UUID"""
         return self._name
 
     @property
     def add_mode(self):
-        """default mode for adding files"""
+        """:type: :class:`QUploadMode`
+
+        default mode for adding files
+        """
         return self._add_mode
 
     @add_mode.setter
@@ -433,7 +438,9 @@ class QDisk(object):
 
     @property
     def description(self):
-        """the disk's description
+        """:type: string
+
+        the disk's description
 
         :raises MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -489,7 +496,9 @@ class QDisk(object):
 
     def __contains__(self, item):
         """D.__contains__(k) -> True if D has a key k, else False"""
-        return item in self.list_files()
+        if isinstance(item, QFileInfo):
+            item=item.name
+        return item in [f.name for f in self.list_files()]
 
     def __iter__(self):
         """x.__iter__() <==> iter(x)"""
@@ -526,6 +535,7 @@ class QUploadMode(Enum):
     blocking = 0 #: call to add_file blocks until file is done uploading
     background = 1 #: launch a background thread
     delayed = 2
+    """alias for lazy"""
     lazy= 2
     """actual uploading is made by the :func:`QDisk.sync` method call"""
 
