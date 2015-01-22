@@ -35,9 +35,7 @@ class QApy(object):
         if isinstance(conf, dict):
             self.cluster = conf['cluster_url']
             self._http.headers.update({"Authorization": conf['client_auth']})
-            print(self._http.headers)
             self.auth = conf['client_auth']
-            print (self.cluster)
             self.timeout = conf.get('cluster_timeout')
         else:
             cfg = config.ConfigParser()
