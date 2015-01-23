@@ -31,6 +31,7 @@ class QTask(object):
         self._resdir = None
         self._dirty = False
         self._rescount = -1
+        self._advanced_ranges = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -534,6 +535,15 @@ class QTask(object):
         else:
             self._framecount = value
 
+    @property
+    def advanced_range(self):
+        """advanced frame range for blender rendering"""
+        return self._advanced_range
+
+    @advanced_range.setter
+    def advanced_range(self, value):
+        self._advanced_range = value
+
 
     def _to_json(self):
         """get a dict ready to be json packed from this task"""
@@ -550,6 +560,8 @@ class QTask(object):
             'resourceDisk': self._resourceDisk.name,
             'constants': const_list
         }
+        if self._advanced_range is not None:
+            jsonTask['advancedRanges'] = self._advanced_range
         return jsonTask
 
     #context manager#

@@ -30,13 +30,14 @@ class QApy(object):
           for variable var of section s key is 's_var'
         """
         self._http = requests.session()
-        self._http.verify = False
 
         if isinstance(conf, dict):
             self.cluster = conf['cluster_url']
             self._http.headers.update({"Authorization": conf['client_auth']})
             self.auth = conf['client_auth']
             self.timeout = conf.get('cluster_timeout')
+            if conf.get('cluster_unsafe'):
+                self._http.verify = False
         else:
             cfg = config.ConfigParser()
             with open(conf) as cfgfile:
@@ -49,6 +50,10 @@ class QApy(object):
                 self.timeout = None
                 if cfg.has_option('cluster', 'timeout'):
                     self.timeout = cfg.getint('cluster', 'timeout')
+
+                if cfg.has_option('cluster', 'unsafe') \
+                   and cfg.getboolean('cluster', 'unsafe'):
+                    self._http.verify = False
 
     def _get(self, url, **kwargs):
         """perform a GET request on the cluster
