@@ -31,7 +31,7 @@ class QTask(object):
         self._resdir = None
         self._dirty = False
         self._rescount = -1
-        self._advanced_ranges = None
+        self._advanced_range = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -537,7 +537,12 @@ class QTask(object):
 
     @property
     def advanced_range(self):
-        """advanced frame range for blender rendering"""
+        """advanced frame range selection
+
+        allows to select which frames will be computed,
+        should be None or match the following extended regular expression
+        "'(\[[0-9]+-[0-9]+\] )*'"
+        """
         return self._advanced_range
 
     @advanced_range.setter
