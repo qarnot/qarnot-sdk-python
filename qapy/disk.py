@@ -13,11 +13,11 @@ class QDisk(object):
     """represents a ressource disk on the cluster
 
     this class is the interface to manage ressources or results from a
-    :class:`qapy.task.Qtask`
+    :class:`qapy.task.QTask`
 
     .. note::
        paths given as 'remote' arguments,
-       (or as path arguments for :func:`QDisk.ls`)
+       (or as path arguments for :func:`QDisk.directory`)
        **Must** be valid unix-like paths
     """
 
@@ -87,7 +87,7 @@ class QDisk(object):
         :rtype: :class:`QDisk`
         :returns: the retrieved disk
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
@@ -106,7 +106,7 @@ class QDisk(object):
     def delete(self):
         """delete the disk represented by this Qdisk
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
@@ -130,7 +130,7 @@ class QDisk(object):
         :returns:
          the filename of the retrieved archive
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: invalid extension format
@@ -163,7 +163,7 @@ class QDisk(object):
         :rtype: list of :class:`QFileInfo`
         :returns: list of the files on the disk
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
@@ -187,7 +187,7 @@ class QDisk(object):
         :rtype: list of :class:`QFileInfo`
         :returns: files in given directory on the qdisk
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
 
@@ -214,7 +214,7 @@ class QDisk(object):
     def sync(self):
         """ensure all files added through :meth:`add_file` are on the disk
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
@@ -240,7 +240,7 @@ class QDisk(object):
           (defaults to disk.add_mode)
         :type mode: :class:`QUploadMode`
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
@@ -281,7 +281,7 @@ class QDisk(object):
         :rtype: :class:`bool`
         :returns: whether the file has been successfully added
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
@@ -316,7 +316,7 @@ class QDisk(object):
           (defaults to disk.add_mode)
         :type mode: :class:`QUploadMode`
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
@@ -339,7 +339,7 @@ class QDisk(object):
         :rtype: :class:`string`
         :returns: the name of the output file
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
@@ -385,7 +385,7 @@ class QDisk(object):
 
         :param str remote: the name of the remote file
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
@@ -444,7 +444,7 @@ class QDisk(object):
 
         the disk's description
 
-        :raises MissingDiskException: the disk is not on the server
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """

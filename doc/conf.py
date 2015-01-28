@@ -79,6 +79,9 @@ exclude_patterns = ['_build']
 # documents.
 #default_role = None
 
+# Warn at compile time if a reference cannot be found
+nitpicky = 'True'
+
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
 

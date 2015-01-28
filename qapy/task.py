@@ -41,12 +41,12 @@ class QTask(object):
           the cluster to retrieve the task from
         :param str uuid: the uuid of the task to retrieve
 
-        :rtype: Qtask
+        :rtype: QTask
         :returns: the retrieved task
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: no such task
+        :raises qapy.task.MissingTaskException: no such task
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
@@ -155,7 +155,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None or self._status != "Submitted":
             return
@@ -180,7 +180,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return
@@ -224,7 +224,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return self._status
@@ -276,7 +276,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         start = time.time()
         if self._uuid is None:
@@ -309,7 +309,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             self._snapshots = interval
@@ -331,7 +331,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return
@@ -399,7 +399,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return ""
@@ -422,7 +422,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return ""
@@ -444,7 +444,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return ""
@@ -467,7 +467,7 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid one
         """
         if self._uuid is None:
             return ""
