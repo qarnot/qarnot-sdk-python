@@ -243,7 +243,8 @@ class QTask(object):
         """update this task from retrieved info"""
         self._name = jsonTask['name']
         self._profile = jsonTask['profile']
-        self._framecount = jsonTask['frameCount']
+        self._framecount = jsonTask.get('frameCount')
+        self._advanced_range = jsonTask.get('advancedRanges')
 
         try:
             self._resourceDisk = disk.QDisk._retrieve(self._connection,
@@ -561,12 +562,13 @@ class QTask(object):
         jsonTask = {
             'name': self._name,
             'profile': self._profile,
-            'frameCount': self._framecount,
             'resourceDisk': self._resourceDisk.name,
             'constants': const_list
         }
         if self._advanced_range is not None:
             jsonTask['advancedRanges'] = self._advanced_range
+        else:
+            jsonTask['frameCount'] = self._framecount
         return jsonTask
 
     #context manager#
