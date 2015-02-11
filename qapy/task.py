@@ -1,4 +1,4 @@
-"""module to handle a Task"""
+"""Module to handle a task."""
 
 import qapy.disk as disk
 from qapy import get_url
@@ -8,15 +8,23 @@ import os.path as path
 import os
 
 class QTask(object):
-    """class to represent a qarnot job"""
-    def __init__(self, connection, name, profile, frameNbr):
-        """create a new :class:`QTask`
+    """Represents a Qarnot job.
 
-        :param connection: :class:`Qconnection`,
-          the cluster on which to send the task
-        :param name: :class:`string`, given name of the task
-        :param profile: :class:`string`, which profile to use with this task
-        :param frameNbr: :class:`int`, number of frame on which to run task
+    .. note::
+       A :class:`QTask` must be created with :meth:`qapy.connection.QApy.create_task`
+       or retrieved with :meth:`qapy.connection.QApy.tasks`.
+    """
+    def __init__(self, connection, name, profile, frameNbr):
+        """Create a new :class:`QTask`.
+
+        :param connection: the cluster on which to send the task
+        :type connection: :class:`Qconnection`
+        :param name: given name of the task
+        :type name: :class:`string`
+        :param profile: which profile to use with this task
+        :type profile: :class:`string`
+        :param frameNbr: number of frame on which to run task
+        :type frameNbr: :class:`int`
         """
         self._name = name
         self._profile = profile
@@ -25,6 +33,15 @@ class QTask(object):
         self._resultDisk = None
         self._connection = connection
         self.constants = {}
+        """
+        Dictionary [CST] = val.
+
+        Can be set until :meth:`submit` is called
+
+        .. note:: See available constants for a specific profile
+              with :meth:`qapy.connection.QApy.profile_info`.
+        """
+
         self._status = 'UnSubmitted' # RO property same for below
         self._uuid = None
         self._snapshots = False
@@ -35,14 +52,14 @@ class QTask(object):
 
     @classmethod
     def _retrieve(cls, connection, uuid):
-        """retrieve a submited task given its uuid
+        """Retrieve a submitted task given its uuid.
 
         :param qapy.connection.QConnection connection:
           the cluster to retrieve the task from
         :param str uuid: the uuid of the task to retrieve
 
         :rtype: QTask
-        :returns: the retrieved task
+        :returns: The retrieved task.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -57,24 +74,28 @@ class QTask(object):
         return task
 
     def submit(self, resdir, force=False, job_timeout=None):
-        """submit task wait for results and download them
+        """Submit task, wait for the results and download them.
 
         :param str resdir: path to a directory that will contain the results
-        :param bool force: whether to remove old tasks
-          if reaching maximum number of allowed tasks
-        :param float job_timeout: delay after which abort the task
-          if it has not yet finished
+        :param bool force: remove an old task if the maximum number of allowed
+           tasks is reached
+        :param float job_timeout: the task will :meth:`abort` if it has not already
+           finished
 
-        :rtype: string
-        :returns: path to the directory now containing the results
+        :rtype: :class:`string`
+        :returns: Path to the directory containing the results (may be None).
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
 
-        .. note:: will ensure all added file are on the ressource disk
-           regardless of their uploading mode
+        .. note:: Will ensure all added file are on the resource disk
+           regardless of their uploading mode.
+        .. note:: If this function is interrupted (script killed for example),
+           but the task is submitted, the task will still be executed remotely
+           (results will not be downloaded)
+        .. warning:: Will override *resdir* content.
         """
         self.submit_async(resdir, force)
         self.wait(timeout=job_timeout)
@@ -83,13 +104,22 @@ class QTask(object):
         return self.results()
 
     def resume(self, resdir):
-        """resume waiting for a submitted task
+        """Resume waiting for this task if it is still in submitted mode.
+        Equivalent to :meth:`wait` + :meth:`results`.
 
         :param str resdir: path to a directory that will contain the results
 
+        :rtype: :class:`string`
+        :returns: Path to the directory containing the results (may be None).
+
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.disk.MissingTaskException: task does not exist
+        :raises qapy.task.MissingTaskException: task does not exist
+        :raises qapy.disk.MissingDiskException:
+          resource disk is not a valid disk
+
+        .. note:: Do nothing if the task has not been submitted.
+        .. warning:: Will override *resdir* content.
         """
         self._resdir = resdir
         if self._uuid is None:
@@ -98,23 +128,24 @@ class QTask(object):
         return self.results()
 
     def submit_async(self, resdir, force=False):
-        """submit task to the cluster if not already submitted
+        """Submit task to the cluster if it is not already submitted.
 
-        :rtype: string
-        :returns: the current state of the task
+        :param str resdir: path to a directory that will contain the results
+        :param bool force: delete an old task (and its disks)
+          if maximum number of tasks is reached
 
-        :param bool force: whether to remove old tasks
-          if reaching maximum number of allowed tasks
+        :rtype: :class:`string`
+        :returns: Status of the task (see :attr:`status`)
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
 
-        .. note:: will ensure all added file are on the ressource disk
-           regardless of their uploading mode
+        .. note:: Will ensure all added file are on the resource disk
+           regardless of their uploading mode.
 
-        .. note:: To recover results, call :meth:`results`
+        .. note:: To get the results, call :meth:`results` once the job is done.
         """
         url = get_url('task force') if force else get_url('tasks')
         if self._uuid is not None:
@@ -131,7 +162,6 @@ class QTask(object):
             raise MaxTaskException(resp.json()['message'])
         else:
             resp.raise_for_status()
-
         self._uuid = resp.json()['guid']
 
         if not isinstance(self._snapshots, bool):
@@ -141,21 +171,25 @@ class QTask(object):
         return self.update()
 
     def resume_async(self, resdir):
-        """resume watching over a task
+        """Download results in *resdir* even if the task is not finished.
 
-        :param str resdir: the directory to put results in
-        :rtype: str
-        :returns: path to directory, now containing the results
+        :param str resdir: path to a directory that will contain the results
+        :rtype: :class:`str`
+        :returns: Path to the directory containing the results (may be None).
+
+        .. warning:: Will override *resdir* content.
         """
         self._resdir = resdir
         return self.results()
 
     def abort(self):
-        """abort this task if running
+        """Abort this task if running. Update status to Cancelled.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
+
+        .. warning:: If this task is already finished, a call to :meth:`abort` will delete it.
         """
         if self._uuid is None or self._status != "Submitted":
             return
@@ -171,16 +205,17 @@ class QTask(object):
         self.update()
 
     def delete(self, purge=True):
-        """delete task from the server,
-        does nothing if already deleted
+        """Delete this task on the server. Does nothing if it is already deleted.
 
-        :param bool purge: *optional*, if true
-          delete also result and ressource disks
-          Defaults to True
+        :param bool purge: if True, delete also result and resource disks.
+          Defaults to True.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
+
+        .. note:: *force* parameter in :meth:`submit` and :meth:`submit_async`
+           may be set to True in order to delete old tasks automatically.
         """
         if self._uuid is None:
             return
@@ -217,10 +252,11 @@ class QTask(object):
         self._uuid = None
 
     def update(self):
-        """get the current state of this task and return its status
+        """Get the current state of this task from the cluster and return
+        its status.
 
-        :rtype: string
-        :returns: current status of the task
+        :rtype: :class:`string`
+        :returns: Status of the task (see :attr:`status`)
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -240,7 +276,7 @@ class QTask(object):
         return self._status
 
     def _update(self, jsonTask):
-        """update this task from retrieved info"""
+        """Update this task from retrieved info."""
         self._name = jsonTask['name']
         self._profile = jsonTask['profile']
         self._framecount = jsonTask.get('frameCount')
@@ -267,13 +303,13 @@ class QTask(object):
         self._rescount = jsonTask['resultsCount']
 
     def wait(self, timeout=None):
-        """wait for this task to complete
+        """Wait for this task until it is completed.
 
-        :param float timeout: maximum time to wait before returning in seconds
-          (optionnal)
+        :param float timeout: maximum time (in seconds) to wait before returning
+           (None => no timeout)
 
-        :rtype: string
-        :rvalue: Status of the task (see :attr:`status`)
+        :rtype: :class:`string`
+        :returns: Status of the task (see :attr:`status`)
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -299,18 +335,20 @@ class QTask(object):
         return self.status
 
     def snapshot(self, interval):
-        """start snapshooting results
-        if called, this task's results will be periodically
+        """Start snapshooting results.
+        If called, this task's results will be periodically
         updated, instead of only being available at the end.
 
-        the snapshots will be taken every *interval* second from the time
-        the task is submitted
+        Snapshots will be taken every *interval* second from the time
+        the task is submitted.
 
-        :param interval: the interval in seconds at which to take snapshots
+        :param int interval: the interval in seconds at which to take snapshots
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
+
+        .. note:: To get the temporary results, call :meth:`results`.
         """
         if self._uuid is None:
             self._snapshots = interval
@@ -328,11 +366,13 @@ class QTask(object):
         self._snapshots = True
 
     def instant(self): #change to snapshot and other to snapshot_periodic ?
-        """make a snapshot of the current task
+        """Make a snapshot of the current task.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
+
+        .. note:: To get the temporary results, call :meth:`results`.
         """
         if self._uuid is None:
             return
@@ -349,17 +389,26 @@ class QTask(object):
 
     @property
     def status(self):
-        """current task status,
+        """:type: :class:`string`
 
-        Value is in {'UnSubmitted', 'Submitted', 'Cancelled',
-        'Success', 'Failure'}
-        requires the task to :meth:`update`
+        Current task status.
+
+        Value is in
+           * 'UnSubmitted'
+           * 'Submitted'
+           * 'Cancelled'
+           * 'Success'
+           * 'Failure'
+
+        Alias of :meth:`update`
         """
         return self.update()
 
     @property
     def resources(self):
-        """:class:`~qapy.disk.QDisk` for resource files"""
+        """:type: :class:`~qapy.disk.QDisk`
+
+        Represents resource files."""
         if self._resourceDisk is None:
             _disk = self._connection.create_disk("task {}".format(self._name))
             self._resourceDisk = _disk
@@ -368,14 +417,18 @@ class QTask(object):
 
     @resources.setter
     def resources(self, value):
-        """this is a setter"""
+        """This is a setter."""
         #question delete current disk ?
         self._resourceDisk = value
 
     def results(self):
-        """path for the directory containing task results,
+        """Download results in *resdir*.
+        *resdir* must have been previously set.
 
-        requires the task to :meth:`update` in order to get latest results
+        :rtype: :class:`str`
+        :returns: The path containing task results.
+
+        .. warning:: Will override *resdir* (previously provided) content.
         """
         if self._uuid is not None:
             self.update()
@@ -394,13 +447,18 @@ class QTask(object):
 
     @property
     def stdout(self):
-        """get the standard output of the task,
-        each call will return the standard output
-        since the submission of the task
+        """Get the standard output of the task
+        since the submission of the task.
+
+        :rtype: :class:`str`
+        :returns: The standard ouput.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
+
+        .. note:: The buffer is circular, if stdout is too big, prefer calling
+          :meth:`fresh_stdout` regularly.
         """
         if self._uuid is None:
             return ""
@@ -415,11 +473,11 @@ class QTask(object):
         return resp.text
 
     def fresh_stdout(self):
-        """get what has been written on the standard output since last time
-        this function was called or since the task has been submitted
+        """Get what has been written on the standard output since last time
+        this function was called or since the task has been submitted.
 
-        :rtype: str
-        :returns: new output since last call
+        :rtype: :class:`str`
+        :returns: The new output since last call.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -439,13 +497,18 @@ class QTask(object):
 
     @property
     def stderr(self):
-        """get the standard error of the task
-        each call will return the standard error
-        since the submission of the task,
+        """Get the standard error of the task
+        since the submission of the task.
+
+        :rtype: :class:`str`
+        :returns: The standard error.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
+
+        .. note:: The buffer is circular, if stderr is too big, prefer calling
+          :meth:`fresh_stderr` regularly.
         """
         if self._uuid is None:
             return ""
@@ -460,11 +523,11 @@ class QTask(object):
         return resp.text
 
     def fresh_stderr(self):
-        """get what has been written on the standard error since last time
-        this function was called or since the task has been submitted
+        """Get what has been written on the standard error since last time
+        this function was called or since the task has been submitted.
 
-        :rtype: str
-        :returns: new output since last call
+        :rtype: :class:`str`
+        :returns: The new error messages since last call.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -485,20 +548,27 @@ class QTask(object):
 
     @property
     def uuid(self):
-        """the task's uuid"""
+        """:type: :class:`string`
+
+        The task's uuid.
+
+        Automatically set when a task is submitted.
+        """
         return self._uuid
 
     @property
     def name(self):
-        """given name of the task
+        """:type: :class:`string`
 
-        can be set until :meth:`submit` is called
+        The task's name.
+
+        Can be set until :meth:`submit` is called
         """
         return self._name
 
     @name.setter
     def name(self, value):
-        """this is a setter docstring is useless"""
+        """Setter for name."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
@@ -506,9 +576,11 @@ class QTask(object):
 
     @property
     def profile(self):
-        """profile to run the task with
+        """:type: :class:`string`
 
-        can be set until :meth:`submit` is called
+        The profile to run the task with.
+
+        Can be set until :meth:`submit` is called.
         """
         return self._profile
 
@@ -522,15 +594,17 @@ class QTask(object):
 
     @property
     def framecount(self):
-        """number of frames needed for the task
+        """:type: :class:`int`
 
-        can be set until :meth:`submit` is called
+        Number of frames needed for the task.
+
+        Can be set until :meth:`submit` is called.
         """
         return self._framecount
 
     @framecount.setter
     def framecount(self, value):
-        """setter for framecount"""
+        """Setter for framecount."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
         else:
@@ -538,22 +612,30 @@ class QTask(object):
 
     @property
     def advanced_range(self):
-        """advanced frame range selection
+        """:type: :class:`string`
 
-        allows to select which frames will be computed,
-        should be None or match the following extended regular expression
-        "'(\[[0-9]+-[0-9]+\] )*'"
+        Advanced frame range selection.
+
+        Allows to select which frames will be computed.
+        Should be None or match the following extended regular expression
+        """r"""**"(\\[[0-9]+-[0-9]+\\])( \\[[0-9]+-[0-9]+\\])*"**
+
+        This parameter will override :attr:`framecount`.
+        *[min-max]* will generate (max - min) frames from min to max (excluded).
+
+        Can be set until :meth:`submit` is called.
         """
         return self._advanced_range
 
     @advanced_range.setter
     def advanced_range(self, value):
+        """Setter for advanced_range."""
         self._advanced_range = value
 
 
     def _to_json(self):
-        """get a dict ready to be json packed from this task"""
-        self.resources #init ressource_disk if not done
+        """Get a dict ready to be json packed from this task."""
+        self.resources #init resource_disk if not done
         const_list = [
             {'key': key, 'value': value}
             for key, value in self.constants.items()
@@ -587,11 +669,11 @@ class QTask(object):
 ##############
 
 class MissingTaskException(Exception):
-    """Non existant task"""
+    """Non existant task."""
     def __init__(self, message, name):
         super(MissingTaskException, self).__init__(
             "{}: {}".format(message, name))
 
 class MaxTaskException(Exception):
-    """max number of tasks reached"""
+    """Max number of tasks reached."""
     pass

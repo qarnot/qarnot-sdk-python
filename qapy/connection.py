@@ -1,4 +1,4 @@
-"""Module describing a connection"""
+"""Module describing a connection."""
 
 from qapy import get_url
 from qapy.disk import QDisk
@@ -17,17 +17,33 @@ else:
 #########
 
 class QApy(object):
-    """represent the couple cluster/user to submit task
+    """Represents the couple cluster/user to which submit tasks.
 
     .. automethod:: __init__
     """
     def __init__(self, conf):
-        """create a connection to a cluster with given config file or
-        dictionnary
+        """Create a connection to a cluster with given config file or
+        dictionary.
 
-        :param conf: path to a qarnot configuration file or dictionnary
-          containing corresponding keys as follow:
-          for variable var of section s key is 's_var'
+        :param conf: path to a qarnot configuration file or dictionary
+          containing following keys:
+        * cluster_url
+        * cluster_unsafe   (optional)
+        * cluster_timeout  (optional)
+        * client_auth
+        .. note:: qarnot.conf file format:
+        ::
+
+           [cluster]
+           # url of the REST API
+           url=https://localhost
+           # No SSL verification ?
+           unsafe=False
+           # timeout put on every GET/POST
+           timeout=30
+           [client]
+           # auth string of the client
+           auth=login
         """
         self._http = requests.session()
 
@@ -56,18 +72,18 @@ class QApy(object):
                     self._http.verify = False
 
     def _get(self, url, **kwargs):
-        """perform a GET request on the cluster
+        """Perform a GET request on the cluster.
 
         :param str url:
-          relative url of the file (given the cluster url)
+          relative url of the file (according to the cluster url)
 
         :rtype: :class:`requests.Response`
-        :returns: the response to the given request
+        :returns: The response to the given request.
 
         :raises UnauthorizedException: invalid credentials
 
-        .. note:: additional keyword arguments are passed to the underlying
-           :func:`requests.Session.get`
+        .. note:: Additional keyword arguments are passed to the underlying
+           :func:`requests.Session.get`.
         """
         ret = self._http.get(self.cluster + url, timeout=self.timeout,
                              **kwargs)
@@ -79,16 +95,16 @@ class QApy(object):
         """perform a POST request on the cluster
 
         :param url: :class:`string`,
-          relative url of the file (given the cluster url)
+          relative url of the file (according to the cluster url)
         :param json: the data to json serialize and post
 
         :rtype: :class:`requests.Response`
-        :returns: the response to the given request
+        :returns: The response to the given request.
 
         :raises UnauthorizedException: invalid credentials
 
-        .. note:: additional keyword arguments are passed to the underlying
-           :attr:`requests.Session.post()`
+        .. note:: Additional keyword arguments are passed to the underlying
+           :attr:`requests.Session.post()`.
         """
         ret = self._http.post(self.cluster + url, json=json,
                               timeout=self.timeout, **kwargs)
@@ -96,19 +112,20 @@ class QApy(object):
             raise UnauthorizedException(self.auth)
         return ret
 
+
     def _delete(self, url, **kwargs):
-        """perform a DELETE request on the cluster
+        """Perform a DELETE request on the cluster.
 
         :param url: :class:`string`,
-          relative url of the file (given the cluster url)
+          relative url of the file (according to the cluster url)
 
         :rtype: :class:`requests.Response`
-        :returns: the response to the given request
+        :returns: The response to the given request.
 
         :raises UnauthorizedException: invalid credentials
 
-        .. note:: additional keyword arguments are passed to the underlying
-          :attr:`requests.Session.delete()`
+        .. note:: Additional keyword arguments are passed to the underlying
+          :attr:`requests.Session.delete()`.
         """
         ret = self._http.delete(self.cluster + url,
                                 timeout=self.timeout, **kwargs)
@@ -117,7 +134,7 @@ class QApy(object):
         return ret
 
     def _put(self, url, **kwargs):
-        """performs a PUT on the cluster"""
+        """Performs a PUT on the cluster."""
         ret = self._http.put(self.cluster + url,
                              timeout=self.timeout, **kwargs)
         if ret.status_code == 401:
@@ -125,10 +142,10 @@ class QApy(object):
         return ret
 
     def user_info(self):
-        """retrieve information of the current user on the cluster
+        """Get informations of the current user on the cluster.
 
         :rtype: :class:`QUserInfo`
-        :returns: requested information
+        :returns: Requested informations.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises HTTPError: unhandled http return code
@@ -140,10 +157,10 @@ class QApy(object):
 
     #move to a better place (session)
     def disks(self):
-        """get the list of disks on this cluster for this user
+        """Get the list of disks on this cluster for this user.
 
-        :rtype: list of :class:`~qapy.disk.QDisk`
-        :returns: disks on the cluster owned by the user
+        :rtype: List of :class:`~qapy.disk.QDisk`.
+        :returns: Disks on the cluster owned by the user.
 
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -156,10 +173,10 @@ class QApy(object):
         return disks
 
     def profiles(self):
-        """list availables profiles for submitting tasks
+        """Get the list of available profiles for submitting tasks.
 
-        :rtype: list of str
-        :returns: list of the profile names
+        :rtype: List of :class:`str`.
+        :returns: List of the names of profiles.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises HTTPError: unhandled http return code
@@ -171,12 +188,12 @@ class QApy(object):
         return [QProfile(prof) for prof in response.json()]
 
     def profile_info(self, profile):
-        """get information about a profile
+        """Get informations about a profile.
 
         :param str profile: name of the profile
 
-        :rtype: class:`QProfile`
-        :returns: the Qprofile corresponding to requested profile
+        :rtype: :class:`QProfile`
+        :returns: The :class:`QProfile` corresponding to the requested profile.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises HTTPError: unhandled http return code
@@ -189,10 +206,10 @@ class QApy(object):
         return QProfile(response.json())
 
     def tasks(self):
-        """list tasks stored on this cluster for this user
+        """Get the list of tasks stored on this cluster for this user.
 
-        :rtype: list of :class:`~qapy.task.QTask`
-        :returns: tasks stored on the cluster owned by the user
+        :rtype: List of :class:`~qapy.task.QTask`.
+        :returns: Tasks stored on the cluster owned by the user.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises HTTPError: unhandled http return code
@@ -208,16 +225,16 @@ class QApy(object):
 
     def create_disk(self, description, force=False, lock=False):
         """
-        create a disk on a cluster
+        Create a new :class:`~qapy.disk.QDisk`.
 
         :param str description: a short description of the disk
-        :param bool force: delete an old, unlocked disk
+        :param bool force: delete an old unlocked disk
           if maximum number of disks is reached
-        :param bool lock: if true prevent the disk to be removed
+        :param bool lock: prevents the disk to be removed
           by a subsequent :meth:`create_disk` with force set to True
 
         :rtype: :class:`qapy.disk.QDisk`
-        :returns: the created disk
+        :returns: The created :class:`~qapy.disk.QDisk`.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -225,14 +242,16 @@ class QApy(object):
         return QDisk._create(self, description, force, lock)
 
     def create_task(self, name, profile, frame_nbr):
-        """create a new :class:`~qapy.task.QTask`
-
-        :rtype: :class:`~qapy.task.QTask`
-        :returns: the created :class:`~qapy.task.QTask`
+        """Create a new :class:`~qapy.task.QTask`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
         :param int frame_nbr: number of frame on which to run task
+
+        :rtype: :class:`~qapy.task.QTask`
+        :returns: The created :class:`~qapy.task.QTask`.
+
+        .. note:: See available profiles with :meth:`profiles`.
         """
         return QTask(self, name, profile, frame_nbr)
 
@@ -243,35 +262,62 @@ class QApy(object):
 
 #would rather use a namedTuple class but no way to document it's fields
 class QUserInfo(object):
-    """Information about a qapy user"""
+    """Informations about a qapy user."""
     def __init__(self, info):
         self.diskCount = info['diskCount']
-        """Number of disks owned by the user"""
+        """:type: :class:`int`
+
+        Number of disks owned by the user."""
         self.maxDisk = info['maxDisk']
-        """Maximum number of disks the user is allowed to create"""
-        self.taskCount = info['taskCount']
-        """Total number of tasks belonging to the user"""
-        self.maxTask = info['maxTask']
-        """Maximum number of tasks the user is allowed to create"""
-        self.runningTaskCount = info['runningTaskCount']
-        """Number of tasks currently in 'Submitted' state"""
-        self.maxRunningTask = info['maxRunningTask']
-        """Maximum number of running tasks the user is allowed to create"""
+        """:type: :class:`int`
+
+        Maximum number of disks allowed (resource and result disks)."""
         self.quotaBytes = info['quotaBytes']
-        """total storage space allowed for the user's disks (in Bytes)"""
+        """:type: :class:`int`
+
+        Total storage space allowed for the user's disks (in Bytes)."""
         self.usedQuotaBytes = info['usedQuotaBytes']
-        """total storage space used by the user's disks (in Bytes)"""
+        """:type: :class:`int`
+
+        Total storage space used by the user's disks (in Bytes)."""
+        self.taskCount = info['taskCount']
+        """:type: :class:`int`
+
+        Total number of tasks belonging to the user."""
+        self.maxTask = info['maxTask']
+        """:type: :class:`int`
+
+        Maximum number of tasks the user is allowed to create."""
+        self.runningTaskCount = info['runningTaskCount']
+        """:type: :class:`int`
+
+        Number of tasks currently in 'Submitted' state."""
+        self.maxRunningTask = info['maxRunningTask']
+        """:type: :class:`int`
+
+        Maximum number of tasks in 'Submitted' state."""
         self.maxInstances = info['maxInstances']
+        """:type: :class:`int`
+
+        Maximum number of frames per task."""
         self.executionTime = info['executionTime']
+        """:type: :class:`int`
+
+        Total computation time."""
 
 class QProfile(object):
-    """information about a profile"""
+    """Informations about a profile."""
     def __init__(self,info):
-        self.name = info['name'] #: name of the profile
+        self.name = info['name']
+        """:type: :class:`str`
+
+        Name of the profile."""
         self.constants = tuple((cst['name'], cst['value'])
                                for cst in info['constants'])
-        """list of couples (name, value) representing constants for this profile
-        and their default values"""
+        """:type: List of (:class:`str`, :class:`str`)
+
+        List of couples (name, value) representing constants for this profile
+        and their default values."""
 
     def __repr__(self):
         return 'QProfile(name=%s, constants=%r}' % (self.name, self.constants)
@@ -282,7 +328,7 @@ class QProfile(object):
 ##############
 
 class UnauthorizedException(Exception):
-    """Authorization given is not valid"""
+    """Authorization given is not valid."""
     def __init__(self, auth):
         super(UnauthorizedException, self).__init__(
             "invalid credentials : {}".format(auth))

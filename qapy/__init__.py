@@ -1,11 +1,12 @@
-"""Rest API for submitting qarnot jobs in python"""
+"""Rest API for submitting qarnot jobs in python."""
 
 __all__ = ["task", "connection", "disk"]
 
 __version__ = '0.1.0'
 
 def get_url(key, **kwargs):
-    """get and format the url for the given key"""
+    """Get and format the url for the given key.
+    """
     urls = {
         'disk folder' : '/disks', #GET -> list; POST -> add
         'disk force' : '/disks/force', # POST -> force add

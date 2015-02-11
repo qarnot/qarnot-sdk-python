@@ -1,4 +1,4 @@
-"""module for disk object"""
+"""Module for disk object."""
 
 from __future__ import print_function
 
@@ -10,32 +10,31 @@ import threading
 from enum import Enum
 
 class QDisk(object):
-    """represents a ressource disk on the cluster
+    """Represents a resource/result disk on the cluster.
 
-    this class is the interface to manage ressources or results from a
-    :class:`qapy.task.QTask`
+    This class is the interface to manage resources or results from a
+    :class:`qapy.task.QTask`.
 
     .. note::
-       paths given as 'remote' arguments,
+       Paths given as 'remote' arguments,
        (or as path arguments for :func:`QDisk.directory`)
-       **Must** be valid unix-like paths
+       **must** be valid unix-like paths.
     """
 
     #Creation#
     def __init__(self, jsondisk, connection):
-        """
-        initialize a disk from a dictionnary.
+        """Initialize a disk from a dictionary.
 
-        :param dict jsondisk: dictionnary representing the disk,
-          must contain following keys :
+        :param dict jsondisk: Dictionary representing the disk,
+          must contain following keys:
 
             * id: string, the disk's UUID
 
-            * description : string, a short description of the disk
+            * description: string, a short description of the disk
 
-            * readOnly : boolean, is the disk read only
+            * readOnly: boolean, is the disk read only
 
-        :param qapy.connection.QApy connection:
+        :param :class:`qapy.connection.QApy` connection:
           the cluster on which the disk is
         """
         self._name = jsondisk["id"]
@@ -49,14 +48,14 @@ class QDisk(object):
     @classmethod
     def _create(cls, connection, description, force=False, lock=False):
         """
-        create a disk on a cluster
+        Create a disk on a cluster.
 
-        :param qapy.connection.QApy connection:
+        :param :class:`qapy.connection.QApy` connection:
           represents the cluster on which to create the disk
         :param str description: a short description of the disk
 
         :rtype: :class:`QDisk`
-        :returns: the created disk
+        :returns: The created :class:`QDisk`.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -78,14 +77,14 @@ class QDisk(object):
 
     @classmethod
     def _retrieve(cls, connection, disk_id):
-        """retrieve information of a disk on a cluster
+        """Retrieve information of a disk on a cluster.
 
-        :param qapy.connection.QApy connection: the cluster
+        :param :class:`qapy.connection.QApy` connection: the cluster
             to get the disk from
         :param str disk_id: the UUID of the disk to retrieve
 
         :rtype: :class:`QDisk`
-        :returns: the retrieved disk
+        :returns: The retrieved disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -101,10 +100,10 @@ class QDisk(object):
 
         return cls(response.json(), connection)
 
-    #Disk Manangment#
+    #Disk Management#
 
     def delete(self):
-        """delete the disk represented by this Qdisk
+        """Delete the disk represented by this :class:`QDisk`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -120,15 +119,15 @@ class QDisk(object):
         response.raise_for_status()
 
     def get_archive(self, extension='zip', local=None):
-        """retrieve an archive of this disk's content
+        """Get an archive of this disk's content.
 
         :param str extension: in {'tar', 'tgz', 'zip'},
           format of the archive to get
-        :param str output: name of the file to output to
+        :param str local: name of the file to output to
 
         :rtype: :class:`str`
         :returns:
-         the filename of the retrieved archive
+         The filename of the retrieved archive.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -158,10 +157,10 @@ class QDisk(object):
 
 
     def list_files(self):
-        """list files on the whole disk
+        """List files on the whole disk.
 
-        :rtype: list of :class:`QFileInfo`
-        :returns: list of the files on the disk
+        :rtype: List of :class:`QFileInfo`.
+        :returns: List of the files on the disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -180,20 +179,19 @@ class QDisk(object):
         return [QFileInfo(**f) for f in response.json()]
 
     def directory(self, directory=''):
-        """list files in a directory of the disk
+        """List files in a directory of the disk. Doesn't go through subdirectories.
 
-        :param str path: the path of the directory to examine
+        :param str directory: path of the directory to inspect. Must be unix-like.
 
-        :rtype: list of :class:`QFileInfo`
-        :returns: files in given directory on the qdisk
+        :rtype: List of :class:`QFileInfo`.
+        :returns: Files in the given directory on the :class:`QDisk`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
 
         .. note::
-           paths in results are given relatively to the
-           directory *path* argument refers to
+           Paths in results are relative to the *directory* argument.
         """
 
         self.sync()
@@ -212,7 +210,7 @@ class QDisk(object):
         return [QFileInfo(**f) for f in response.json()]
 
     def sync(self):
-        """ensure all files added through :meth:`add_file` are on the disk
+        """Ensure all files added through :meth:`add_file`/:meth:`add_directory` are on the disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -231,13 +229,20 @@ class QDisk(object):
         self._filecache.clear()
 
     def add_file(self, local, remote=None, mode=None):
-        """add a file to the disk (you can also use disk[remote] = local)
+        """Add a file on the disk.
+
+        .. note::
+           You can also use **disk[remote] = local**
+
+        .. warning::
+           In non blocking mode, you may receive an exception during an other
+           operation (like :meth:`sync`).
 
         :param str local: name of the local file
         :param str remote: name of the remote file
-          (defaults to filename)
-        :param mode: the mode with which to add the file
-          (defaults to disk.add_mode)
+          (defaults to *local*)
+        :param mode: mode with which to add the file
+          (defaults to :attr:`~QDisk.add_mode`)
         :type mode: :class:`QUploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -272,7 +277,7 @@ class QDisk(object):
             self._filethreads[remote] = thread
 
     def _add_file(self, filename, dest):
-        """add a file to the disk (you can also use disk[dest] = filename)
+        """Add a file on the disk.
 
         :param str filename: name of the local file
         :param str dest: name of the remote file
@@ -306,14 +311,21 @@ class QDisk(object):
                 response.raise_for_status()
 
     def add_directory(self, local, remote="", mode=None):
-        """ add a directory to the disk, do not follow symlinks,
-        the internal structure is preserved
-        (you can also use disk[dest] = filename)
+        """ Add a directory to the disk. Does not follow symlinks.
+        File hierarchy is preserved.
+
+        .. note::
+           You can also use **disk[remote] = local**
+
+        .. warning::
+           In non blocking mode, you may receive an exception during an other
+           operation (like :meth:`sync`).
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
-        :param mode: the mode with hich to add the file
-          (defaults to disk.add_mode)
+          (defaults to *local*)
+        :param mode: the mode with which to add the directory
+          (defaults to :attr:`~QDisk.add_mode`)
         :type mode: :class:`QUploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -330,20 +342,26 @@ class QDisk(object):
                               ppath.join(remote_loc, filename), mode)
 
     def get_file(self, remote, local=None):
-        """get a file from the disk, you can also use disk['file']
+        """Get a file from the disk.
+
+        .. note::
+           You can also use **disk[file]**
+
+        .. warning::
+           Doesn't work with directories. Prefer the use of :meth:`get_archive`.
 
         :param str remote: the name of the remote file
-        :param str local: local name of retrived file
-          (defaults to filename)
+        :param str local: local name of the retrieved file
+          (defaults to *remote*)
 
         :rtype: :class:`string`
-        :returns: the name of the output file
+        :returns: The name of the output file.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
-          (:exc:`KeyError` with disk['file'] syntax)
+          (:exc:`KeyError` with disk[file] syntax)
         """
         if isinstance(remote, QFileInfo):
             remote = remote.name
@@ -381,7 +399,10 @@ class QDisk(object):
         return local
 
     def delete_file(self, remote):
-        """delete a file from the disk, equivalent to del disk['file']
+        """Delete a file from the disk.
+
+        .. note::
+           You can also use **del disk[file]**
 
         :param str remote: the name of the remote file
 
@@ -417,16 +438,16 @@ class QDisk(object):
 
     @property
     def name(self):
-        """:type: string
+        """:type: :class:`string`
 
-        the disk's UUID"""
+        The disk's UUID."""
         return self._name
 
     @property
     def add_mode(self):
         """:type: :class:`QUploadMode`
 
-        default mode for adding files
+        Default mode for adding files.
         """
         return self._add_mode
 
@@ -440,9 +461,9 @@ class QDisk(object):
 
     @property
     def description(self):
-        """:type: string
+        """:type: :class:`string`
 
-        the disk's description
+        The disk's description.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -516,16 +537,24 @@ class QDisk(object):
 #"""Named tuple containing the informations on a file"""
 
 class QFileInfo(object):
-    """Named tuple containing the information on a file"""
+    """Named tuple containing informations about a file."""
     def __init__(self, creationDate, name, size, fileFlags):
         self.creation = creationDate
-        """timestamp at which file was created on the :class:`QDisk`"""
+        """:type: :class:`string`
+
+        Timestamp at the creation of the file on the :class:`QDisk`."""
         self.name = name
-        """path to the file on the qdisk"""
+        """:type: :class:`string`
+
+        Path of the file on the :class:`QDisk`."""
         self.size = size
-        """size of the file on the qdisk (in Bytes)"""
+        """:type: :class:`int`
+
+        Size of the file on the :class:`QDisk` (in Bytes)."""
         self.directory = fileFlags == 'directory'
-        """is the file a directory"""
+        """:type: :class:`bool`
+
+        Is the file a directory."""
 
     def __repr__(self):
         template = 'QFileInfo(creation={0}, name={1}, size={2}, directory={3})'
@@ -533,24 +562,27 @@ class QFileInfo(object):
                                self.directory)
 
 class QUploadMode(Enum):
-    """How to add files on a :class:`QDisk`"""
-    blocking = 0 #: call to add_file blocks until file is done uploading
-    background = 1 #: launch a background thread
+    """How to add files on a :class:`QDisk`."""
+    blocking = 0
+    """Call to :func:`~QDisk.add_file` :func:`~QDisk.add_directory`
+    or blocks until file is done uploading."""
+    background = 1
+    """Launch a background thread for uploading."""
     delayed = 2
-    """alias for lazy"""
+    """Alias of lazy."""
     lazy= 2
-    """actual uploading is made by the :func:`QDisk.sync` method call"""
+    """Actual uploading is made by the :func:`~QDisk.sync` method call."""
 
 ##############
 # Exceptions #
 ##############
 
 class MissingDiskException(Exception):
-    """Non existant disk"""
+    """Non existant disk."""
     def __init__(self, message, name):
         super(MissingDiskException, self).__init__(
             "{}: {} ".format(message, name))
 
 class MaxDiskException(Exception):
-    """max number of disks reached"""
+    """Max number of disks reached."""
     pass
