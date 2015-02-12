@@ -494,6 +494,40 @@ class QDisk(object):
         else:
             resp.raise_for_status()
 
+    @property
+    def locked(self):
+        """:type: :class:`bool`
+
+        The disk's lock state. If True, prevents the disk to be removed
+        by a subsequent :meth:`qapy.connection.QApy.create_disk` with *force* set to True.
+
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        resp = self._connection._get(get_url('disk info', name=self._name))
+
+        if resp.status_code == 404:
+            raise MissingDiskException(resp.json()['message'],
+                                       self.name)
+        elif resp.status_code != 200:
+            resp.raise_for_status()
+
+        self._locked = resp.json()['locked']
+        return self._locked
+
+    @locked.setter
+    def locked(self, value):
+        """Change disk's lock state."""
+        data = {"locked" : value}
+        resp = self._connection._put(get_url('disk info', name=self._name),
+                                     json=data)
+        if resp.status_code == 404:
+            raise MissingDiskException(resp.json()['message'],
+                                       self.name)
+        else:
+            resp.raise_for_status()
+
 
     #operators#
 
