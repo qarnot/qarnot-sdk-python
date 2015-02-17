@@ -20,7 +20,7 @@ if __name__ == "__main__":
         task.constants['PYTHON_SCRIPT'] = "script_verbose.py"
         task.submit_async(tempfile.mkdtemp())
 
-        while task.status == 'Submitted':
+        while task.status() == 'Submitted':
             time.sleep(10)
             out = task.results
             print(task.fresh_stdout(), end='')

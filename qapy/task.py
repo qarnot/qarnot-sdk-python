@@ -317,7 +317,7 @@ class QTask(object):
         """
         start = time.time()
         if self._uuid is None:
-            return self.status
+            return self.update()
 
         nap = min(10, timeout) if timeout is not None else 10
 
@@ -329,10 +329,10 @@ class QTask(object):
             if timeout is not None:
                 elapsed = time.time() - start
                 if timeout <= elapsed:
-                    return self.status
+                    return self.update()
                 else:
                     nap = min(10, timeout - elapsed)
-        return self.status
+        return self.update()
 
     def snapshot(self, interval):
         """Start snapshooting results.
@@ -387,7 +387,6 @@ class QTask(object):
 
         self.update()
 
-    @property
     def status(self):
         """:type: :class:`string`
 

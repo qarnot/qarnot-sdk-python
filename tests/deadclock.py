@@ -16,7 +16,7 @@ if __name__ == "__main__":
                                 mode=QUploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
         out = task.submit(tempfile.mkdtemp(), job_timeout=30)
-        print(task.status)
+        print(task.status())
         print(task.stdout, end='')
         print(task.stderr, end='')
         for dirname, dirs, files in walk(out):
