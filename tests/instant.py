@@ -19,10 +19,10 @@ if __name__ == "__main__":
         task.submit_async(tempfile.mkdtemp())
         time.sleep(84)
         task.instant()
-        print(listdir(task.results))
+        print(listdir(task.results()))
         task.wait()
         print(task.stdout, end='')
-        for dirname, _, files in walk(task.results):
+        for dirname, _, files in walk(task.results()):
             for filename in files:
                 with open(join(dirname,filename)) as f:
                     print(f.read())

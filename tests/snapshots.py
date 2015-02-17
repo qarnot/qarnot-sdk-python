@@ -22,14 +22,14 @@ if __name__ == "__main__":
 
         while task.status() == 'Submitted':
             time.sleep(10)
-            out = task.results
+            out = task.results()
             print(task.fresh_stdout(), end='')
             for dirname, dirs, files in walk(out):
                 for filename in files:
                     with open(join(dirname,filename)) as f:
                         print(f.read())
 
-        out = task.results
+        out = task.results()
         print(task.fresh_stdout(), end='')
         for dirname, dirs, files in walk(out):
             for filename in files:
