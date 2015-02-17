@@ -14,7 +14,7 @@ if __name__ == "__main__":
         task.resources.add_file("example/script.py", mode=QUploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
         out = task.submit('results/test')
-        print(task.stdout, end='')
+        print(task.stdout(), end='')
         for dirname, dirs, files in walk(out):
             for filename in files:
                 with open(join(dirname,filename)) as f:

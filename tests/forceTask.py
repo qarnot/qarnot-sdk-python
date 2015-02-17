@@ -16,7 +16,7 @@ if __name__ == "__main__":
         task.constants['PYTHON_SCRIPT'] = "script.py"
         out = tempfile.mkdtemp()
         task.submit(out)
-        print(task.stdout, end='')
+        print(task.stdout(), end='')
         for dirname, dirs, files in walk(out):
             for filename in files:
                 with open(join(dirname,filename)) as f:

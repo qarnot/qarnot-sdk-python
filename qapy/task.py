@@ -444,7 +444,6 @@ class QTask(object):
 
         return self._resdir
 
-    @property
     def stdout(self):
         """Get the standard output of the task
         since the submission of the task.
@@ -494,7 +493,6 @@ class QTask(object):
 
         return resp.text
 
-    @property
     def stderr(self):
         """Get the standard error of the task
         since the submission of the task.

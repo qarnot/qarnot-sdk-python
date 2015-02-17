@@ -17,8 +17,8 @@ if __name__ == "__main__":
         task.constants['PYTHON_SCRIPT'] = "script.py"
         out = task.submit(tempfile.mkdtemp(), job_timeout=30)
         print(task.status())
-        print(task.stdout, end='')
-        print(task.stderr, end='')
+        print(task.stdout(), end='')
+        print(task.stderr(), end='')
         for dirname, dirs, files in walk(out):
             for filename in files:
                 with open(join(dirname,filename)) as f:

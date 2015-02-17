@@ -21,5 +21,5 @@ if __name__ == '__main__':
 
         task.submit('./results')
 
-        print(task.stdout, end='')
-        print(task.stderr, end='', file=sys.stderr)
+        print(task.stdout(), end='')
+        print(task.stderr(), end='', file=sys.stderr)

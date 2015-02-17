@@ -21,7 +21,7 @@ if __name__ == "__main__":
         task.instant()
         print(listdir(task.results()))
         task.wait()
-        print(task.stdout, end='')
+        print(task.stdout(), end='')
         for dirname, _, files in walk(task.results()):
             for filename in files:
                 with open(join(dirname,filename)) as f:
