@@ -53,6 +53,11 @@ class QDisk(object):
         :param :class:`qapy.connection.QApy` connection:
           represents the cluster on which to create the disk
         :param str description: a short description of the disk
+        :param bool force: it will delete an old unlocked disk
+          if maximum number of disks is reached for resources and results
+        :param bool lock: prevents the disk to be removed
+          by a subsequent :meth:`qapy.connection.QApy.create_task` with
+          *force* set to True.
 
         :rtype: :class:`QDisk`
         :returns: The created :class:`QDisk`.
@@ -499,7 +504,7 @@ class QDisk(object):
         """:type: :class:`bool`
 
         The disk's lock state. If True, prevents the disk to be removed
-        by a subsequent :meth:`qapy.connection.QApy.create_disk` with *force* set to True.
+        by a subsequent :meth:`qapy.connection.QApy.create_task` with *force* set to True.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code

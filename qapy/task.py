@@ -14,7 +14,7 @@ class QTask(object):
        A :class:`QTask` must be created with :meth:`qapy.connection.QApy.create_task`
        or retrieved with :meth:`qapy.connection.QApy.tasks`.
     """
-    def __init__(self, connection, name, profile, frameNbr):
+    def __init__(self, connection, name, profile, frameNbr, force):
         """Create a new :class:`QTask`.
 
         :param connection: the cluster on which to send the task
@@ -29,6 +29,7 @@ class QTask(object):
         self._name = name
         self._profile = profile
         self._framecount = frameNbr
+        self._force = force
         self._resourceDisk = None
         self._resultDisk = None
         self._connection = connection
@@ -69,16 +70,14 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
         resp.raise_for_status()
-        task = cls(connection, "stub", None, 0)
+        task = cls(connection, "stub", None, 0, False)
         task._update(resp.json())
         return task
 
-    def submit(self, resdir, force=False, job_timeout=None):
+    def submit(self, resdir, job_timeout=None):
         """Submit task, wait for the results and download them.
 
         :param str resdir: path to a directory that will contain the results
-        :param bool force: remove an old task if the maximum number of allowed
-           tasks is reached
         :param float job_timeout: the task will :meth:`abort` if it has not already
            finished
 
@@ -97,7 +96,7 @@ class QTask(object):
            (results will not be downloaded)
         .. warning:: Will override *resdir* content.
         """
-        self.submit_async(resdir, force)
+        self.submit_async(resdir)
         self.wait(timeout=job_timeout)
         if job_timeout is not None:
             self.abort()
@@ -127,12 +126,10 @@ class QTask(object):
         self.wait()
         return self.results()
 
-    def submit_async(self, resdir, force=False):
+    def submit_async(self, resdir):
         """Submit task to the cluster if it is not already submitted.
 
         :param str resdir: path to a directory that will contain the results
-        :param bool force: delete an old task (and its disks)
-          if maximum number of tasks is reached
 
         :rtype: :class:`string`
         :returns: Status of the task (see :attr:`status`)
@@ -147,7 +144,7 @@ class QTask(object):
 
         .. note:: To get the results, call :meth:`results` once the job is done.
         """
-        url = get_url('task force') if force else get_url('tasks')
+        url = get_url('task force') if self._force else get_url('tasks')
         if self._uuid is not None:
             return self._status
         self.resources.sync()
@@ -214,7 +211,7 @@ class QTask(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid one
 
-        .. note:: *force* parameter in :meth:`submit` and :meth:`submit_async`
+        .. note:: *force* parameter in :meth:`qapy.connection.QApy.create_task`
            may be set to True in order to delete old tasks automatically.
         """
         if self._uuid is None:
@@ -409,7 +406,10 @@ class QTask(object):
 
         Represents resource files."""
         if self._resourceDisk is None:
-            _disk = self._connection.create_disk("task {}".format(self._name))
+            _disk = disk.QDisk._create(self._connection,
+                                       "task {}".format(self._name),
+                                       force=self._force,
+                                       lock=False)
             self._resourceDisk = _disk
 
         return self._resourceDisk

@@ -218,42 +218,27 @@ class QApy(object):
         response.raise_for_status()
         ret = []
         for task in response.json():
-            task2 = QTask(self, "stub", None, 0)
+            task2 = QTask(self, "stub", None, 0, False)
             task2._update(task)
             ret.append(task2)
         return ret
 
-    def create_disk(self, description, force=False, lock=False):
-        """
-        Create a new :class:`~qapy.disk.QDisk`.
-
-        :param str description: a short description of the disk
-        :param bool force: delete an old unlocked disk
-          if maximum number of disks is reached
-        :param bool lock: prevents the disk to be removed
-          by a subsequent :meth:`create_disk` with force set to True
-
-        :rtype: :class:`qapy.disk.QDisk`
-        :returns: The created :class:`~qapy.disk.QDisk`.
-
-        :raises HTTPError: unhandled http return code
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        """
-        return QDisk._create(self, description, force, lock)
-
-    def create_task(self, name, profile, frame_nbr):
+    def create_task(self, name, profile, frame_nbr, force=False):
         """Create a new :class:`~qapy.task.QTask`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
         :param int frame_nbr: number of frame on which to run task
+        :param bool force: remove an old task if the maximum number of allowed
+           tasks is reached. Plus, it will delete an old unlocked disk
+           if maximum number of disks is reached for resources and results
 
         :rtype: :class:`~qapy.task.QTask`
         :returns: The created :class:`~qapy.task.QTask`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return QTask(self, name, profile, frame_nbr)
+        return QTask(self, name, profile, frame_nbr, force)
 
 
 ###################

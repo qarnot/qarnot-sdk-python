@@ -11,9 +11,8 @@ from os.path import join
 
 if __name__ == "__main__":
     q = qapy.QApy('example/qarnot.conf')
-    with q.create_task("example task", "python", 3) as task:
-        task.resources = q.create_disk('enjoy the silence', force=True,
-                                       lock=True)
+    with q.create_task("example task", "python", 3, True) as task:
+        task.resources.lock = True
         task.resources.add_file("example/script.py", mode=QUploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
         out = tempfile.mkdtemp()
