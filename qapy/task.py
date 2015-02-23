@@ -417,6 +417,7 @@ class QTask(object):
         Represents resource files."""
         if self._resource_disk is None:
             _disk = disk.QDisk._create(self._connection,
+                                       "Resources: \"{}\"".format(self._name),
                                        force=self._force,
                                        lock=False)
             self._resource_disk = _disk
