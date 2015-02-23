@@ -292,7 +292,7 @@ class QUserInfo(object):
 
 class QProfile(object):
     """Informations about a profile."""
-    def __init__(self,info):
+    def __init__(self, info):
         self.name = info['name']
         """:type: :class:`str`
 

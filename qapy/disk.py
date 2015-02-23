@@ -184,9 +184,11 @@ class QDisk(object):
         return [QFileInfo(**f) for f in response.json()]
 
     def directory(self, directory=''):
-        """List files in a directory of the disk. Doesn't go through subdirectories.
+        """List files in a directory of the disk. Doesn't go through
+        subdirectories.
 
-        :param str directory: path of the directory to inspect. Must be unix-like.
+        :param str directory: path of the directory to inspect.
+          Must be unix-like.
 
         :rtype: List of :class:`QFileInfo`.
         :returns: Files in the given directory on the :class:`QDisk`.
@@ -215,7 +217,8 @@ class QDisk(object):
         return [QFileInfo(**f) for f in response.json()]
 
     def sync(self):
-        """Ensure all files added through :meth:`add_file`/:meth:`add_directory` are on the disk.
+        """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
+        are on the disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -504,7 +507,8 @@ class QDisk(object):
         """:type: :class:`bool`
 
         The disk's lock state. If True, prevents the disk to be removed
-        by a subsequent :meth:`qapy.connection.QApy.create_task` with *force* set to True.
+        by a subsequent :meth:`qapy.connection.QApy.create_task` with *force*
+        set to True.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises HTTPError: unhandled http return code
@@ -559,7 +563,7 @@ class QDisk(object):
     def __contains__(self, item):
         """D.__contains__(k) -> True if D has a key k, else False"""
         if isinstance(item, QFileInfo):
-            item=item.name
+            item = item.name
         return item in [f.name for f in self.list_files()]
 
     def __iter__(self):
@@ -609,7 +613,7 @@ class QUploadMode(Enum):
     """Launch a background thread for uploading."""
     delayed = 2
     """Alias of lazy."""
-    lazy= 2
+    lazy = 2
     """Actual uploading is made by the :func:`~QDisk.sync` method call."""
 
 ##############

@@ -11,7 +11,8 @@ class QTask(object):
     """Represents a Qarnot job.
 
     .. note::
-       A :class:`QTask` must be created with :meth:`qapy.connection.QApy.create_task`
+       A :class:`QTask` must be created with
+       :meth:`qapy.connection.QApy.create_task`
        or retrieved with :meth:`qapy.connection.QApy.tasks`.
     """
     def __init__(self, connection, name, profile, frameNbr, force):
@@ -30,8 +31,8 @@ class QTask(object):
         self._profile = profile
         self._framecount = frameNbr
         self._force = force
-        self._resourceDisk = None
-        self._resultDisk = None
+        self._resource_disk = None
+        self._result_disk = None
         self._connection = connection
         self.constants = {}
         """
@@ -78,8 +79,8 @@ class QTask(object):
         """Submit task, wait for the results and download them.
 
         :param str resdir: path to a directory that will contain the results
-        :param float job_timeout: the task will :meth:`abort` if it has not already
-           finished
+        :param float job_timeout: the task will :meth:`abort` if it has not
+          already finished
 
         :rtype: :class:`string`
         :returns: Path to the directory containing the results (may be None).
@@ -152,8 +153,8 @@ class QTask(object):
         resp = self._connection._post(url, json=payload)
 
         if resp.status_code == 404:
-            msg = self._resourceDisk.name
-            self._resourceDisk = None
+            msg = self._resource_disk.name
+            self._resource_disk = None
             raise disk.MissingDiskException(msg)
         elif resp.status_code == 403:
             raise MaxTaskException(resp.json()['message'])
@@ -184,9 +185,11 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent
+          a valid one
 
-        .. warning:: If this task is already finished, a call to :meth:`abort` will delete it.
+        .. warning:: If this task is already finished, a call to :meth:`abort`
+          will delete it.
         """
         if self._uuid is None or self._status != "Submitted":
             return
@@ -202,14 +205,16 @@ class QTask(object):
         self.update()
 
     def delete(self, purge=True):
-        """Delete this task on the server. Does nothing if it is already deleted.
+        """Delete this task on the server. Does nothing if it is already
+          deleted.
 
         :param bool purge: if True, delete also result and resource disks.
           Defaults to True.
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
 
         .. note:: *force* parameter in :meth:`qapy.connection.QApy.create_task`
            may be set to True in order to delete old tasks automatically.
@@ -222,21 +227,20 @@ class QTask(object):
 
         #change MissingDisk error to warnings,
         #since disks have to be deleted anyway
-
-        if purge and self._resourceDisk:
-                try:
-                    self._resourceDisk.delete()
-                except disk.MissingDiskException as e:
-                    warnings.warn(e.message)
-                self._resourceDisk = None
-
-        #user can't acess result disk, delete it in any case
-        if self._resultDisk:
+        if purge and self._resource_disk:
             try:
-                self._resultDisk.delete()
+                self._resource_disk.delete()
             except disk.MissingDiskException as e:
                 warnings.warn(e.message)
-            self._resultDisk = None
+            self._resource_disk = None
+
+        #user can't acess result disk, delete it in any case
+        if self._result_disk:
+            try:
+                self._result_disk.delete()
+            except disk.MissingDiskException as e:
+                warnings.warn(e.message)
+            self._result_disk = None
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
@@ -257,7 +261,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
         """
         if self._uuid is None:
             return self._status
@@ -272,32 +277,34 @@ class QTask(object):
 
         return self._status
 
-    def _update(self, jsonTask):
+    def _update(self, json_task):
         """Update this task from retrieved info."""
-        self._name = jsonTask['name']
-        self._profile = jsonTask['profile']
-        self._framecount = jsonTask.get('frameCount')
-        self._advanced_range = jsonTask.get('advancedRanges')
+        self._name = json_task['name']
+        self._profile = json_task['profile']
+        self._framecount = json_task.get('frameCount')
+        self._advanced_range = json_task.get('advancedRanges')
+        resource_disk_id = json_task['resourceDisk']
+        result_disk_id = json_task['resultDisk']
 
         try:
-            self._resourceDisk = disk.QDisk._retrieve(self._connection,
-                                                      jsonTask['resourceDisk'])
+            self._resource_disk = disk.QDisk._retrieve(self._connection,
+                                                       resource_disk_id)
         except disk.MissingDiskException:
-            self._resourceDisk = None
+            self._resource_disk = None
 
-        if jsonTask['resultDisk'] is not None:
+        if result_disk_id is not None:
             try:
-                self._resultDisk = disk.QDisk._retrieve(self._connection,
-                                                        jsonTask['resultDisk'])
+                self._result_disk = disk.QDisk._retrieve(self._connection,
+                                                         result_disk_id)
             except disk.MissingDiskException:
-                self._resultDisk = None
+                self._result_disk = None
 
-        self._uuid = jsonTask['id']
-        self._status = jsonTask['state']
+        self._uuid = json_task['id']
+        self._status = json_task['state']
 
-        if self._rescount < jsonTask['resultsCount']:
-            self._dirty= True
-        self._rescount = jsonTask['resultsCount']
+        if self._rescount < json_task['resultsCount']:
+            self._dirty = True
+        self._rescount = json_task['resultsCount']
 
     def wait(self, timeout=None):
         """Wait for this task until it is completed.
@@ -310,7 +317,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a valid
+          one
         """
         start = time.time()
         if self._uuid is None:
@@ -343,7 +351,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
 
         .. note:: To get the temporary results, call :meth:`results`.
         """
@@ -367,7 +376,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
 
         .. note:: To get the temporary results, call :meth:`results`.
         """
@@ -405,20 +415,19 @@ class QTask(object):
         """:type: :class:`~qapy.disk.QDisk`
 
         Represents resource files."""
-        if self._resourceDisk is None:
+        if self._resource_disk is None:
             _disk = disk.QDisk._create(self._connection,
-                                       "task {}".format(self._name),
                                        force=self._force,
                                        lock=False)
-            self._resourceDisk = _disk
+            self._resource_disk = _disk
 
-        return self._resourceDisk
+        return self._resource_disk
 
     @resources.setter
     def resources(self, value):
         """This is a setter."""
         #question delete current disk ?
-        self._resourceDisk = value
+        self._resource_disk = value
 
     def results(self):
         """Download results in *resdir*.
@@ -435,12 +444,12 @@ class QTask(object):
         if self._resdir is not None and not path.exists(self._resdir):
             os.makedirs(self._resdir)
 
-        if self._resultDisk is not None and \
-           self._resdir is not None and self._dirty :
-            for fInfo in self._resultDisk:
-                outpath = path.normpath(fInfo.name.lstrip('/'))
-                self._resultDisk.get_file(fInfo, path.join(self._resdir,
-                                                           outpath))
+        if self._result_disk is not None and \
+           self._resdir is not None and self._dirty:
+            for file_info in self._result_disk:
+                outpath = path.normpath(file_info.name.lstrip('/'))
+                self._result_disk.get_file(file_info, path.join(self._resdir,
+                                                                outpath))
 
         return self._resdir
 
@@ -453,7 +462,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
           :meth:`fresh_stdout` regularly.
@@ -479,7 +489,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
         """
         if self._uuid is None:
             return ""
@@ -502,7 +513,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
           :meth:`fresh_stderr` regularly.
@@ -528,7 +540,8 @@ class QTask(object):
 
         :raises HTTPError: unhandled http return code
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid one
+        :raises qapy.task.MissingTaskException: task does not represent a
+          valid one
         """
         if self._uuid is None:
             return ""
@@ -638,17 +651,17 @@ class QTask(object):
             for key, value in self.constants.items()
         ]
 
-        jsonTask = {
+        json_task = {
             'name': self._name,
             'profile': self._profile,
-            'resourceDisk': self._resourceDisk.name,
+            'resourceDisk': self._resource_disk.name,
             'constants': const_list
         }
         if self._advanced_range is not None:
-            jsonTask['advancedRanges'] = self._advanced_range
+            json_task['advancedRanges'] = self._advanced_range
         else:
-            jsonTask['frameCount'] = self._framecount
-        return jsonTask
+            json_task['frameCount'] = self._framecount
+        return json_task
 
     #context manager#
 
