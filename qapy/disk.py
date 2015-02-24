@@ -461,10 +461,7 @@ class QDisk(object):
     @add_mode.setter
     def add_mode(self, value):
         """useless docstring to please pylint"""
-        if isinstance(value, QUploadMode):
-            self._add_mode = value
-        else:
-            raise TypeError('add_mode must be a QUploadMode value')
+        self._add_mode = value
 
     @property
     def description(self):
