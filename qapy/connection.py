@@ -234,6 +234,39 @@ class QApy(object):
             ret.append(task2)
         return ret
 
+    def retrieve_disk(self, guid):
+        """Retrieve a :class:`~qapy.disk.QDisk` from its guid
+
+        :param str guid: Desired disk guid
+        :rtype: :class:`~qapi.disk.QDisk`
+        :returns: Existing disk defined by the given guid
+
+        :raises ValueError: no such disk
+        """
+
+        response = self._get(get_url('disk info', name=guid))
+        if response.status_code == 404:
+            raise ValueError('%s : %s' % (response.json()['message'], guid))
+        response.raise_for_status()
+        return QDisk(response.json(), self)
+
+    def create_disk(self, description, force=False, lock=False):
+        """Create a new :class:`~qapy.disk.QDisk`.
+
+        :param str description: a short description of the disk
+        :param bool force: delete an old unlocked disk
+          if maximum number of disks is reached
+        :param bool lock: prevents the disk to be removed
+          by a subsequent :meth:`create_disk` with force set to True
+
+        :rtype: :class:`qapy.disk.QDisk`
+        :returns: The created :class:`~qapy.disk.QDisk`.
+
+        :raises HTTPError: unhandled http return code
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        return QDisk._create(self, description, force, lock)
+
     def create_task(self, name, profile, frame_nbr, force=False):
         """Create a new :class:`~qapy.task.QTask`.
 
