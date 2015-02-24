@@ -7,7 +7,6 @@ import os.path as path
 import posixpath as ppath
 import os
 import threading
-from enum import Enum
 
 class QDisk(object):
     """Represents a resource/result disk on the cluster.
@@ -276,7 +275,7 @@ class QDisk(object):
 
         if mode is QUploadMode.blocking:
             return self._add_file(local, remote)
-        elif mode is QUploadMode.delayed:
+        elif mode is QUploadMode.lazy:
             self._filecache[remote] = local
         else:
             thread = threading.Thread(None, self._add_file, remote,
@@ -604,15 +603,13 @@ class QFileInfo(object):
         return template.format(self.creation, self.name, self.size,
                                self.directory)
 
-class QUploadMode(Enum):
+class QUploadMode(object):
     """How to add files on a :class:`QDisk`."""
     blocking = 0
     """Call to :func:`~QDisk.add_file` :func:`~QDisk.add_directory`
     or blocks until file is done uploading."""
     background = 1
     """Launch a background thread for uploading."""
-    delayed = 2
-    """Alias of lazy."""
     lazy = 2
     """Actual uploading is made by the :func:`~QDisk.sync` method call."""
 
