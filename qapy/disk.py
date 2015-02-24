@@ -460,7 +460,7 @@ class QDisk(object):
 
     @add_mode.setter
     def add_mode(self, value):
-        """useless docstring to please pylint"""
+        """Add mode setter"""
         self._add_mode = value
 
     @property
@@ -487,7 +487,7 @@ class QDisk(object):
 
     @description.setter
     def description(self, value):
-        """useless docstring to please pylint"""
+        """Description setter"""
         data = {"description" : value}
         resp = self._connection._put(get_url('disk info', name=self._name),
                                      json=data)
