@@ -5,6 +5,7 @@ from qapy.disk import QDisk
 from qapy.task import QTask
 import requests
 import sys
+from json import dumps as json_dumps
 
 if sys.version_info[0] >= 3: # module renamed in py3
     import configparser as config
@@ -106,7 +107,12 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
         """
-        ret = self._http.post(self.cluster + url, json=json,
+        if json != None:
+            if not 'headers' in kwargs:
+                kwargs['headers'] = dict()
+            kwargs['headers']['Content-Type'] = 'application/json'
+            kwargs['data'] = json_dumps(json)
+        ret = self._http.post(self.cluster + url,
                               timeout=self.timeout, **kwargs)
         if ret.status_code == 401:
             raise UnauthorizedException(self.auth)
@@ -133,8 +139,13 @@ class QApy(object):
             raise UnauthorizedException(self.auth)
         return ret
 
-    def _put(self, url, **kwargs):
+    def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
+        if json != None:
+            if not 'headers' in kwargs:
+                kwargs['headers'] = dict()
+            kwargs['headers']['Content-Type'] = 'application/json'
+            kwargs['data'] = json_dumps(json)
         ret = self._http.put(self.cluster + url,
                              timeout=self.timeout, **kwargs)
         if ret.status_code == 401:
