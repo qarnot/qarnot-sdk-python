@@ -147,7 +147,7 @@ class QDisk(object):
             raise MissingDiskException(response.json()['message'],
                                        self._name)
         elif response.status_code == 400:
-            raise ValueError('invalid file format : {}', extension)
+            raise ValueError('invalid file format : {0}', extension)
         else:
             response.raise_for_status()
 
@@ -210,8 +210,8 @@ class QDisk(object):
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
             else:
-                raise ValueError('{}: {}'.format(response.json()['message'],
-                                                 directory))
+                raise ValueError('{0}: {1}'.format(response.json()['message'],
+                                                   directory))
         elif response.status_code != 200:
             response.raise_for_status()
         return [QFileInfo(**f) for f in response.json()]
@@ -394,7 +394,7 @@ class QDisk(object):
 
         if response.status_code == 404:
             if response.json()['message'] != "No such disk":
-                raise ValueError('unknown file {}'.format(remote))
+                raise ValueError('unknown file {0}'.format(remote))
             else:
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
@@ -437,7 +437,7 @@ class QDisk(object):
 
         if response.status_code == 404:
             if response.json()['message'] != "No such disk":
-                raise ValueError('unknown file {}'.format(remote))
+                raise ValueError('unknown file {0}'.format(remote))
             else:
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
@@ -624,7 +624,7 @@ class MissingDiskException(Exception):
     """Non existant disk."""
     def __init__(self, message, name):
         super(MissingDiskException, self).__init__(
-            "{}: {} ".format(message, name))
+            "{0}: {1} ".format(message, name))
 
 class MaxDiskException(Exception):
     """Max number of disks reached."""

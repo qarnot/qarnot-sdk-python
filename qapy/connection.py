@@ -316,4 +316,4 @@ class UnauthorizedException(Exception):
     """Authorization given is not valid."""
     def __init__(self, auth):
         super(UnauthorizedException, self).__init__(
-            "invalid credentials : {}".format(auth))
+            "invalid credentials : {0}".format(auth))

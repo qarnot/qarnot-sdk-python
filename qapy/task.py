@@ -417,7 +417,7 @@ class QTask(object):
         Represents resource files."""
         if self._resource_disk is None:
             _disk = disk.QDisk._create(self._connection,
-                                       "Resources: \"{}\"".format(self._name),
+                                       "Resources: \"{0}\"".format(self._name),
                                        force=self._force,
                                        lock=False)
             self._resource_disk = _disk
@@ -683,7 +683,7 @@ class MissingTaskException(Exception):
     """Non existant task."""
     def __init__(self, message, name):
         super(MissingTaskException, self).__init__(
-            "{}: {}".format(message, name))
+            "{0}: {1}".format(message, name))
 
 class MaxTaskException(Exception):
     """Max number of tasks reached."""
