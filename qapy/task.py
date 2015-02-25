@@ -128,7 +128,7 @@ class QTask(object):
         self.wait()
         return self.results()
 
-    def submit_async(self, resdir):
+    def submit_async(self, resdir=None):
         """Submit task to the cluster if it is not already submitted.
 
         :param str resdir: path to a directory that will contain the results
