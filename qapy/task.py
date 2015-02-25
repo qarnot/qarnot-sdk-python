@@ -44,6 +44,7 @@ class QTask(object):
               with :meth:`qapy.connection.QApy.profile_info`.
         """
 
+        self.constraints = {}
         self._status = 'UnSubmitted' # RO property same for below
         self._uuid = None
         self._snapshots = False
@@ -651,12 +652,17 @@ class QTask(object):
             {'key': key, 'value': value}
             for key, value in self.constants.items()
         ]
+        constr_list = [
+            {'key': key, 'value': value}
+            for key, value in self.constraints.items()
+        ]
 
         json_task = {
             'name': self._name,
             'profile': self._profile,
             'resourceDisk': self._resource_disk.name,
-            'constants': const_list
+            'constants': const_list,
+            'constraints': constr_list
         }
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
