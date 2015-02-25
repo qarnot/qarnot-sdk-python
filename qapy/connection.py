@@ -234,6 +234,24 @@ class QApy(object):
             ret.append(task2)
         return ret
 
+    def retrieve_task(self, guid):
+        """Retrieve a :class:`qapy.task.QTask` from its guid
+
+        :param str guid: Desired task guid
+        :rtype: :class:`~qapi.task.QTask`
+        :returns: Existing task defined by the given guid
+
+        :raises ValueError: no such task
+        """
+
+        response = self._get(get_url('task update', uuid=guid))
+        if response.status_code == 404:
+            raise ValueError('%s : %s' % (response.json()['message'], guid))
+        response.raise_for_status()
+        temptask = QTask(self, "stub", None, 0, False)
+        temptask._update(response.json())
+        return temptask
+
     def retrieve_disk(self, guid):
         """Retrieve a :class:`~qapy.disk.QDisk` from its guid
 
