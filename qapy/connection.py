@@ -240,8 +240,9 @@ class QApy(object):
         :param str guid: Desired task guid
         :rtype: :class:`~qapi.task.QTask`
         :returns: Existing task defined by the given guid
-
         :raises ValueError: no such task
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises HTTPError: unhandled http return code
         """
 
         response = self._get(get_url('task update', uuid=guid))
@@ -258,8 +259,9 @@ class QApy(object):
         :param str guid: Desired disk guid
         :rtype: :class:`~qapi.disk.QDisk`
         :returns: Existing disk defined by the given guid
-
         :raises ValueError: no such disk
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises HTTPError: unhandled http return code
         """
 
         response = self._get(get_url('disk info', name=guid))
