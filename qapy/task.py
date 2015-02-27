@@ -52,6 +52,8 @@ class QTask(object):
         self._dirty = False
         self._rescount = -1
         self._advanced_range = None
+        self._snapshot_whitelist = None
+        self._snapshot_blacklist = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -205,11 +207,14 @@ class QTask(object):
 
         self.update()
 
-    def delete(self, purge=True):
+    def delete(self, purge_resources=True, purge_results=True):
         """Delete this task on the server. Does nothing if it is already
           deleted.
 
-        :param bool purge: if True, delete also result and resource disks.
+        :param bool purge_resources: if True, also delete resources disk.
+          Defaults to True.
+
+        :param bool purge_results: if True, also delete results disk.
           Defaults to True.
 
         :raises HTTPError: unhandled http return code
@@ -225,18 +230,16 @@ class QTask(object):
         if self._status == 'Submitted':
             self.abort()
 
-
         #change MissingDisk error to warnings,
         #since disks have to be deleted anyway
-        if purge and self._resource_disk:
+        if purge_resources and self._resource_disk:
             try:
                 self._resource_disk.delete()
             except disk.MissingDiskException as e:
                 warnings.warn(e.message)
             self._resource_disk = None
 
-        #user can't acess result disk, delete it in any case
-        if self._result_disk:
+        if purge_results and self._result_disk:
             try:
                 self._result_disk.delete()
             except disk.MissingDiskException as e:
@@ -645,6 +648,30 @@ class QTask(object):
         self._advanced_range = value
 
 
+    @property
+    def snapshot_whitelist(self):
+        """Snapshot white list
+        """
+        return self._snapshot_whitelist
+
+    @snapshot_whitelist.setter
+    def snapshot_whitelist(self, value):
+        """Setter for snapshot whitelist, this can only be set before tasks submission
+        """
+        self._snapshot_whitelist = value
+
+    @property
+    def snapshot_blacklist(self):
+        """Snapshot black list
+        """
+        return self._snapshot_blacklist
+
+    @snapshot_blacklist.setter
+    def snapshot_blacklist(self, value):
+        """Setter for snapshot blacklist, this can only be set before tasks submission
+        """
+        self._snapshot_blacklist = value
+
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
         self.resources #init resource_disk if not done
@@ -668,6 +695,11 @@ class QTask(object):
             json_task['advancedRanges'] = self._advanced_range
         else:
             json_task['frameCount'] = self._framecount
+
+        if self._snapshot_whitelist is not None:
+            json_task['snapshotWhitelist'] = self._snapshot_whitelist
+        if self._snapshot_blacklist is not None:
+            json_task['snapshotBlacklist'] = self._snapshot_blacklist
         return json_task
 
     #context manager#
