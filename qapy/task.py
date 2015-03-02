@@ -434,26 +434,34 @@ class QTask(object):
         #question delete current disk ?
         self._resource_disk = value
 
-    def results(self):
-        """Download results in *resdir*.
-        *resdir* must have been previously set.
+    def results(self, resdir = None):
+        """Download results in given *resdir* or in previously defined one if not given.
+        *resdir* could have been set in submit or resume methods.
 
         :rtype: :class:`str`
         :returns: The path containing task results.
 
-        .. warning:: Will override *resdir* (previously provided) content.
+        .. warning:: Will override *resdir* content.
+        :raise: **ValueError** -- no resdir set
         """
+
+        if resdir is None:
+            outdir = self._resdir
+        else:
+            outdir = resdir
+
+        if outdir is None:
+            raise ValueError("No resdir set")
         if self._uuid is not None:
             self.update()
 
-        if self._resdir is not None and not path.exists(self._resdir):
+        if not path.exists(self._resdir):
             os.makedirs(self._resdir)
 
-        if self._result_disk is not None and \
-           self._resdir is not None and self._dirty:
+        if self._result_disk is not None and self._dirty:
             for file_info in self._result_disk:
                 outpath = path.normpath(file_info.name.lstrip('/'))
-                self._result_disk.get_file(file_info, path.join(self._resdir,
+                self._result_disk.get_file(file_info, path.join(outdir,
                                                                 outpath))
 
         return self._resdir
