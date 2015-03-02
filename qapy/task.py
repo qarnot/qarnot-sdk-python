@@ -54,6 +54,7 @@ class QTask(object):
         self._advanced_range = None
         self._snapshot_whitelist = None
         self._snapshot_blacklist = None
+        self._execution_cluster = {}
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -289,7 +290,7 @@ class QTask(object):
         self._advanced_range = json_task.get('advancedRanges')
         resource_disk_id = json_task['resourceDisk']
         result_disk_id = json_task['resultDisk']
-
+        self._execution_cluster = json_task['executionCluster']
         try:
             self._resource_disk = disk.QDisk._retrieve(self._connection,
                                                        resource_disk_id)
@@ -679,6 +680,12 @@ class QTask(object):
         """Setter for snapshot blacklist, this can only be set before tasks submission
         """
         self._snapshot_blacklist = value
+
+    @property
+    def execution_cluster(self):
+        """Various statistics about running task
+        """
+        return self._execution_cluster
 
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
