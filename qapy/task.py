@@ -455,8 +455,8 @@ class QTask(object):
         if self._uuid is not None:
             self.update()
 
-        if not path.exists(self._resdir):
-            os.makedirs(self._resdir)
+        if not path.exists(outdir):
+            os.makedirs(outdir)
 
         if self._result_disk is not None and self._dirty:
             for file_info in self._result_disk:
