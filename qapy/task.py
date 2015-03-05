@@ -45,7 +45,7 @@ class QTask(object):
         """
 
         self.constraints = {}
-        self._status = 'UnSubmitted' # RO property same for below
+        self._state = 'UnSubmitted' # RO property same for below
         self._uuid = None
         self._snapshots = False
         self._resdir = None
@@ -137,7 +137,7 @@ class QTask(object):
         :param str resdir: path to a directory that will contain the results
 
         :rtype: :class:`string`
-        :returns: Status of the task (see :attr:`status`)
+        :returns: Status of the task (see :attr:`state`)
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -151,7 +151,7 @@ class QTask(object):
         """
         url = get_url('task force') if self._force else get_url('tasks')
         if self._uuid is not None:
-            return self._status
+            return self._state
         self.resources.sync()
         payload = self._to_json()
         resp = self._connection._post(url, json=payload)
@@ -184,7 +184,7 @@ class QTask(object):
         return self.results()
 
     def abort(self):
-        """Abort this task if running. Update status to Cancelled.
+        """Abort this task if running. Update state to Cancelled.
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -194,7 +194,8 @@ class QTask(object):
         .. warning:: If this task is already finished, a call to :meth:`abort`
           will delete it.
         """
-        if self._uuid is None or self._status != "Submitted":
+        self.update()
+        if self._uuid is None or self._state != "Submitted":
             return
 
         resp = self._connection._delete(
@@ -226,7 +227,7 @@ class QTask(object):
         """
         if self._uuid is None:
             return
-        if self._status == 'Submitted':
+        if self._state == 'Submitted':
             self.abort()
 
         #change MissingDisk error to warnings,
@@ -256,10 +257,10 @@ class QTask(object):
 
     def update(self):
         """Get the current state of this task from the cluster and return
-        its status.
+        its state.
 
         :rtype: :class:`string`
-        :returns: Status of the task (see :attr:`status`)
+        :returns: State of the task (see :attr:`state`)
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -267,7 +268,7 @@ class QTask(object):
           valid one
         """
         if self._uuid is None:
-            return self._status
+            return self._state
 
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
@@ -277,7 +278,7 @@ class QTask(object):
         raise_on_error(resp)
         self._update(resp.json())
 
-        return self._status
+        return self._state
 
     def _update(self, json_task):
         """Update this task from retrieved info."""
@@ -302,7 +303,7 @@ class QTask(object):
                 self._result_disk = None
 
         self._uuid = json_task['id']
-        self._status = json_task['state']
+        self._state = json_task['state']
 
         if self._rescount < json_task['resultsCount']:
             self._dirty = True
@@ -315,7 +316,7 @@ class QTask(object):
            (None => no timeout)
 
         :rtype: :class:`string`
-        :returns: Status of the task (see :attr:`status`)
+        :returns: State of the task (see :attr:`state`)
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -329,7 +330,7 @@ class QTask(object):
         nap = min(10, timeout) if timeout is not None else 10
 
         self.update()
-        while self._status == 'Submitted':
+        while self._state == 'Submitted':
             time.sleep(nap)
             self.update()
 
@@ -395,10 +396,11 @@ class QTask(object):
 
         self.update()
 
-    def status(self):
+    @property
+    def state(self):
         """:type: :class:`string`
 
-        Current task status.
+        State of the task.
 
         Value is in
            * 'UnSubmitted'
@@ -407,9 +409,11 @@ class QTask(object):
            * 'Success'
            * 'Failure'
 
-        Alias of :meth:`update`
+        .. warning::
+           this is the state of the task when the object was retrieved,
+           call :meth:`results` for up to date value.
         """
-        return self.update()
+        return self._state
 
     @property
     def resources(self):
