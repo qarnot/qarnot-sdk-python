@@ -1,8 +1,17 @@
 qapy package
 ============
 
-Submodules
-----------
+Qarnot API
+
+Module contents
+---------------
+
+.. automodule:: qapy
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. autoexception:: qapy.QApyException
 
 qapy.connection module
 ----------------------
@@ -30,10 +39,4 @@ qapy.task module
     :show-inheritance:
 
 
-Module contents
----------------
 
-.. automodule:: qapy
-    :members:
-    :undoc-members:
-    :show-inheritance:

@@ -2,7 +2,7 @@
 
 from __future__ import print_function
 
-from qapy import get_url
+from qapy import get_url, raise_on_error
 import os.path as path
 import posixpath as ppath
 import os
@@ -59,7 +59,7 @@ class QDisk(object):
         :rtype: :class:`QDisk`
         :returns: The created :class:`QDisk`.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         data = {
@@ -71,7 +71,7 @@ class QDisk(object):
         if response.status_code == 403:
             raise MaxDiskException(response.json()['message'])
         else:
-            response.raise_for_status()
+            raise_on_error(response)
 
         disk_id = response.json()
         return cls._retrieve(connection, disk_id['guid'])
@@ -89,7 +89,7 @@ class QDisk(object):
         :returns: The retrieved disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = connection._get(get_url('disk info', name=disk_id))
@@ -97,8 +97,7 @@ class QDisk(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
                                        disk_id)
-        elif response.status_code != 200:
-            response.raise_for_status()
+        raise_on_error(response)
 
         return cls(response.json(), connection)
 
@@ -108,7 +107,7 @@ class QDisk(object):
         """Delete the disk represented by this :class:`QDisk`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._delete(
@@ -117,8 +116,7 @@ class QDisk(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
                                        self._name)
-
-        response.raise_for_status()
+        raise_on_error(response)
 
     def get_archive(self, extension='zip', local=None):
         """Get an archive of this disk's content.
@@ -132,7 +130,7 @@ class QDisk(object):
          The filename of the retrieved archive.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: invalid extension format
         """
@@ -146,7 +144,7 @@ class QDisk(object):
         elif response.status_code == 400:
             raise ValueError('invalid file format : {0}', extension)
         else:
-            response.raise_for_status()
+            raise_on_error(response)
 
         local = local or ".".join([self._name, extension])
         if path.isdir(local):
@@ -165,7 +163,7 @@ class QDisk(object):
         :returns: List of the files on the disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
 
@@ -176,8 +174,7 @@ class QDisk(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
                                        self._name)
-        elif response.status_code != 200:
-            response.raise_for_status()
+        raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
     def directory(self, directory=''):
@@ -191,7 +188,7 @@ class QDisk(object):
         :returns: Files in the given directory on the :class:`QDisk`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
 
         .. note::
@@ -206,11 +203,7 @@ class QDisk(object):
             if response.json()['message'] == 'no such disk':
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
-            else:
-                raise ValueError('{0}: {1}'.format(response.json()['message'],
-                                                   directory))
-        elif response.status_code != 200:
-            response.raise_for_status()
+        raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
     def sync(self):
@@ -218,7 +211,7 @@ class QDisk(object):
         are on the disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
@@ -251,7 +244,7 @@ class QDisk(object):
         :type mode: :class:`QUploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
@@ -292,11 +285,8 @@ class QDisk(object):
         :returns: whether the file has been successfully added
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises TypeError: trying to write on a R/O disk
-        :raises IOError: user space quota reached
-        :raises ValueError: file could not be created
         """
 
         with open(filename, 'rb') as f_local:
@@ -308,12 +298,7 @@ class QDisk(object):
             if response.status_code == 404:
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
-            elif response.status_code == 403:
-                raise IOError(response.json()['message'])
-            elif response.status_code == 400:
-                raise ValueError(response.json()['message'])
-            else:
-                response.raise_for_status()
+            raise_on_error(response)
 
     def add_directory(self, local, remote="", mode=None):
         """ Add a directory to the disk. Does not follow symlinks.
@@ -334,10 +319,8 @@ class QDisk(object):
         :type mode: :class:`QUploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises TypeError: trying to write on a R/O disk
-        :raises IOError: user space quota reached
         :raises ValueError: one or more file(s) could not be created
         """
         for dirpath, _, files in os.walk(local):
@@ -363,7 +346,7 @@ class QDisk(object):
         :returns: The name of the output file.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
           (:exc:`KeyError` with disk[file] syntax)
@@ -390,13 +373,10 @@ class QDisk(object):
             stream=True)
 
         if response.status_code == 404:
-            if response.json()['message'] != "No such disk":
-                raise ValueError('unknown file {0}'.format(remote))
-            else:
+            if response.json()['message'] == "No such disk":
                 raise MissingDiskException(response.json()['message'],
                                            self._name)
-        else:
-            response.raise_for_status() #raise nothing if 2XX
+        raise_on_error(response)
 
         with open(local, 'wb') as f_local:
             for elt in response.iter_content(512):
@@ -412,7 +392,7 @@ class QDisk(object):
         :param str remote: the name of the remote file
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
           (:exc:`KeyError` with disk['file'] syntax)
@@ -433,13 +413,10 @@ class QDisk(object):
             get_url('update file', name=self._name, path=remote))
 
         if response.status_code == 404:
-            if response.json()['message'] != "No such disk":
-                raise ValueError('unknown file {0}'.format(remote))
-            else:
-                raise MissingDiskException(response.json()['message'],
+            if response.json()['message'] == "No such disk":
+               raise MissingDiskException(response.json()['message'],
                                            self._name)
-        else:
-            response.raise_for_status() #raise nothing if 2XX
+        raise_on_error(response)
 
     @property
     def name(self):
@@ -468,7 +445,7 @@ class QDisk(object):
         The disk's description.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         resp = self._connection._get(get_url('disk info', name=self._name))
@@ -476,8 +453,7 @@ class QDisk(object):
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
                                        self.name)
-        elif resp.status_code != 200:
-            resp.raise_for_status()
+        raise_on_error(resp)
 
         self._description = resp.json()['description']
 
@@ -493,8 +469,7 @@ class QDisk(object):
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
                                        self.name)
-        else:
-            resp.raise_for_status()
+        raise_on_error(resp)
 
     @property
     def locked(self):
@@ -505,7 +480,7 @@ class QDisk(object):
         set to True.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         resp = self._connection._get(get_url('disk info', name=self._name))
@@ -513,8 +488,7 @@ class QDisk(object):
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
                                        self.name)
-        elif resp.status_code != 200:
-            resp.raise_for_status()
+        raise_on_error(resp)
 
         self._locked = resp.json()['locked']
         return self._locked
@@ -528,9 +502,7 @@ class QDisk(object):
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
                                        self.name)
-        else:
-            resp.raise_for_status()
-
+        raise_on_error(resp)
 
     #operators#
 

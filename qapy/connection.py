@@ -1,6 +1,6 @@
 """Module describing a connection."""
 
-from qapy import get_url
+from qapy import get_url, raise_on_error
 from qapy.disk import QDisk
 from qapy.task import QTask
 import requests
@@ -159,10 +159,10 @@ class QApy(object):
         :returns: Requested informations.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         """
         resp = self._get(get_url('user'))
-        resp.raise_for_status()
+        raise_on_error(resp)
         ret = resp.json()
         return QUserInfo(ret)
 
@@ -175,11 +175,10 @@ class QApy(object):
 
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for detailse
         """
         response = self._get(get_url('disk folder'))
-        if response.status_code != 200:
-            response.raise_for_status()
+        raise_on_error(response)
         disks = [QDisk(data, self) for data in response.json()]
         return disks
 
@@ -190,10 +189,10 @@ class QApy(object):
         :returns: List of the names of profiles.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         """
         response = self._get(get_url('list profiles'))
-        response.raise_for_status()
+        raise_on_error(response)
         if response.status_code != 200:
             return None
         return [QProfile(prof) for prof in response.json()]
@@ -207,13 +206,13 @@ class QApy(object):
         :returns: The :class:`QProfile` corresponding to the requested profile.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises ValueError: no such profile
         """
         response = self._get(get_url('get profile', name=profile))
         if response.status_code == 404:
-            raise ValueError('%s : %s' % (response.json()['message'], profile))
-        response.raise_for_status()
+            raise QApyException('%s : %s' % (response.json()['message'], profile))
+        raise_on_error(response)
         return QProfile(response.json())
 
     def tasks(self):
@@ -223,10 +222,10 @@ class QApy(object):
         :returns: Tasks stored on the cluster owned by the user.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         """
         response = self._get(get_url('tasks'))
-        response.raise_for_status()
+        raise_on_error(response)
         ret = []
         for task in response.json():
             task2 = QTask(self, "stub", None, 0, False)
@@ -242,13 +241,13 @@ class QApy(object):
         :returns: Existing task defined by the given guid
         :raises ValueError: no such task
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=guid))
         if response.status_code == 404:
-            raise ValueError('%s : %s' % (response.json()['message'], guid))
-        response.raise_for_status()
+            raise QApyException('%s : %s' % (response.json()['message'], guid))
+        raise_on_error(response)
         temptask = QTask(self, "stub", None, 0, False)
         temptask._update(response.json())
         return temptask
@@ -261,13 +260,13 @@ class QApy(object):
         :returns: Existing disk defined by the given guid
         :raises ValueError: no such disk
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=guid))
         if response.status_code == 404:
-            raise ValueError('%s : %s' % (response.json()['message'], guid))
-        response.raise_for_status()
+            raise QApyException('%s : %s' % (response.json()['message'], guid))
+        raise_on_error(response)
         return QDisk(response.json(), self)
 
     def create_disk(self, description, force=False, lock=False):
@@ -282,7 +281,7 @@ class QApy(object):
         :rtype: :class:`qapy.disk.QDisk`
         :returns: The created :class:`~qapy.disk.QDisk`.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         return QDisk._create(self, description, force, lock)

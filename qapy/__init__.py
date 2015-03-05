@@ -1,8 +1,24 @@
-"""Rest API for submitting qarnot jobs in python."""
+"""Rest API for submitting qaffffffffrnot jobs in python."""
+
+class Toto():
+    """loooolllll"""
+    pass
 
 __all__ = ["task", "connection", "disk"]
 
 __version__ = '0.1.0'
+
+
+class QApyException(Exception):
+    """General QApy exception"""
+    def __init__(self, msg):
+        super(QApyException, self).__init__("Error : {0}".format(msg))
+
+def raise_on_error(response):
+    if response.status_code == 503:
+        pass #FIXME
+    if response.status_code != 200:
+        raise QApyException(response.json()['message'])
 
 def get_url(key, **kwargs):
     """Get and format the url for the given key.
@@ -29,5 +45,4 @@ def get_url(key, **kwargs):
     return urls[key].format(**kwargs)
 
 import qapy.connection
-
 QApy = qapy.connection.QApy

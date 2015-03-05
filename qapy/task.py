@@ -1,7 +1,7 @@
 """Module to handle a task."""
 
 import qapy.disk as disk
-from qapy import get_url
+from qapy import get_url, raise_on_error
 import time
 import warnings
 import os.path as path
@@ -67,14 +67,14 @@ class QTask(object):
         :rtype: QTask
         :returns: The retrieved task.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: no such task
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
-        resp.raise_for_status()
+        raise_on_error(resp)
         task = cls(connection, "stub", None, 0, False)
         task._update(resp.json())
         return task
@@ -89,7 +89,7 @@ class QTask(object):
         :rtype: :class:`string`
         :returns: Path to the directory containing the results (may be None).
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
@@ -116,7 +116,7 @@ class QTask(object):
         :rtype: :class:`string`
         :returns: Path to the directory containing the results (may be None).
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not exist
         :raises qapy.disk.MissingDiskException:
@@ -139,7 +139,7 @@ class QTask(object):
         :rtype: :class:`string`
         :returns: Status of the task (see :attr:`status`)
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
           resource disk is not a valid disk
@@ -162,8 +162,7 @@ class QTask(object):
             raise disk.MissingDiskException(msg)
         elif resp.status_code == 403:
             raise MaxTaskException(resp.json()['message'])
-        else:
-            resp.raise_for_status()
+        raise_on_error(resp)
         self._uuid = resp.json()['guid']
 
         if not isinstance(self._snapshots, bool):
@@ -187,7 +186,7 @@ class QTask(object):
     def abort(self):
         """Abort this task if running. Update status to Cancelled.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent
           a valid one
@@ -203,8 +202,7 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
+        raise_on_error(resp)
 
         self.update()
 
@@ -218,7 +216,7 @@ class QTask(object):
         :param bool purge_results: if True, also delete results disk.
           Defaults to True.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -231,6 +229,9 @@ class QTask(object):
         if self._status == 'Submitted':
             self.abort()
 
+        print "DELETE"
+        print "PURGE_RESOURCES : " + str(purge_resources)
+        print "PURGE_RESULTS : " + str(purge_results)
         #change MissingDisk error to warnings,
         #since disks have to be deleted anyway
         if purge_resources and self._resource_disk:
@@ -252,8 +253,7 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
+        raise_on_error(resp)
 
         self._uuid = None
 
@@ -264,7 +264,7 @@ class QTask(object):
         :rtype: :class:`string`
         :returns: Status of the task (see :attr:`status`)
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -276,8 +276,8 @@ class QTask(object):
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
             return MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
+
+        raise_on_error(resp)
         self._update(resp.json())
 
         return self._status
@@ -320,7 +320,7 @@ class QTask(object):
         :rtype: :class:`string`
         :returns: Status of the task (see :attr:`status`)
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a valid
           one
@@ -354,7 +354,7 @@ class QTask(object):
 
         :param int interval: the interval in seconds at which to take snapshots
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -371,15 +371,15 @@ class QTask(object):
             raise ValueError(interval)
         elif resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
+
+        raise_on_error(resp)
 
         self._snapshots = True
 
     def instant(self): #change to snapshot and other to snapshot_periodic ?
         """Make a snapshot of the current task.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -394,8 +394,7 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
+        raise_on_error(resp)
 
         self.update()
 
@@ -474,7 +473,7 @@ class QTask(object):
         :rtype: :class:`str`
         :returns: The standard ouput.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -489,8 +488,8 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
+
+        raise_on_error(resp)
 
         return resp.text
 
@@ -501,7 +500,7 @@ class QTask(object):
         :rtype: :class:`str`
         :returns: The new output since last call.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -513,9 +512,8 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
 
+        raise_on_error(resp)
         return resp.text
 
     def stderr(self):
@@ -525,7 +523,7 @@ class QTask(object):
         :rtype: :class:`str`
         :returns: The standard error.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -540,9 +538,8 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
 
+        raise_on_error(resp)
         return resp.text
 
     def fresh_stderr(self):
@@ -552,7 +549,7 @@ class QTask(object):
         :rtype: :class:`str`
         :returns: The new error messages since last call.
 
-        :raises HTTPError: unhandled http return code
+        :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
@@ -564,11 +561,9 @@ class QTask(object):
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
-        else:
-            resp.raise_for_status()
 
+        raise_on_error(resp)
         return resp.text
-
 
     @property
     def uuid(self):
