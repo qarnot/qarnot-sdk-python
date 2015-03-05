@@ -229,9 +229,6 @@ class QTask(object):
         if self._status == 'Submitted':
             self.abort()
 
-        print "DELETE"
-        print "PURGE_RESOURCES : " + str(purge_resources)
-        print "PURGE_RESULTS : " + str(purge_results)
         #change MissingDisk error to warnings,
         #since disks have to be deleted anyway
         if purge_resources and self._resource_disk:
