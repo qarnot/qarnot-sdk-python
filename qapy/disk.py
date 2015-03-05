@@ -31,8 +31,6 @@ class QDisk(object):
 
             * description: string, a short description of the disk
 
-            * readOnly: boolean, is the disk read only
-
         :param :class:`qapy.connection.QApy` connection:
           the cluster on which the disk is
         """
