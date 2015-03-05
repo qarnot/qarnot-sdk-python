@@ -1,8 +1,8 @@
 """Module describing a connection."""
 
-from qapy import get_url, raise_on_error
-from qapy.disk import QDisk
-from qapy.task import QTask
+from qapy import get_url, raise_on_error, QApyException
+from qapy.disk import QDisk, MissingDiskException
+from qapy.task import QTask, MissingTaskException
 import requests
 import sys
 from json import dumps as json_dumps
@@ -239,14 +239,14 @@ class QApy(object):
         :param str guid: Desired task guid
         :rtype: :class:`~qapi.task.QTask`
         :returns: Existing task defined by the given guid
-        :raises ValueError: no such task
+        :raises qapy.task.MissingTaskException: task does not exist
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=guid))
         if response.status_code == 404:
-            raise QApyException('%s : %s' % (response.json()['message'], guid))
+            raise MissingTaskException(response.json()['message'], guid)
         raise_on_error(response)
         temptask = QTask(self, "stub", None, 0, False)
         temptask._update(response.json())
@@ -259,13 +259,14 @@ class QApy(object):
         :rtype: :class:`~qapi.disk.QDisk`
         :returns: Existing disk defined by the given guid
         :raises ValueError: no such disk
+        :raises qapy.disk.MissingDiskException: disk does not exist
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=guid))
         if response.status_code == 404:
-            raise QApyException('%s : %s' % (response.json()['message'], guid))
+            raise MissingDiskException(response.json()['message'], guid)
         raise_on_error(response)
         return QDisk(response.json(), self)
 
