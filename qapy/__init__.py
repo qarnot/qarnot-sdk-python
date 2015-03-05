@@ -1,8 +1,4 @@
-"""Rest API for submitting qaffffffffrnot jobs in python."""
-
-class Toto():
-    """loooolllll"""
-    pass
+"""Rest API for submitting qarnot jobs in Python."""
 
 __all__ = ["task", "connection", "disk"]
 
@@ -16,7 +12,7 @@ class QApyException(Exception):
 
 def raise_on_error(response):
     if response.status_code == 503:
-        pass #FIXME
+        raise QApyException("Service Unavailable")
     if response.status_code != 200:
         raise QApyException(response.json()['message'])
 
