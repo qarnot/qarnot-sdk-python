@@ -504,6 +504,10 @@ class QDisk(object):
                                        self.name)
         raise_on_error(resp)
 
+
+    #tostring
+    def __str__(self):
+        return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ") + self.name + " - " + self.description
     #operators#
 
     def __getitem__(self, filename):
