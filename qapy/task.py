@@ -713,6 +713,9 @@ class QTask(object):
             json_task['snapshotBlacklist'] = self._snapshot_blacklist
         return json_task
 
+    def __str__(self):
+        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'.format(self.name, self._uuid, self._profile, self._framecount, self.state, (self._resource_disk.name if self._resource_disk is not None else ""), (self._result_disk.name if self._result_disk is not None else ""))
+
     #context manager#
 
     def __enter__(self):
