@@ -105,7 +105,7 @@ class QTask(object):
         self.wait(timeout=job_timeout)
         if job_timeout is not None:
             self.abort()
-        return self.results()
+        return self.download_results()
 
     def resume(self, resdir):
         """Resume waiting for this task if it is still in submitted mode.
@@ -129,7 +129,7 @@ class QTask(object):
         if self._uuid is None:
             return resdir
         self.wait()
-        return self.results()
+        return self.download_results()
 
     def submit_async(self, resdir=None):
         """Submit task to the cluster if it is not already submitted.
@@ -181,7 +181,7 @@ class QTask(object):
         .. warning:: Will override *resdir* content.
         """
         self._resdir = resdir
-        return self.results()
+        return self.download_results()
 
     def abort(self):
         """Abort this task if running. Update state to Cancelled.
@@ -432,10 +432,16 @@ class QTask(object):
     @resources.setter
     def resources(self, value):
         """This is a setter."""
-        #question delete current disk ?
         self._resource_disk = value
 
-    def results(self, resdir = None):
+    @property
+    def results(self):
+        """:type: :class:`~qapy.disk.QDisk`
+
+        Represents results files."""
+        return self._result_disk
+
+    def download_results(self, resdir = None):
         """Download results in given *resdir* or in previously defined one if not given.
         *resdir* could have been set in submit or resume methods.
 
