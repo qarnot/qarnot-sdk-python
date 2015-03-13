@@ -240,7 +240,7 @@ class QDisk(object):
         :param str remote: name of the remote file
           (defaults to *local*)
         :param mode: mode with which to add the file
-          (defaults to :attr:`~QDisk.add_mode`)
+          (defaults to :attr:`~QUploadMode.blocking` if not set by :attr:`QDisk.add_mode`)
         :type mode: :class:`QUploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
