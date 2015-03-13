@@ -226,6 +226,29 @@ class QDisk(object):
 
         self._filecache.clear()
 
+    def add_link(self, target, linkname):
+        """Create link between files on the disk
+
+        :param str target: name of the existing file to duplicate
+        :param str linkname: name of the created file
+
+        .. warning::
+           File size is counted twice, this method is meant to save upload time, not space.
+
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        data = [
+            {
+                "target" : target,
+                "linkName" : linkname
+            }
+        ]
+        url = get_url('link disk', name=self._name)
+        response = self._connection._post(url, json=data)
+        raise_on_error(response)
+
     def add_file(self, local, remote=None, mode=None):
         """Add a file on the disk.
 

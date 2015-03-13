@@ -25,6 +25,7 @@ def get_url(key, **kwargs):
         'disk info' : '/disks/{name}', # DELETE  -> remove #PUT -> update
         'get disk' : '/disks/archive/{name}.{ext}', #GET-> disk archive
         'tree disk' : '/disks/tree/{name}', #GET -> ls on the disk
+        'link disk' : '/disks/link/{name}', #POST -> create links
         'ls disk': '/disks/list/{name}/{path}', #GET -> ls on the dir {path}
         'update file' : '/disks/{name}/{path}', #POST; GET; DELETE
         'list profiles': '/tasks/profiles', #GET -> possible profiles
