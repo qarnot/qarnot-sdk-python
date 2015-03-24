@@ -570,18 +570,20 @@ class QDisk(object):
 # Utility Classes #
 ###################
 
-#uncomment me if named tuple are choosen
-#QFileInfo = collections.namedtuple('QFileInfo',
-#                                  ['creation_date', 'name', 'size', 'type'])
-#"""Named tuple containing the informations on a file"""
-
 class QFileInfo(object):
-    """Named tuple containing informations about a file."""
-    def __init__(self, creationDate, name, size, fileFlags, sha1Sum):
-        self.creation = datetime.datetime.strptime(creationDate,"%Y-%m-%dT%H:%M:%SZ")
+    """Informations about a file."""
+    def __init__(self, lastChange, name, size, fileFlags, sha1Sum):
+
+        self.lastchange = None
         """:type: :class:`datetime`
 
-        UTC Creation time of the file on the :class:`QDisk`."""
+        UTC Last change time of the file on the :class:`QDisk`."""
+
+        if isinstance(lastChange, datetime.datetime):
+            self.lastchange = lastChange
+        else:
+            self.lastchange = datetime.datetime.strptime(lastChange, "%Y-%m-%dT%H:%M:%SZ")
+
         self.name = name
         """:type: :class:`string`
 
@@ -600,9 +602,9 @@ class QFileInfo(object):
         SHA1 Sum of the file"""
 
     def __repr__(self):
-        template = 'QFileInfo(creation={0}, name={1}, size={2}, directory={3})'
-        return template.format(self.creation, self.name, self.size,
-                               self.directory)
+        template = 'QFileInfo(lastchange={0}, name={1}, size={2}, directory={3}, sha1sum={4})'
+        return template.format(self.lastchange, self.name, self.size,
+                               self.directory, self.sha1sum)
 
 class QUploadMode(object):
     """How to add files on a :class:`QDisk`."""
