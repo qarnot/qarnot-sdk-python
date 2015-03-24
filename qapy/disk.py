@@ -574,7 +574,7 @@ class QDisk(object):
 
 class QFileInfo(object):
     """Named tuple containing informations about a file."""
-    def __init__(self, creationDate, name, size, fileFlags):
+    def __init__(self, creationDate, name, size, fileFlags, md5Sum):
         self.creation = creationDate
         """:type: :class:`string`
 
@@ -591,6 +591,10 @@ class QFileInfo(object):
         """:type: :class:`bool`
 
         Is the file a directory."""
+
+        self.md5sum = md5Sum
+        """:type: :class:`string`
+        MD5 Sum of the file"""
 
     def __repr__(self):
         template = 'QFileInfo(creation={0}, name={1}, size={2}, directory={3})'
