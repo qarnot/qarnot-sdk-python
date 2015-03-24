@@ -152,7 +152,7 @@ class QTask(object):
         url = get_url('task force') if self._force else get_url('tasks')
         if self._uuid is not None:
             return self._state
-        self.resources.sync()
+        self.resources.flush()
         payload = self._to_json()
         resp = self._connection._post(url, json=payload)
 

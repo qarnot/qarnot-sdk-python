@@ -167,7 +167,7 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
 
-        self.sync()
+        self.flush()
 
         response = self._connection._get(
             get_url('tree disk', name=self._name))
@@ -195,7 +195,7 @@ class QDisk(object):
            Paths in results are relative to the *directory* argument.
         """
 
-        self.sync()
+        self.flush()
 
         response = self._connection._get(
             get_url('ls disk', name=self._name, path=directory))
@@ -206,7 +206,7 @@ class QDisk(object):
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
-    def sync(self):
+    def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
         are on the disk.
 
@@ -257,7 +257,7 @@ class QDisk(object):
 
         .. warning::
            In non blocking mode, you may receive an exception during an other
-           operation (like :meth:`sync`).
+           operation (like :meth:`flush`).
 
         :param str local: name of the local file
         :param str remote: name of the remote file
@@ -332,7 +332,7 @@ class QDisk(object):
 
         .. warning::
            In non blocking mode, you may receive an exception during an other
-           operation (like :meth:`sync`).
+           operation (like :meth:`flush`).
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
@@ -609,7 +609,7 @@ class QUploadMode(object):
     background = 1
     """Launch a background thread for uploading."""
     lazy = 2
-    """Actual uploading is made by the :func:`~QDisk.sync` method call."""
+    """Actual uploading is made by the :func:`~QDisk.flush` method call."""
 
 ##############
 # Exceptions #
