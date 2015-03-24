@@ -6,6 +6,9 @@ from qapy import get_url, raise_on_error
 import os.path as path
 import posixpath as ppath
 import os
+import os.path
+import hashlib
+import datetime
 import threading
 
 class QDisk(object):
@@ -575,8 +578,8 @@ class QDisk(object):
 class QFileInfo(object):
     """Named tuple containing informations about a file."""
     def __init__(self, creationDate, name, size, fileFlags, md5Sum):
-        self.creation = creationDate
-        """:type: :class:`string`
+        self.creation = datetime.datetime.strptime(creationDate.split('.')[0],"%Y-%m-%dT%H:%M:%S")
+        """:type: :class:`datetime`
 
         Timestamp at the creation of the file on the :class:`QDisk`."""
         self.name = name
