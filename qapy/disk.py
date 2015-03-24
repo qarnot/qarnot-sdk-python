@@ -578,10 +578,10 @@ class QDisk(object):
 class QFileInfo(object):
     """Named tuple containing informations about a file."""
     def __init__(self, creationDate, name, size, fileFlags, sha1Sum):
-        self.creation = datetime.datetime.strptime(creationDate.split('.')[0],"%Y-%m-%dT%H:%M:%S")
+        self.creation = datetime.datetime.strptime(creationDate,"%Y-%m-%dT%H:%M:%SZ")
         """:type: :class:`datetime`
 
-        Timestamp at the creation of the file on the :class:`QDisk`."""
+        UTC Creation time of the file on the :class:`QDisk`."""
         self.name = name
         """:type: :class:`string`
 
