@@ -210,10 +210,11 @@ class QDisk(object):
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
-    def sync(self, directory):
+    def sync(self, directory, verbose=False):
         """Synchronize a local directory with the remote disks.
 
         :param str directory: The local directory to use for synchronization
+        :param bool verbose: Print information about synchronization operations
 
         .. warning::
            Local changes are reflected on the server, a file present on the disk but
@@ -260,14 +261,40 @@ class QDisk(object):
         sadds = sorted(adds, key=lambda x : x.sha1sum)
         groupedadds = [list(g) for k,g in itertools.groupby(sadds, lambda x : x.sha1sum)]
 
-        for x in removes:
-            self.delete_file(x.name)
+        removelater = []
+        for f in removes:
+            try:
+                new = next(x for x in adds if x.sha1sum == f.sha1sum)
+                if verbose:
+                    print ("Rename: " + f.name +" to " + new.name + "Link & Delete")
+                removelater.append(f)
+            except StopIteration:
+                if verbose:
+                    print("Delete: " + f.name)
+                self.delete_file(f.name)
+
+        remote = self.list_files()
 
         for entry in groupedadds:
-            self.add_file(os.path.join(directory, entry[0].name[1:]), entry[0].name[1:])
+            try:
+                rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum)
+                if verbose:
+                    print ("Link: " + rem.name + " <- " + entry[0].name)
+                self.add_link(rem.name, entry[0].name)
+            except StopIteration:
+                if verbose:
+                    print ("Upload: " + entry[0].name)
+                self.add_file(os.path.join(directory, entry[0].name[1:]), entry[0].name[1:])
             if len(entry) > 1: #duplicate files
                 for link in entry[1:]:
+                    if verbose:
+                        print ("Link: " + entry[0].name + " <- " + link.name)
                     self.add_link(entry[0].name, link.name)
+
+        for f in removelater:
+            if verbose:
+                print ("Delete: " + f.name)
+            self.delete_file(f.name)
 
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
