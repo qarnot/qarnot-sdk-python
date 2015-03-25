@@ -10,6 +10,7 @@ import os.path
 import hashlib
 import datetime
 import threading
+import itertools
 
 class QDisk(object):
     """Represents a resource/result disk on the cluster.
@@ -256,13 +257,17 @@ class QDisk(object):
         adds = local - remote
         removes = remote - local
 
+        sadds = sorted(adds, key=lambda x : x.sha1sum)
+        groupedadds = [list(g) for k,g in itertools.groupby(sadds, lambda x : x.sha1sum)]
+
         for x in removes:
-            print ("Removing " + x.name)
             self.delete_file(x.name)
 
-        for x in adds:
-            print ("Adding " + x.name)
-            self.add_file(os.path.join(directory, x.name[1:]), x.name[1:])
+        for entry in groupedadds:
+            self.add_file(os.path.join(directory, entry[0].name[1:]), entry[0].name[1:])
+            if len(entry) > 1: #duplicate files
+                for link in entry[1:]:
+                    self.add_link(entry[0].name, link.name)
 
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
