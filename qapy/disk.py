@@ -281,7 +281,7 @@ class QDisk(object):
             return qfi
 
         localfiles = []
-        for name,filepath in files:
+        for name,filepath in files.iteritems():
             qfi = create_qfi(name, filepath)
             localfiles.append(qfi)
 
