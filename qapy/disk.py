@@ -209,6 +209,61 @@ class QDisk(object):
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
+    def sync(self, directory):
+        """Synchronize a local directory with the remote disks.
+
+        :param str directory: The local directory to use for synchronization
+
+        .. warning::
+           Local changes are reflected on the server, a file present on the disk but
+           not in the local directory will be deleted from the disk.
+
+           A file present in the directory but not in the disk will be uploaded.
+
+        .. note::
+           The following parameters are used to determine wether synchronization is required :
+
+              * name
+              * size
+              * sha1sum
+        """
+        def generate_file_sha1(rootdir, filename, blocksize=2**20):
+            m = hashlib.sha1()
+            with open( os.path.join(rootdir, filename) , "rb" ) as f:
+                while True:
+                    buf = f.read(blocksize)
+                    if not buf:
+                        break
+                    m.update( buf )
+            return m.hexdigest()
+
+        if not directory.endswith('/'):
+            directory = directory + '/'
+
+        localfiles = []
+        for root, subdirs, files in os.walk(directory):
+            for x in files:
+                name = os.path.join(root, x)[len(directory) - 1:]
+                t = os.path.getmtime(os.path.join(root, x))
+                dt = datetime.datetime.utcfromtimestamp(t)
+                dt = dt.replace(microsecond = 0)
+                s = os.stat(os.path.join(root, x)).st_size
+                qfi = QFileInfo(dt, name, s, "file", generate_file_sha1(root, x))
+                localfiles.append(qfi)
+        local = set(localfiles)
+        remote = set(self.list_files())
+
+        adds = local - remote
+        removes = remote - local
+
+        for x in removes:
+            print ("Removing " + x.name)
+            self.delete_file(x.name)
+
+        for x in adds:
+            print ("Adding " + x.name)
+            self.add_file(os.path.join(directory, x.name[1:]), x.name[1:])
+
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
         are on the disk.
@@ -605,6 +660,18 @@ class QFileInfo(object):
         template = 'QFileInfo(lastchange={0}, name={1}, size={2}, directory={3}, sha1sum={4})'
         return template.format(self.lastchange, self.name, self.size,
                                self.directory, self.sha1sum)
+
+    def __eq__(self, other):
+        return (self.name == other.name and
+                self.size == other.size and
+                self.directory == other.directory and
+                self.sha1sum == other.sha1sum)
+
+    def __hash__(self):
+        return (hash(self.name) ^
+                hash(self.size) ^
+                hash(self.directory) ^
+                hash(self.sha1sum))
 
 class QUploadMode(object):
     """How to add files on a :class:`QDisk`."""
