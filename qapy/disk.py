@@ -210,7 +210,7 @@ class QDisk(object):
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
-    def sync(self, directory, verbose=False):
+    def syncdir(self, directory, verbose=False):
         """Synchronize a local directory with the remote disks.
 
         :param str directory: The local directory to use for synchronization
@@ -229,9 +229,41 @@ class QDisk(object):
               * size
               * sha1sum
         """
-        def generate_file_sha1(rootdir, filename, blocksize=2**20):
+        if not directory.endswith('/'):
+            directory = directory + '/'
+
+        filesdict = {}
+        for root, subdirs, files in os.walk(directory):
+            for x in files:
+                filepath = os.path.join(root, x)
+                name = filepath[len(directory) - 1:]
+                filesdict[name] = filepath
+        self.syncfiles(filesdict, verbose)
+
+    def syncfiles(self, files, verbose=False):
+        """Synchronize files  with the remote disks.
+
+        :param dict files: Dictionnary of synchronized files
+        :param bool verbose: Print information about synchronization operations
+
+        Dictionnary key is the remote file path while value is the local file path.
+
+        .. warning::
+           Local changes are reflected on the server, a file present on the disk but
+           not in the local directory will be deleted from the disk.
+
+           A file present in the directory but not in the disk will be uploaded.
+
+        .. note::
+           The following parameters are used to determine wether synchronization is required :
+
+              * name
+              * size
+              * sha1sum
+        """
+        def generate_file_sha1(filepath, blocksize=2**20):
             m = hashlib.sha1()
-            with open( os.path.join(rootdir, filename) , "rb" ) as f:
+            with open(filepath, "rb") as f:
                 while True:
                     buf = f.read(blocksize)
                     if not buf:
@@ -239,19 +271,20 @@ class QDisk(object):
                     m.update( buf )
             return m.hexdigest()
 
-        if not directory.endswith('/'):
-            directory = directory + '/'
+        def create_qfi(name, filepath):
+            t = os.path.getmtime(filepath)
+            dt = datetime.datetime.utcfromtimestamp(t)
+            dt = dt.replace(microsecond = 0)
+            s = os.stat(filepath).st_size
+            qfi = QFileInfo(dt, name, s, "file", generate_file_sha1(filepath))
+            qfi.filepath = filepath
+            return qfi
 
         localfiles = []
-        for root, subdirs, files in os.walk(directory):
-            for x in files:
-                name = os.path.join(root, x)[len(directory) - 1:]
-                t = os.path.getmtime(os.path.join(root, x))
-                dt = datetime.datetime.utcfromtimestamp(t)
-                dt = dt.replace(microsecond = 0)
-                s = os.stat(os.path.join(root, x)).st_size
-                qfi = QFileInfo(dt, name, s, "file", generate_file_sha1(root, x))
-                localfiles.append(qfi)
+        for name,filepath in files:
+            qfi = create_qfi(name, filepath)
+            localfiles.append(qfi)
+
         local = set(localfiles)
         remote = set(self.list_files())
 
@@ -284,7 +317,7 @@ class QDisk(object):
             except StopIteration:
                 if verbose:
                     print ("Upload: " + entry[0].name)
-                self.add_file(os.path.join(directory, entry[0].name[1:]), entry[0].name[1:])
+                self.add_file(entry[0].filepath, entry[0].name)
             if len(entry) > 1: #duplicate files
                 for link in entry[1:]:
                     if verbose:
