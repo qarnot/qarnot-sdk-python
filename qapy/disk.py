@@ -272,6 +272,8 @@ class QDisk(object):
             return m.hexdigest()
 
         def create_qfi(name, filepath):
+            if not name.startswith('/'):
+                name = '/' + name
             t = os.path.getmtime(filepath)
             dt = datetime.datetime.utcfromtimestamp(t)
             dt = dt.replace(microsecond = 0)
