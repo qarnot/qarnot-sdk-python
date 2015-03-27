@@ -195,7 +195,7 @@ class QTask(object):
           will delete it.
         """
         self.update()
-        if self._uuid is None or self._state in ["None", "Cancelled", "Success", "Failure"]:
+        if self._uuid is None or self._state in ["None", "Cancelled", "Success", "Failure", "DownloadingResults"]:
             return
 
         resp = self._connection._delete(
@@ -330,7 +330,7 @@ class QTask(object):
         nap = min(10, timeout) if timeout is not None else 10
 
         self.update()
-        while self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
+        while self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting', 'DownloadingResults']:
             time.sleep(nap)
             self.update()
 
