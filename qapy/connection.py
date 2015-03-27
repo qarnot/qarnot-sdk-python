@@ -344,7 +344,7 @@ class QUserInfo(object):
         self.maxRunningTask = info['maxRunningTask']
         """:type: :class:`int`
 
-        Maximum number of tasks in 'Submitted' state."""
+        Maximum number of running tasks."""
         self.maxInstances = info['maxInstances']
         """:type: :class:`int`
 
