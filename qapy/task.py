@@ -195,7 +195,7 @@ class QTask(object):
           will delete it.
         """
         self.update()
-        if self._uuid is None or self._state != "Submitted":
+        if self._uuid is None or self._state in ["None", "Cancelled", "Success", "Failure"]:
             return
 
         resp = self._connection._delete(
@@ -227,7 +227,7 @@ class QTask(object):
         """
         if self._uuid is None:
             return
-        if self._state == 'Submitted':
+        if self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
             self.abort()
 
         #change MissingDisk error to warnings,
@@ -330,7 +330,7 @@ class QTask(object):
         nap = min(10, timeout) if timeout is not None else 10
 
         self.update()
-        while self._state == 'Submitted':
+        while self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
             time.sleep(nap)
             self.update()
 
@@ -405,6 +405,10 @@ class QTask(object):
         Value is in
            * 'UnSubmitted'
            * 'Submitted'
+           * 'PartiallyDispatched'
+           * 'FullyDispatched'
+           * 'PartiallyExecuting'
+           * 'FullyExecuting'
            * 'Cancelled'
            * 'Success'
            * 'Failure'
