@@ -403,15 +403,16 @@ class QTask(object):
         State of the task.
 
         Value is in
-           * 'UnSubmitted'
-           * 'Submitted'
-           * 'PartiallyDispatched'
-           * 'FullyDispatched'
-           * 'PartiallyExecuting'
-           * 'FullyExecuting'
-           * 'Cancelled'
-           * 'Success'
-           * 'Failure'
+           * UnSubmitted
+           * Submitted
+           * PartiallyDispatched
+           * FullyDispatched
+           * PartiallyExecuting
+           * FullyExecuting
+           * DownloadingResults
+           * Cancelled
+           * Success
+           * Failure
 
         .. warning::
            this is the state of the task when the object was retrieved,
