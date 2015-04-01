@@ -55,6 +55,7 @@ class QTask(object):
         self._snapshot_whitelist = None
         self._snapshot_blacklist = None
         self._execution_cluster = {}
+        self._error_reason = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -289,6 +290,8 @@ class QTask(object):
         resource_disk_id = json_task['resourceDisk']
         result_disk_id = json_task['resultDisk']
         self._execution_cluster = json_task['executionCluster']
+
+        self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
         try:
             self._resource_disk = disk.QDisk._retrieve(self._connection,
                                                        resource_disk_id)
@@ -693,6 +696,12 @@ class QTask(object):
         """Various statistics about running task
         """
         return self._execution_cluster
+
+    @property
+    def error_reason(self):
+        """Error reason if any, empty string if none
+        """
+        return self._error_reason
 
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
