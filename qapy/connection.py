@@ -305,11 +305,11 @@ class QApy(object):
         """
         return QTask(self, name, profile, frame_nbr, force)
 
-    def create_notification(self, destination, typelist, filterkey, filtervalue, masklist, event, filtertoregex=None, filterfromregex=None):
+    def create_notification(self, destination, ntype, filterkey, filtervalue, masklist, event, filtertoregex=None, filterfromregex=None):
         """Create a new :class:`qapy.notification.QNotification`.
 
         :param str destination: e-mail address
-        :param list(str) typelist: list of notification to trigger (currently "EMAIL" only)
+        :param str ntype: type of notification to trigger (currently "EMAIL" only)
         :param str filterkey: key to watch on tasks
         :param str filtervalue: regex to match for the filter key
         :param list(str) masklist: state changes to watch for among "None", "Submitted", "PartiallyDispatched", "FullyDispatched", "PartiallyExecuting", "FullyExecuting", "Cancelled", "Success", "Failure"
@@ -318,7 +318,7 @@ class QApy(object):
         :param str filterfromregex: (optional) Regex to match the "From" value on a state change in filter mode, default to ".*"
         """
 
-        return QNotification._create(self, destination, typelist, filterkey, filtervalue, masklist, event, filtertoregex, filterfromregex)
+        return QNotification._create(self, destination, ntype, filterkey, filtervalue, masklist, event, filtertoregex, filterfromregex)
 
     def notifications(self):
         """Get the list of notifications for the user

@@ -12,7 +12,7 @@ class QNotification(object):
                 must contain following keys:
 
                   * id: string, the notification's GUID
-                  * type: list of strings, notification type
+                  * type: string, notification type
                   * destination: string, destination (email)
                   * filterKey: string, key to watch on tasks
                   * filterValue: string, regex to match for the filter key
@@ -38,10 +38,10 @@ class QNotification(object):
         self._filtertoregex = jsonnotification['filterToRegex'] if 'filterToRegex' in jsonnotification else None
 
     @classmethod
-    def _create(cls, connection, destination, typelist, filterkey, filtervalue, masklist, event, filtertoregex=None, filterfromregex=None):
-        for x in typelist:
-            if x not in ["EMAIL"]:
-                raise QApyException("Invalid notification type")
+    def _create(cls, connection, destination, ntype, filterkey, filtervalue, masklist, event, filtertoregex=None, filterfromregex=None):
+        """Create a new QNotification"""
+        if ntype not in ["EMAIL"]:
+            raise QApyException("Invalid notification type")
 
         for x in masklist:
             if x not in ["None", "Submitted", "PartiallyDispatched", \
@@ -54,7 +54,7 @@ class QNotification(object):
         data = {
             "destination" : destination,
             "mask" : ', '.join(masklist),
-            "type" : ', '.join(typelist),
+            "type" : ntype,
             "filterKey" : filterkey,
             "filterValue" : filtervalue,
             "event" : event
@@ -83,6 +83,6 @@ class QNotification(object):
 
     def __str__(self):
         return '{0} - {1} - {2} - {3} - {4}={5} - {6} - Event:{7} {8}'.format(self._id, self._type, self._destination, self._mask,
-                                                    self._filterkey, self._filtervalue, self._event,
-                                                    "To: " + self._filtertoregex if self._filtertoregex is not None else "",
-                                                    "From: " + self._filterfromregex if self._filterfromregex is not None else "")
+                                                                              self._filterkey, self._filtervalue, self._event,
+                                                                              "To: " + self._filtertoregex if self._filtertoregex is not None else "",
+                                                                              "From: " + self._filterfromregex if self._filterfromregex is not None else "")
