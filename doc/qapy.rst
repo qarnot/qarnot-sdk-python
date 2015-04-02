@@ -38,5 +38,12 @@ qapy.task module
     :undoc-members:
     :show-inheritance:
 
+qapy.notification module
+----------------
+
+.. automodule:: qapy.notification
+    :members:
+    :undoc-members:
+    :show-inheritance:
 
 

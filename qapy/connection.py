@@ -3,6 +3,7 @@
 from qapy import get_url, raise_on_error, QApyException
 from qapy.disk import QDisk, MissingDiskException
 from qapy.task import QTask, MissingTaskException
+from qapy.notification import QNotification
 import requests
 import sys
 from json import dumps as json_dumps
@@ -304,7 +305,20 @@ class QApy(object):
         """
         return QTask(self, name, profile, frame_nbr, force)
 
+    def create_notification(self, destination, typelist, filterkey, filtervalue, masklist, event, filtertoregex=None, filterfromregex=None):
+        """Create a new :class:`qapy.notification.QNotification`.
 
+        :param str destination: e-mail address
+        :param list(str) typelist: list of notification to trigger (currently "EMAIL" only)
+        :param str filterkey: key to watch on tasks
+        :param str filtervalue: regex to match for the filter key
+        :param list(str) masklist: state changes to watch for among "None", "Submitted", "PartiallyDispatched", "FullyDispatched", "PartiallyExecuting", "FullyExecuting", "Cancelled", "Success", "Failure"
+        :param str event: kind of event to act on among "Enter", "Leave", "Both" or "Filter" for the filter mode.
+        :param str filtertoregex: (optional) Regex to match the "To" value on a state change in filter mode, default to ".*"
+        :param str filterfromregex: (optional) Regex to match the "From" value on a state change in filter mode, default to ".*"
+        """
+
+        return QNotification._create(self, destination, typelist, filterkey, filtervalue, masklist, event, filtertoregex, filterfromregex)
 ###################
 # utility Classes #
 ###################

@@ -1,6 +1,6 @@
 """Rest API for submitting qarnot jobs in Python."""
 
-__all__ = ["task", "connection", "disk"]
+__all__ = ["task", "connection", "disk", "notification"]
 
 __version__ = '0.1.0'
 
@@ -37,7 +37,9 @@ def get_url(key, **kwargs):
         'task instant' : '/tasks/{uuid}/snapshot', #POST-> get a snapshot
         'task stdout': '/tasks/{uuid}/stdout', #GET -> task stdout
         'task stderr': '/tasks/{uuid}/stderr', #GET -> task stderr
-        'user': '/info' #GET -> user info
+        'user': '/info', #GET -> user info
+        'notification' : '/notifications', #GET -> notifications list #POST -> add notification
+        'notification update' : '/notifications/{uuid}' #GET -> notification info, #DELETE -> remove notification
     }
     return urls[key].format(**kwargs)
 
