@@ -333,6 +333,21 @@ class QApy(object):
         notifications = [QNotification(data, self) for data in response.json()]
         return notifications
 
+    def retrieve_notification(self, notification_guid):
+        """Retrieve a :class:~qapy.notification.QNotification` from it's guid
+
+        :param str notification_guid: Id of the notification
+        :rtype: :class:`~qapi.notification.QNotification`
+        :returns: Existing notification defined by the given guid
+
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.QApyException: API general error, see message for details
+        """
+        response = self._get(get_url('notification update', uuid=notification_guid))
+        raise_on_error(response)
+        return QNotification(response.json(), self)
+
+
 ###################
 # utility Classes #
 ###################

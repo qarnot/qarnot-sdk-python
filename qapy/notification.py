@@ -69,3 +69,20 @@ class QNotification(object):
         response = connection._post(url, json=data)
         raise_on_error(response)
         notification_id = response.json()['guid']
+
+    def delete(self):
+        """Delete the notification represented by this :class:`QNotification`.
+
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+
+        response = self._connection._delete(
+            get_url('notification update', uuid=self._id))
+        raise_on_error(response)
+
+    def __str__(self):
+        return '{0} - {1} - {2} - {3} - {4}={5} - {6} - Event:{7} {8}'.format(self._id, self._type, self._destination, self._mask,
+                                                    self._filterkey, self._filtervalue, self._event,
+                                                    "To: " + self._filtertoregex if self._filtertoregex is not None else "",
+                                                    "From: " + self._filterfromregex if self._filterfromregex is not None else "")
