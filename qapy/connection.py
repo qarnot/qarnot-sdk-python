@@ -319,6 +319,20 @@ class QApy(object):
         """
 
         return QNotification._create(self, destination, typelist, filterkey, filtervalue, masklist, event, filtertoregex, filterfromregex)
+
+    def notifications(self):
+        """Get the list of notifications for the user
+
+        :rtype: List of :class:~qapy.task.QNotification`.
+        :returns: List of all notifications belonging to the user
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.QApyException: API general error, see message for details
+        """
+        response = self._get(get_url('notification'))
+        raise_on_error(response)
+        notifications = [QNotification(data, self) for data in response.json()]
+        return notifications
+
 ###################
 # utility Classes #
 ###################
