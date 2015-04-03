@@ -312,7 +312,7 @@ class QApy(object):
         :param str ntype: type of notification to trigger (currently "EMAIL" only)
         :param str filterkey: key to watch on tasks
         :param str filtervalue: regex to match for the filter key
-        :param list(str) masklist: state changes to watch for among "None", "Submitted", "PartiallyDispatched", "FullyDispatched", "PartiallyExecuting", "FullyExecuting", "Cancelled", "Success", "Failure"
+        :param list(str) masklist: state changes to watch for among "None", "Submitted", "PartiallyDispatched", "FullyDispatched", "PartiallyExecuting", "FullyExecuting", "Cancelled", "Success", "Failure", "DownloadingResults"
         :param str event: kind of event to act on among "Enter", "Leave", "Both" or "Filter" for the filter mode.
         :param str filtertoregex: (optional) Regex to match the "To" value on a state change in filter mode, default to ".*"
         :param str filterfromregex: (optional) Regex to match the "From" value on a state change in filter mode, default to ".*"

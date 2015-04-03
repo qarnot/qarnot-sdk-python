@@ -46,7 +46,7 @@ class QNotification(object):
         for x in masklist:
             if x not in ["None", "Submitted", "PartiallyDispatched", \
                          "FullyDispatched", "PartiallyExecuting", "FullyExecuting", \
-                         "Cancelled", "Success", "Failure"]:
+                         "Cancelled", "Success", "Failure", "DownloadingResults"]:
                 raise QApyException("Invalid mak list type")
 
         if event not in ["Enter", "Leave", "Both", "Filter"]:
