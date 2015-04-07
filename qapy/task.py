@@ -54,6 +54,8 @@ class QTask(object):
         self._advanced_range = None
         self._snapshot_whitelist = None
         self._snapshot_blacklist = None
+        self._results_whitelist = None
+        self._results_blacklist = None
         self._execution_cluster = {}
         self._error_reason = None
 
@@ -692,6 +694,30 @@ class QTask(object):
         self._snapshot_blacklist = value
 
     @property
+    def results_whitelist(self):
+        """Results whitelist
+        """
+        return self._results_whitelist
+
+    @results_whitelist.setter
+    def results_whitelist(self, value):
+        """Setter for results whitelist, this can only be set before tasks submission
+        """
+        self._results_whitelist = value
+
+    @property
+    def results_blacklist(self):
+        """Results blacklist
+        """
+        return self._results_blacklist
+
+    @results_blacklist.setter
+    def results_blacklist(self, value):
+        """Setter for results blacklist, this can only be set before tasks submission
+        """
+        self._results_blacklist = value
+
+    @property
     def execution_cluster(self):
         """Various statistics about running task
         """
@@ -731,6 +757,10 @@ class QTask(object):
             json_task['snapshotWhitelist'] = self._snapshot_whitelist
         if self._snapshot_blacklist is not None:
             json_task['snapshotBlacklist'] = self._snapshot_blacklist
+        if self._results_whitelist is not None:
+            json_task['resultsWhitelist'] = self._results_whitelist
+        if self._results_blacklist is not None:
+            json_task['resultsBlacklist'] = self._results_blacklist
         return json_task
 
     def __str__(self):
