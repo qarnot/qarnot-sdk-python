@@ -112,6 +112,12 @@ class QNotification(object):
 
 
     @property
+    def id(self):
+        """Id Getter
+        """
+        return self._id
+
+    @property
     def destination(self):
         """Destination getter
         """
