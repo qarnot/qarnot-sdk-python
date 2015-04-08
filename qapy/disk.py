@@ -566,6 +566,23 @@ class QDisk(object):
                                            self._name)
         raise_on_error(response)
 
+    def commit(self):
+        """Replicate local changes on the current object instance to the REST API
+
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        data = {
+            "description" : self._description,
+            "locked" : self._locked
+            }
+        resp = self._connection._put(get_url('disk info', name=self._name),
+                                     json=data)
+        if resp.status_code == 404:
+            raise MissingDiskException(resp.json()['message'],
+                                       self.name)
+        raise_on_error(resp)
+
     @property
     def name(self):
         """:type: :class:`string`
@@ -596,28 +613,12 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        resp = self._connection._get(get_url('disk info', name=self._name))
-
-        if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'],
-                                       self.name)
-        raise_on_error(resp)
-
-        self._description = resp.json()['description']
-
         return self._description
 
     @description.setter
     def description(self, value):
         """Description setter"""
-        data = {"description" : value}
-        resp = self._connection._put(get_url('disk info', name=self._name),
-                                     json=data)
-
-        if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'],
-                                       self.name)
-        raise_on_error(resp)
+        self._description = value
 
     @property
     def locked(self):
@@ -626,32 +627,13 @@ class QDisk(object):
         The disk's lock state. If True, prevents the disk to be removed
         by a subsequent :meth:`qapy.connection.QApy.create_task` with *force*
         set to True.
-
-        :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        resp = self._connection._get(get_url('disk info', name=self._name))
-
-        if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'],
-                                       self.name)
-        raise_on_error(resp)
-
-        self._locked = resp.json()['locked']
         return self._locked
 
     @locked.setter
     def locked(self, value):
         """Change disk's lock state."""
-        data = {"locked" : value}
-        resp = self._connection._put(get_url('disk info', name=self._name),
-                                     json=data)
-        if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'],
-                                       self.name)
-        raise_on_error(resp)
-
+        self._locked = value
 
     #tostring
     def __str__(self):
