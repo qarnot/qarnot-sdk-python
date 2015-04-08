@@ -39,7 +39,7 @@ def get_url(key, **kwargs):
         'task stderr': '/tasks/{uuid}/stderr', #GET -> task stderr
         'user': '/info', #GET -> user info
         'notification' : '/notifications', #GET -> notifications list #POST -> add notification
-        'notification update' : '/notifications/{uuid}' #GET -> notification info, #DELETE -> remove notification
+        'notification update' : '/notifications/{uuid}' #GET -> notification info, #DELETE -> remove notification #PUT -> update
     }
     return urls[key].format(**kwargs)
 

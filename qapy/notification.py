@@ -68,7 +68,7 @@ class QNotification(object):
         url = get_url('notification')
         response = connection._post(url, json=data)
         raise_on_error(response)
-        notification_id = response.json()['guid']
+        self._id = response.json()['guid']
 
     def delete(self):
         """Delete the notification represented by this :class:`QNotification`.
@@ -86,3 +86,123 @@ class QNotification(object):
                                                                               self._filterkey, self._filtervalue, self._event,
                                                                               "To: " + self._filtertoregex if self._filtertoregex is not None else "",
                                                                               "From: " + self._filterfromregex if self._filterfromregex is not None else "")
+
+
+    def commit(self):
+        """Replicate local changes on the current object instance to the REST API
+
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        data = {
+            "destination" : self._destination,
+            "mask" : self._mask,
+            "type" : self._type,
+            "filterKey" : self._filterkey,
+            "filterValue" : self._filtervalue,
+            "event" : self._event
+        }
+        if self._filtertoregex is not None:
+            data['filterToRegex'] = self._filtertoregex
+        if self._filterfromregex is not None:
+            data['filterFromRegex'] = self._filterfromregex
+        url = get_url('notification update', uuid=self._id)
+        response = self._connection._put(url, json=data)
+        raise_on_error(response)
+
+
+    @property
+    def destination(self):
+        """Destination getter
+        """
+        return self._destination
+
+    @destination.setter
+    def destination(self, value):
+        """Destination setter
+        """
+        self._destination = value
+
+    @property
+    def event(self):
+        """Event getter
+        """
+        return self._event
+
+    @event.setter
+    def event(self, value):
+        """Event setter
+        """
+        self._event = value
+
+    @property
+    def filterfromregex(self):
+        """Filterfromregex getter
+        """
+        return self._filterfromregex
+
+    @filterfromregex.setter
+    def filterfromregex(self, value):
+        """Filterfromregex setter
+        """
+        self._filterfromregex = value
+
+    @property
+    def filterkey(self):
+        """Filterkey getter
+        """
+        return self._filterkey
+
+    @filterkey.setter
+    def filterkey(self, value):
+        """Filterkey setter
+        """
+        self._filterkey = value
+
+    @property
+    def filtertoregex(self):
+        """Filtertoregex getter
+        """
+        return self._filtertoregex
+
+    @filtertoregex.setter
+    def filtertoregex(self, value):
+        """Filtertoregex setter
+        """
+        self._filtertoregex = value
+
+    @property
+    def filtervalue(self):
+        """Filtervalue getter
+        """
+        return self._filtervalue
+
+    @filtervalue.setter
+    def filtervalue(self, value):
+        """Filtervalue setter
+        """
+        self._filtervalue = value
+
+    @property
+    def mask(self):
+        """Mask getter (list)
+        """
+        return self._mask.split(', ')
+
+    @mask.setter
+    def mask(self, value):
+        """Mask setter (list)
+        """
+        self._mask = ', '.join(value)
+
+    @property
+    def type(self):
+        """Type getter
+        """
+        return self._type
+
+    @type.setter
+    def type(self, value):
+        """Type setter
+        """
+        self._type = value
