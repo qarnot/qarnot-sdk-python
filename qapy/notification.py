@@ -68,7 +68,10 @@ class QNotification(object):
         url = get_url('notification')
         response = connection._post(url, json=data)
         raise_on_error(response)
-        self._id = response.json()['guid']
+        rid = response.json()['guid']
+        response = connection._get(get_url('notification update', uuid=rid))
+        raise_on_error(response)
+        return QNotification(response.json(), connection)
 
     def delete(self):
         """Delete the notification represented by this :class:`QNotification`.
