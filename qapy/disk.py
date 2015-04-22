@@ -470,7 +470,11 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: one or more file(s) could not be created
+        :raises IOError: not a valid directory
         """
+
+        if not os.path.isdir(local):
+            raise IOError("Not a valid directory")
         for dirpath, _, files in os.walk(local):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
