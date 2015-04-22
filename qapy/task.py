@@ -174,18 +174,6 @@ class QTask(object):
         self._output_dir = output_dir
         return self.update()
 
-    def resume_async(self, output_dir):
-        """Download results in *resdir* even if the task is not finished.
-
-        :param str output_dir: path to a directory that will contain the results
-        :rtype: :class:`str`
-        :returns: Path to the directory containing the results (may be None).
-
-        .. warning:: Will override *output_dir* content.
-        """
-        self._output_dir = output_dir
-        return self.download_results()
-
     def abort(self):
         """Abort this task if running. Update state to Cancelled.
 
