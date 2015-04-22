@@ -48,7 +48,7 @@ class QTask(object):
         self._state = 'UnSubmitted' # RO property same for below
         self._uuid = None
         self._snapshots = False
-        self._resdir = None
+        self._output_dir = None
         self._dirty = False
         self._rescount = -1
         self._advanced_range = None
@@ -82,10 +82,10 @@ class QTask(object):
         task._update(resp.json())
         return task
 
-    def submit(self, resdir, job_timeout=None):
+    def submit(self, output_dir, job_timeout=None):
         """Submit task, wait for the results and download them.
 
-        :param str resdir: path to a directory that will contain the results
+        :param str output_dir: path to a directory that will contain the results
         :param float job_timeout: the task will :meth:`abort` if it has not
           already finished
 
@@ -102,19 +102,19 @@ class QTask(object):
         .. note:: If this function is interrupted (script killed for example),
            but the task is submitted, the task will still be executed remotely
            (results will not be downloaded)
-        .. warning:: Will override *resdir* content.
+        .. warning:: Will override *output_dir* content.
         """
-        self.submit_async(resdir)
+        self.submit_async(output_dir)
         self.wait(timeout=job_timeout)
         if job_timeout is not None:
             self.abort()
         return self.download_results()
 
-    def resume(self, resdir):
+    def resume(self, output_dir):
         """Resume waiting for this task if it is still in submitted mode.
         Equivalent to :meth:`wait` + :meth:`results`.
 
-        :param str resdir: path to a directory that will contain the results
+        :param str output_dir: path to a directory that will contain the results
 
         :rtype: :class:`string`
         :returns: Path to the directory containing the results (may be None).
@@ -126,18 +126,18 @@ class QTask(object):
           resource disk is not a valid disk
 
         .. note:: Do nothing if the task has not been submitted.
-        .. warning:: Will override *resdir* content.
+        .. warning:: Will override *output_dir* content.
         """
-        self._resdir = resdir
+        self._output_dir = output_dir
         if self._uuid is None:
-            return resdir
+            return output_dir
         self.wait()
         return self.download_results()
 
-    def submit_async(self, resdir=None):
+    def submit_async(self, output_dir=None):
         """Submit task to the cluster if it is not already submitted.
 
-        :param str resdir: path to a directory that will contain the results
+        :param str output_dir: path to a directory that will contain the results
 
         :rtype: :class:`string`
         :returns: Status of the task (see :attr:`state`)
@@ -171,19 +171,19 @@ class QTask(object):
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
 
-        self._resdir = resdir
+        self._output_dir = output_dir
         return self.update()
 
-    def resume_async(self, resdir):
+    def resume_async(self, output_dir):
         """Download results in *resdir* even if the task is not finished.
 
-        :param str resdir: path to a directory that will contain the results
+        :param str output_dir: path to a directory that will contain the results
         :rtype: :class:`str`
         :returns: Path to the directory containing the results (may be None).
 
-        .. warning:: Will override *resdir* content.
+        .. warning:: Will override *output_dir* content.
         """
-        self._resdir = resdir
+        self._output_dir = output_dir
         return self.download_results()
 
     def abort(self):
@@ -451,24 +451,24 @@ class QTask(object):
         Represents results files."""
         return self._result_disk
 
-    def download_results(self, resdir = None):
-        """Download results in given *resdir* or in previously defined one if not given.
-        *resdir* could have been set in submit or resume methods.
+    def download_results(self, output_dir=None):
+        """Download results in given *output_dir* or in previously defined one if not given.
+        *output_dir* could have been set in submit or resume methods.
 
         :rtype: :class:`str`
         :returns: The path containing task results.
 
-        .. warning:: Will override *resdir* content.
-        :raise: **ValueError** -- no resdir set
+        .. warning:: Will override *output_dir* content.
+        :raise: **ValueError** -- no output_dir set
         """
 
-        if resdir is None:
-            outdir = self._resdir
+        if output_dir is None:
+            outdir = self._output_dir
         else:
-            outdir = resdir
+            outdir = output_dir
 
         if outdir is None:
-            raise ValueError("No resdir set")
+            raise ValueError("No output_dir set")
         if self._uuid is not None:
             self.update()
 
@@ -481,7 +481,7 @@ class QTask(object):
                 self._result_disk.get_file(file_info, path.join(outdir,
                                                                 outpath))
 
-        return self._resdir
+        return self._output_dir
 
     def stdout(self):
         """Get the standard output of the task
