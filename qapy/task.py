@@ -38,7 +38,7 @@ class QTask(object):
         """
         Dictionary [CST] = val.
 
-        Can be set until :meth:`submit` is called
+        Can be set until :meth:`run` is called
 
         .. note:: See available constants for a specific profile
               with :meth:`qapy.connection.QApy.profile_info`.
@@ -82,8 +82,8 @@ class QTask(object):
         task._update(resp.json())
         return task
 
-    def submit(self, output_dir, job_timeout=None):
-        """Submit task, wait for the results and download them.
+    def run(self, output_dir, job_timeout=None):
+        """Submit a task, wait for the results and download them.
 
         :param str output_dir: path to a directory that will contain the results
         :param float job_timeout: the task will :meth:`abort` if it has not
@@ -104,7 +104,7 @@ class QTask(object):
            (results will not be downloaded)
         .. warning:: Will override *output_dir* content.
         """
-        self.submit_async(output_dir)
+        self.submit(output_dir)
         self.wait(timeout=job_timeout)
         if job_timeout is not None:
             self.abort()
@@ -134,7 +134,7 @@ class QTask(object):
         self.wait()
         return self.download_results()
 
-    def submit_async(self, output_dir=None):
+    def submit(self, output_dir=None):
         """Submit task to the cluster if it is not already submitted.
 
         :param str output_dir: path to a directory that will contain the results
@@ -453,7 +453,7 @@ class QTask(object):
 
     def download_results(self, output_dir=None):
         """Download results in given *output_dir* or in previously defined one if not given.
-        *output_dir* could have been set in submit or resume methods.
+        *output_dir* could have been set in run or resume methods.
 
         :rtype: :class:`str`
         :returns: The path containing task results.
@@ -598,7 +598,7 @@ class QTask(object):
 
         The task's name.
 
-        Can be set until :meth:`submit` is called
+        Can be set until :meth:`run` is called
         """
         return self._name
 
@@ -616,7 +616,7 @@ class QTask(object):
 
         The profile to run the task with.
 
-        Can be set until :meth:`submit` is called.
+        Can be set until :meth:`run` is called.
         """
         return self._profile
 
@@ -634,7 +634,7 @@ class QTask(object):
 
         Number of frames needed for the task.
 
-        Can be set until :meth:`submit` is called.
+        Can be set until :meth:`run` is called.
         """
         return self._framecount
 
@@ -659,7 +659,7 @@ class QTask(object):
         This parameter will override :attr:`framecount`.
         *[min-max]* will generate (max - min) frames from min to max (excluded).
 
-        Can be set until :meth:`submit` is called.
+        Can be set until :meth:`run` is called.
         """
         return self._advanced_range
 
