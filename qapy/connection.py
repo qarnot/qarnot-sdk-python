@@ -305,20 +305,19 @@ class QApy(object):
         """
         return QTask(self, name, profile, frame_nbr, force)
 
-    def create_notification(self, destination, ntype, filterkey, filtervalue, masklist, event, filtertoregex=None, filterfromregex=None):
+    def create_notification(self, destination, filterkey, filtervalue, subject=None, toregex=None, fromregex=None, stateregex=None):
         """Create a new :class:`qapy.notification.QNotification`.
 
         :param str destination: e-mail address
-        :param str ntype: type of notification to trigger (currently "EMAIL" only)
         :param str filterkey: key to watch on tasks
         :param str filtervalue: regex to match for the filter key
-        :param list(str) masklist: state changes to watch for among "None", "Submitted", "PartiallyDispatched", "FullyDispatched", "PartiallyExecuting", "FullyExecuting", "Cancelled", "Success", "Failure", "DownloadingResults"
-        :param str event: kind of event to act on among "Enter", "Leave", "Both" or "Filter" for the filter mode.
-        :param str filtertoregex: (optional) Regex to match the "To" value on a state change in filter mode, default to ".*"
-        :param str filterfromregex: (optional) Regex to match the "From" value on a state change in filter mode, default to ".*"
+        :param str subject: (optionnal) Subject for the notification
+        :param str toregex: (optional) Regex to match the "To" value on a state change, default to ".*"
+        :param str fromregex: (optional) Regex to match the "From" value on a state change, default to ".*"
+        :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
         """
 
-        return QNotification._create(self, destination, ntype, filterkey, filtervalue, masklist, event, filtertoregex, filterfromregex)
+        return QNotification._create(self, destination, filterkey, filtervalue, subject, toregex, fromregex, stateregex)
 
     def notifications(self):
         """Get the list of notifications for the user
