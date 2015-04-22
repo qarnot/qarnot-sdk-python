@@ -172,7 +172,7 @@ class QTask(object):
             self.snapshot(self._snapshots)
 
         self._output_dir = output_dir
-        return self.update()
+        self.update()
 
     def abort(self):
         """Abort this task if running. Update state to Cancelled.
@@ -269,8 +269,6 @@ class QTask(object):
         raise_on_error(resp)
         self._update(resp.json())
 
-        return self._state
-
     def _update(self, json_task):
         """Update this task from retrieved info."""
         self._name = json_task['name']
@@ -318,7 +316,8 @@ class QTask(object):
         """
         start = time.time()
         if self._uuid is None:
-            return self.update()
+            self.update()
+            return
 
         nap = min(10, timeout) if timeout is not None else 10
 
@@ -330,10 +329,12 @@ class QTask(object):
             if timeout is not None:
                 elapsed = time.time() - start
                 if timeout <= elapsed:
-                    return self.update()
+                    self.update()
+                    return
                 else:
                     nap = min(10, timeout - elapsed)
-        return self.update()
+        self.update()
+        return
 
     def snapshot(self, interval):
         """Start snapshooting results.
