@@ -261,7 +261,7 @@ class QTask(object):
           valid one
         """
         if self._uuid is None:
-            return self._state
+            return
 
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
