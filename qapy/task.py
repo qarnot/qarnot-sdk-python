@@ -266,7 +266,7 @@ class QTask(object):
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            return MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'], self._name)
 
         raise_on_error(resp)
         self._update(resp.json())
