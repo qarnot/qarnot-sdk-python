@@ -11,13 +11,18 @@ from os.path import join
 
 if __name__ == "__main__":
     q = qapy.QApy('example/qarnot.conf')
-    with q.create_task("example task", "python", 3) as task:
-        task.resources.add_file("example/script.py",
-                                mode=QUploadMode.background)
-        task.constants['PYTHON_SCRIPT'] = "script.py"
-        out = task.submit(tempfile.mkdtemp())
-        print(task.stdout, end='')
-        for dirname, dirs, files in walk(out):
-            for filename in files:
-                with open(join(dirname,filename)) as f:
-                    print(f.read())
+    task = q.create_task("example task", "python", 3)
+    task.resources.add_file("example/script_verbose.py",
+                            mode=QUploadMode.background)
+    task.constants['PYTHON_SCRIPT'] = "script_verbose.py"
+    out = tempfile.mkdtemp()
+    task.submit(out)
+    print ("out " + out)
+    while not task.wait(10):
+        print ("...")
+        print (task.fresh_stdout())
+    for dirname, dirs, files in walk(out):
+        for filename in files:
+            with open(join(dirname,filename)) as f:
+                print(f.read())
+    task.delete()

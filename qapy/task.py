@@ -7,6 +7,8 @@ import warnings
 import os.path as path
 import os
 
+RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting', 'DownloadingResults']
+
 class QTask(object):
     """Represents a Qarnot job.
 
@@ -307,7 +309,7 @@ class QTask(object):
            (None => no timeout)
 
         :rtype: :class:`string`
-        :returns: State of the task (see :attr:`state`)
+        :returns: Is the task finished
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -317,12 +319,12 @@ class QTask(object):
         start = time.time()
         if self._uuid is None:
             self.update()
-            return
+            return False
 
         nap = min(10, timeout) if timeout is not None else 10
 
         self.update()
-        while self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting', 'DownloadingResults']:
+        while self._state in RUNNING_DOWNLOADING_STATES:
             time.sleep(nap)
             self.update()
 
@@ -330,11 +332,11 @@ class QTask(object):
                 elapsed = time.time() - start
                 if timeout <= elapsed:
                     self.update()
-                    return
+                    return False
                 else:
                     nap = min(10, timeout - elapsed)
         self.update()
-        return
+        return True
 
     def snapshot(self, interval):
         """Start snapshooting results.
