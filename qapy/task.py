@@ -37,6 +37,9 @@ class QTask(object):
         self._result_disk = None
         self._connection = connection
         self.constants = {}
+        self._auto_update = True
+        self._update_cache_time = 5
+        self._last_cache = time.time()
         """
         Dictionary [CST] = val.
 
@@ -174,7 +177,7 @@ class QTask(object):
             self.snapshot(self._snapshots)
 
         self._output_dir = output_dir
-        self.update()
+        self.update(True)
 
     def abort(self):
         """Abort this task if running. Update state to Cancelled.
@@ -187,7 +190,7 @@ class QTask(object):
         .. warning:: If this task is already finished, a call to :meth:`abort`
           will delete it.
         """
-        self.update()
+        self.update(True)
         if self._uuid is None or self._state in ["None", "Cancelled", "Success", "Failure", "DownloadingResults"]:
             return
 
@@ -198,7 +201,7 @@ class QTask(object):
             raise MissingTaskException(resp.json()['message'], self._name)
         raise_on_error(resp)
 
-        self.update()
+        self.update(True)
 
     def delete(self, purge_resources=True, purge_results=True):
         """Delete this task on the server. Does nothing if it is already
@@ -248,9 +251,13 @@ class QTask(object):
 
         self._uuid = None
 
-    def update(self):
-        """Get the current state of this task from the cluster and return
-        its state.
+    def update(self, flushcache=False):
+        """
+        Update the task object from the REST Api.
+        The flushcache parameters can be used to force the update, otherwise a cached version of the object
+        will be served when accessing properties of the object.
+        Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
+        Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
         :rtype: :class:`string`
         :returns: State of the task (see :attr:`state`)
@@ -263,6 +270,11 @@ class QTask(object):
         if self._uuid is None:
             return
 
+        now = time.time()
+
+        if (now - self._last_cache) < self._update_cache_time and not flushcache:
+            return
+
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
@@ -270,6 +282,7 @@ class QTask(object):
 
         raise_on_error(resp)
         self._update(resp.json())
+        self._last_cache = time.time()
 
     def _update(self, json_task):
         """Update this task from retrieved info."""
@@ -318,15 +331,15 @@ class QTask(object):
         """
         start = time.time()
         if self._uuid is None:
-            self.update()
+            self.update(True)
             return False
 
         nap = min(10, timeout) if timeout is not None else 10
 
-        self.update()
+        self.update(True)
         while self._state in RUNNING_DOWNLOADING_STATES:
             time.sleep(nap)
-            self.update()
+            self.update(True)
 
             if timeout is not None:
                 elapsed = time.time() - start
@@ -335,7 +348,7 @@ class QTask(object):
                     return False
                 else:
                     nap = min(10, timeout - elapsed)
-        self.update()
+        self.update(True)
         return True
 
     def snapshot(self, interval):
@@ -390,7 +403,7 @@ class QTask(object):
             raise MissingTaskException(resp.json()['message'], self._name)
         raise_on_error(resp)
 
-        self.update()
+        self.update(True)
 
     @property
     def state(self):
@@ -414,6 +427,8 @@ class QTask(object):
            this is the state of the task when the object was retrieved,
            call :meth:`results` for up to date value.
         """
+        if self._auto_update:
+            self.update()
         return self._state
 
     @property
@@ -428,6 +443,9 @@ class QTask(object):
                                        lock=False)
             self._resource_disk = _disk
 
+        if self._auto_update:
+            self.update()
+
         return self._resource_disk
 
     @resources.setter
@@ -440,6 +458,9 @@ class QTask(object):
         """:type: :class:`~qapy.disk.QDisk`
 
         Represents results files."""
+        if self._auto_update:
+            self.update()
+
         return self._result_disk
 
     def download_results(self, output_dir=None):
@@ -581,6 +602,9 @@ class QTask(object):
 
         Automatically set when a task is submitted.
         """
+        if self._auto_update:
+            self.update()
+
         return self._uuid
 
     @property
@@ -591,6 +615,9 @@ class QTask(object):
 
         Can be set until :meth:`run` is called
         """
+        if self._auto_update:
+            self.update()
+
         return self._name
 
     @name.setter
@@ -609,6 +636,9 @@ class QTask(object):
 
         Can be set until :meth:`run` is called.
         """
+        if self._auto_update:
+            self.update()
+
         return self._profile
 
     @profile.setter
@@ -627,6 +657,9 @@ class QTask(object):
 
         Can be set until :meth:`run` is called.
         """
+        if self._auto_update:
+            self.update()
+
         return self._framecount
 
     @framecount.setter
@@ -652,6 +685,9 @@ class QTask(object):
 
         Can be set until :meth:`run` is called.
         """
+        if self._auto_update:
+            self.update()
+
         return self._advanced_range
 
     @advanced_range.setter
@@ -664,6 +700,9 @@ class QTask(object):
     def snapshot_whitelist(self):
         """Snapshot white list
         """
+        if self._auto_update:
+            self.update()
+
         return self._snapshot_whitelist
 
     @snapshot_whitelist.setter
@@ -676,6 +715,9 @@ class QTask(object):
     def snapshot_blacklist(self):
         """Snapshot black list
         """
+        if self._auto_update:
+            self.update()
+
         return self._snapshot_blacklist
 
     @snapshot_blacklist.setter
@@ -688,6 +730,9 @@ class QTask(object):
     def results_whitelist(self):
         """Results whitelist
         """
+        if self._auto_update:
+            self.update()
+
         return self._results_whitelist
 
     @results_whitelist.setter
@@ -700,6 +745,9 @@ class QTask(object):
     def results_blacklist(self):
         """Results blacklist
         """
+        if self._auto_update:
+            self.update()
+
         return self._results_blacklist
 
     @results_blacklist.setter
@@ -712,13 +760,45 @@ class QTask(object):
     def execution_cluster(self):
         """Various statistics about running task
         """
+        if self._auto_update:
+            self.update()
+
         return self._execution_cluster
 
     @property
     def error_reason(self):
         """Error reason if any, empty string if none
         """
+        if self._auto_update:
+            self.update()
+
         return self._error_reason
+
+    @property
+    def auto_update(self):
+        """Auto update state, default to True
+           When auto update is disabled properties will always return cached value 
+           for the object and a call to :meth:`update` will be required to get latest values from the REST Api.
+        """
+        return self._auto_update
+
+    @auto_update.setter
+    def auto_update(self, value):
+        """Setter for auto_update feature
+        """
+        self._auto_update = value
+
+    @property
+    def update_cache_time(self):
+        """Cache expiration time, default to 5s
+        """
+        return self._update_cache_time
+
+    @update_cache_time.setter
+    def update_cache_time(self, value):
+        """Setter for update_cache_time
+        """
+        self._update_cache_time = value
 
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
