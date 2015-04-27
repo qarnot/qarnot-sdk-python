@@ -210,7 +210,7 @@ class QDisk(object):
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
-    def syncdir(self, directory, verbose=False):
+    def sync_directory(self, directory, verbose=False):
         """Synchronize a local directory with the remote disks.
 
         :param str directory: The local directory to use for synchronization
@@ -238,9 +238,9 @@ class QDisk(object):
                 filepath = os.path.join(root, x)
                 name = filepath[len(directory) - 1:]
                 filesdict[name] = filepath
-        self.syncfiles(filesdict, verbose)
+        self.sync_files(filesdict, verbose)
 
-    def syncfiles(self, files, verbose=False):
+    def sync_files(self, files, verbose=False):
         """Synchronize files  with the remote disks.
 
         :param dict files: Dictionnary of synchronized files
