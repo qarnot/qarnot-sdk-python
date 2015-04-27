@@ -268,7 +268,7 @@ class QDisk(object):
                     buf = f.read(blocksize)
                     if not buf:
                         break
-                    m.update( buf )
+                    m.update(buf)
             return m.hexdigest()
 
         def create_qfi(name, filepath):
@@ -276,14 +276,14 @@ class QDisk(object):
                 name = '/' + name
             t = os.path.getmtime(filepath)
             dt = datetime.datetime.utcfromtimestamp(t)
-            dt = dt.replace(microsecond = 0)
+            dt = dt.replace(microsecond=0)
             s = os.stat(filepath).st_size
             qfi = QFileInfo(dt, name, s, "file", generate_file_sha1(filepath))
             qfi.filepath = filepath
             return qfi
 
         localfiles = []
-        for name,filepath in files.items():
+        for name, filepath in files.items():
             qfi = create_qfi(name, filepath)
             localfiles.append(qfi)
 
@@ -293,8 +293,8 @@ class QDisk(object):
         adds = local - remote
         removes = remote - local
 
-        sadds = sorted(adds, key=lambda x : x.sha1sum)
-        groupedadds = [list(g) for k,g in itertools.groupby(sadds, lambda x : x.sha1sum)]
+        sadds = sorted(adds, key=lambda x: x.sha1sum)
+        groupedadds = [list(g) for k, g in itertools.groupby(sadds, lambda x: x.sha1sum)]
 
         removelater = []
         for f in removes:
