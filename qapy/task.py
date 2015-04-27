@@ -53,7 +53,6 @@ class QTask(object):
         self._state = 'UnSubmitted' # RO property same for below
         self._uuid = None
         self._snapshots = False
-        self._output_dir = None
         self._dirty = False
         self._rescount = -1
         self._advanced_range = None
@@ -109,11 +108,11 @@ class QTask(object):
            (results will not be downloaded)
         .. warning:: Will override *output_dir* content.
         """
-        self.submit(output_dir)
+        self.submit()
         self.wait(timeout=job_timeout)
         if job_timeout is not None:
             self.abort()
-        return self.download_results()
+        return self.download_results(output_dir)
 
     def resume(self, output_dir):
         """Resume waiting for this task if it is still in submitted mode.
@@ -133,16 +132,13 @@ class QTask(object):
         .. note:: Do nothing if the task has not been submitted.
         .. warning:: Will override *output_dir* content.
         """
-        self._output_dir = output_dir
         if self._uuid is None:
             return output_dir
         self.wait()
-        return self.download_results()
+        return self.download_results(output_dir)
 
-    def submit(self, output_dir=None):
+    def submit(self):
         """Submit task to the cluster if it is not already submitted.
-
-        :param str output_dir: path to a directory that will contain the results
 
         :rtype: :class:`string`
         :returns: Status of the task (see :attr:`state`)
@@ -176,7 +172,6 @@ class QTask(object):
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
 
-        self._output_dir = output_dir
         self.update(True)
 
     def abort(self):
@@ -463,37 +458,28 @@ class QTask(object):
 
         return self._result_disk
 
-    def download_results(self, output_dir=None):
-        """Download results in given *output_dir* or in previously defined one if not given.
-        *output_dir* could have been set in run or resume methods.
+    def download_results(self, output_dir):
+        """Download results in given *output_dir*.
 
         :rtype: :class:`str`
         :returns: The path containing task results.
 
         .. warning:: Will override *output_dir* content.
-        :raise: **ValueError** -- no output_dir set
         """
 
-        if output_dir is None:
-            outdir = self._output_dir
-        else:
-            outdir = output_dir
-
-        if outdir is None:
-            raise ValueError("No output_dir set")
         if self._uuid is not None:
             self.update()
 
-        if not path.exists(outdir):
-            os.makedirs(outdir)
+        if not path.exists(output_dir):
+            os.makedirs(output_dir)
 
         if self._result_disk is not None and self._dirty:
             for file_info in self._result_disk:
                 outpath = path.normpath(file_info.name.lstrip('/'))
-                self._result_disk.get_file(file_info, path.join(outdir,
+                self._result_disk.get_file(file_info, path.join(output_dir,
                                                                 outpath))
 
-        return self._output_dir
+        return output_dir
 
     def stdout(self):
         """Get the standard output of the task
