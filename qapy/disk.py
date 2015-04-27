@@ -38,7 +38,7 @@ class QDisk(object):
         :param :class:`qapy.connection.QApy` connection:
           the cluster on which the disk is
         """
-        self._name = jsondisk["id"]
+        self._id = jsondisk["id"]
         self._description = jsondisk["description"]
         self._locked = jsondisk["locked"]
         self._connection = connection
@@ -115,11 +115,11 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._delete(
-            get_url('disk info', name=self._name))
+            get_url('disk info', name=self._id))
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
-                                       self._name)
+                                       self._id)
         raise_on_error(response)
 
     def get_archive(self, extension='zip', local=None):
@@ -139,20 +139,20 @@ class QDisk(object):
         :raises ValueError: invalid extension format
         """
         response = self._connection._get(
-            get_url('get disk', name=self._name, ext=extension),
+            get_url('get disk', name=self._id, ext=extension),
             stream=True)
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
-                                       self._name)
+                                       self._id)
         elif response.status_code == 400:
             raise ValueError('invalid file format : {0}', extension)
         else:
             raise_on_error(response)
 
-        local = local or ".".join([self._name, extension])
+        local = local or ".".join([self._id, extension])
         if path.isdir(local):
-            local = path.join(local, ".".join([self._name, extension]))
+            local = path.join(local, ".".join([self._id, extension]))
 
         with open(local, 'wb') as f_local:
             for elt in response.iter_content():
@@ -174,10 +174,10 @@ class QDisk(object):
         self.flush()
 
         response = self._connection._get(
-            get_url('tree disk', name=self._name))
+            get_url('tree disk', name=self._id))
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
-                                       self._name)
+                                       self._id)
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
@@ -202,11 +202,11 @@ class QDisk(object):
         self.flush()
 
         response = self._connection._get(
-            get_url('ls disk', name=self._name, path=directory))
+            get_url('ls disk', name=self._id, path=directory))
         if response.status_code == 404:
             if response.json()['message'] == 'no such disk':
                 raise MissingDiskException(response.json()['message'],
-                                           self._name)
+                                           self._id)
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
@@ -370,7 +370,7 @@ class QDisk(object):
                 "linkName" : linkname
             }
         ]
-        url = get_url('link disk', name=self._name)
+        url = get_url('link disk', name=self._id)
         response = self._connection._post(url, json=data)
         raise_on_error(response)
 
@@ -439,13 +439,13 @@ class QDisk(object):
 
         with open(filename, 'rb') as f_local:
             response = self._connection._post(
-                get_url('update file', name=self._name,
+                get_url('update file', name=self._id,
                         path=path.dirname(dest)),
                 files={'filedata': (path.basename(dest), f_local)})
 
             if response.status_code == 404:
                 raise MissingDiskException(response.json()['message'],
-                                           self._name)
+                                           self._id)
             raise_on_error(response)
 
     def add_directory(self, local, remote="", mode=None):
@@ -521,13 +521,13 @@ class QDisk(object):
             local = path.join(local, path.basename(remote))
 
         response = self._connection._get(
-            get_url('update file', name=self._name, path=remote),
+            get_url('update file', name=self._id, path=remote),
             stream=True)
 
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
                 raise MissingDiskException(response.json()['message'],
-                                           self._name)
+                                           self._id)
         raise_on_error(response)
 
         with open(local, 'wb') as f_local:
@@ -562,12 +562,12 @@ class QDisk(object):
             remote = remote.name
 
         response = self._connection._delete(
-            get_url('update file', name=self._name, path=remote))
+            get_url('update file', name=self._id, path=remote))
 
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
                raise MissingDiskException(response.json()['message'],
-                                           self._name)
+                                          self._id)
         raise_on_error(response)
 
     def commit(self):
@@ -580,19 +580,19 @@ class QDisk(object):
             "description" : self._description,
             "locked" : self._locked
             }
-        resp = self._connection._put(get_url('disk info', name=self._name),
+        resp = self._connection._put(get_url('disk info', name=self._id),
                                      json=data)
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'],
-                                       self.name)
+                                       self._id)
         raise_on_error(resp)
 
     @property
-    def name(self):
+    def uuid(self):
         """:type: :class:`string`
 
         The disk's UUID."""
-        return self._name
+        return self._id
 
     @property
     def add_mode(self):
@@ -641,7 +641,7 @@ class QDisk(object):
 
     #tostring
     def __str__(self):
-        return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ") + self.name + " - " + self.description
+        return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ") + self.uuid + " - " + self.description
     #operators#
 
     def __getitem__(self, filename):

@@ -161,7 +161,7 @@ class QTask(object):
         resp = self._connection._post(url, json=payload)
 
         if resp.status_code == 404:
-            msg = self._resource_disk.name
+            msg = self._resource_disk.uuid
             self._resource_disk = None
             raise disk.MissingDiskException(msg)
         elif resp.status_code == 403:
@@ -801,7 +801,7 @@ class QTask(object):
         json_task = {
             'name': self._name,
             'profile': self._profile,
-            'resourceDisk': self._resource_disk.name,
+            'resourceDisk': self._resource_disk.uuid,
             'constants': const_list,
             'constraints': constr_list
         }
@@ -821,7 +821,7 @@ class QTask(object):
         return json_task
 
     def __str__(self):
-        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'.format(self.name, self._uuid, self._profile, self._framecount, self.state, (self._resource_disk.name if self._resource_disk is not None else ""), (self._result_disk.name if self._result_disk is not None else ""))
+        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'.format(self.name, self._uuid, self._profile, self._framecount, self.state, (self._resource_disk.uuid if self._resource_disk is not None else ""), (self._result_disk.uuid if self._result_disk is not None else ""))
 
     #context manager#
 
