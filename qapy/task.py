@@ -198,15 +198,16 @@ class QTask(object):
 
         self.update(True)
 
-    def delete(self, purge_resources=True, purge_results=True):
-        """Delete this task on the server. Does nothing if it is already
-          deleted.
+    def delete(self, purge_resources=None, purge_results=None):
+        """Delete this task on the server. Does nothing if it is already deleted.
 
-        :param bool purge_resources: if True, also delete resources disk.
-          Defaults to True.
+        :param bool purge_resources: if None disk will be deleted unless locked,
+                otherwire parameter value is used to determine if the disk is also deleted.
+                Defaults to None.
 
-        :param bool purge_results: if True, also delete results disk.
-          Defaults to True.
+        :param bool purge_results: if None disk will be deleted unless locked,
+                otherwise parameter value is used to determine if the disk is also deleted.
+                Defaults to None.
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -221,21 +222,28 @@ class QTask(object):
         if self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
             self.abort()
 
-        #change MissingDisk error to warnings,
-        #since disks have to be deleted anyway
-        if purge_resources and self._resource_disk:
-            try:
-                self._resource_disk.delete()
-            except disk.MissingDiskException as e:
-                warnings.warn(e.message)
-            self._resource_disk = None
+        if self._resource_disk:
+            self._resource_disk.update()
 
-        if purge_results and self._result_disk:
-            try:
-                self._result_disk.delete()
-            except disk.MissingDiskException as e:
-                warnings.warn(e.message)
-            self._result_disk = None
+            if purge_resources is None:
+                purge_resources = not self._resource_disk.locked
+            if purge_resources:
+                try:
+                    self._resource_disk.delete()
+                except disk.MissingDiskException as e:
+                    warnings.warn(e.message)
+                self._resource_disk = None
+
+        if self._result_disk:
+            self._result_disk.update()
+            if purge_results is None:
+                purge_results = not self._result_disk.locked
+            if purge_results:
+                    try:
+                        self._result_disk.delete()
+                    except disk.MissingDiskException as e:
+                        warnings.warn(e.message)
+                    self._result_disk = None
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))

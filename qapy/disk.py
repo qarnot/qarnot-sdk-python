@@ -107,6 +107,19 @@ class QDisk(object):
 
     #Disk Management#
 
+    def update(self):
+
+        response = self._connection._get(get_url('disk info', name=self._id))
+        if response.status_code == 404:
+            raise MissingDiskException(response.json()['message'],
+                                       self._id)
+        raise_on_error(response)
+
+        jsondisk = response.json()
+        self._id = jsondisk["id"]
+        self._description = jsondisk["description"]
+        self._locked = jsondisk["locked"]
+
     def delete(self):
         """Delete the disk represented by this :class:`QDisk`.
 
