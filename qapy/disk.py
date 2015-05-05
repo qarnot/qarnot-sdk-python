@@ -661,7 +661,7 @@ class QDisk(object):
         """x.__getitem__(y) <==> x[y]"""
         try:
             return self.get_file(filename)
-        except ValueError:#change error into keyerror if missing file
+        except ValueError:
             raise KeyError(filename)
 
     def __setitem__(self, dest, filename):
@@ -674,7 +674,7 @@ class QDisk(object):
         """x.__delitem__(y) <==> del x[y]"""
         try:
             return self.delete_file(filename)
-        except ValueError: #change error into keyerror if missing file
+        except ValueError:
             raise KeyError(filename)
 
     def __contains__(self, item):

@@ -167,7 +167,6 @@ class QApy(object):
         ret = resp.json()
         return QUserInfo(ret)
 
-    #move to a better place (session)
     def disks(self):
         """Get the list of disks on this cluster for this user.
 
@@ -351,7 +350,6 @@ class QApy(object):
 # utility Classes #
 ###################
 
-#would rather use a namedTuple class but no way to document it's fields
 class QUserInfo(object):
     """Informations about a qapy user."""
     def __init__(self, info):
