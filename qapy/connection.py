@@ -4,6 +4,7 @@ from qapy import get_url, raise_on_error, QApyException
 from qapy.disk import QDisk, MissingDiskException
 from qapy.task import QTask, MissingTaskException
 from qapy.notification import QNotification
+import qapy.notification as notification
 import requests
 import sys
 from json import dumps as json_dumps
@@ -304,8 +305,8 @@ class QApy(object):
         """
         return QTask(self, name, profile, frame_nbr, force)
 
-    def create_notification(self, destination, filterkey, filtervalue, subject=None, toregex=None, fromregex=None, stateregex=None):
-        """Create a new :class:`qapy.notification.QNotification`.
+    def create_task_state_changed_notification(self, destination, filterkey, filtervalue, subject=None, toregex=None, fromregex=None, stateregex=None):
+        """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskStateChanged`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -315,8 +316,33 @@ class QApy(object):
         :param str fromregex: (optional) Regex to match the "From" value on a state change, default to ".*"
         :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
         """
+        nfilter = notification.TaskStateChanged(subject, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
+        return QNotification._create(self, nfilter)
 
-        return QNotification._create(self, destination, filterkey, filtervalue, subject, toregex, fromregex, stateregex)
+
+    def create_task_created_notification(self, destination, filterkey, filtervalue, subject=None):
+        """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskCreated`.
+
+        :param str destination: e-mail address
+        :param str filterkey: key to watch on tasks
+        :param str filtervalue: regex to match for the filter key
+        :param str subject: (optionnal) Subject for the notification
+        """
+        nfilter = notification.TaskCreated(subject, destination, filterkey, filtervalue)
+        return QNotification._create(self, nfilter)
+
+
+    def create_task_ended_notification(self, destination, filterkey, filtervalue, subject=None):
+        """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskEnded`.
+
+        :param str destination: e-mail address
+        :param str filterkey: key to watch on tasks
+        :param str filtervalue: regex to match for the filter key
+        :param str subject: (optionnal) Subject for the notification
+        """
+        nfilter = notification.TaskEnded(subject, destination, filterkey, filtervalue)
+        return QNotification._create(self, nfilter)
+
 
     def notifications(self):
         """Get the list of notifications for the user

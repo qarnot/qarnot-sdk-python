@@ -29,34 +29,31 @@ class QNotification(object):
 
         self._id = jsonnotification['id']
         self._mask = jsonnotification['mask']
-        self._destination = jsonnotification['filter']['destination']
-        self._subject = jsonnotification['filter']['subject']
 
-        self._filterkey = jsonnotification['filter']['filterKey']
-        self._filtervalue = jsonnotification['filter']['filterValue']
+        destination = jsonnotification['filter']['destination']
+        subject = jsonnotification['filter']['subject']
 
-        self._from = jsonnotification['filter']['from']
-        self._state = jsonnotification['filter']['state']
-        self._to = jsonnotification['filter']['to']
+        filterkey = jsonnotification['filter']['filterKey']
+        filtervalue = jsonnotification['filter']['filterValue']
+
+        if self._mask == "TaskStateChanged":
+            _from = jsonnotification['filter']['from']
+            state = jsonnotification['filter']['state']
+            to = jsonnotification['filter']['to']
+            self._filter = TaskStateChanged(subject, destination, filterkey, filtervalue, to, _from, state)
+        elif self._mask == "TaskCreated":
+            self._filter = TaskCreated(subject, destination, filterkey, filtervalue)
+        elif self._mask == "TaskEnded":
+            self._filter = TaskEnded(subject, destination, filterkey, filtervalue)
 
     @classmethod
-    def _create(cls, connection, destination, filterkey, filtervalue, subject=None, to=None, _from=None, state=None):
+    def _create(cls, connection, _filter):
+        """Create a new QNotification
+        """
         data = {
-            "mask" : "TaskStateChanged",
-            "filter" : {
-                "destination" : destination,
-                "filterKey" : filterkey,
-                "filterValue" : filtervalue
-                }
+            "mask" : type(_filter).__name__,
+            "filter" : _filter.json()
             }
-        if subject is not None:
-            data["filter"]["subject"] = subject
-        if to is not None:
-            data["filter"]["to"] = subject
-        if _from is not None:
-            data["filter"]["from"] = _from
-        if state is not None:
-            data["filter"]["state"] = state
         url = get_url('notification')
         response = connection._post(url, json=data)
         raise_on_error(response)
@@ -82,6 +79,22 @@ class QNotification(object):
         """
         return self._id
 
+class Filter(object):
+    """Filter class
+    """
+    def __init__(self, subject, destination):
+        self._subject = subject
+        self._destination = destination
+
+    def json(self):
+        """Json representation of the class
+        """
+        json = {}
+        json["destination"] = self._destination
+        if self._subject is not None:
+            json["subject"] = self._subject
+        return json
+
     @property
     def destination(self):
         """Destination getter
@@ -106,6 +119,20 @@ class QNotification(object):
         """
         self._subject = value
 
+class TaskNotification(Filter):
+    """TaskNotification class
+    """
+    def __init__(self, subject, destination, filterkey, filtervalue):
+        Filter.__init__(self, subject, destination)
+        self._filterkey = filterkey
+        self._filtervalue = filtervalue
+
+    def json(self):
+        json = Filter.json(self)
+        json["filterKey"] = self._filterkey
+        json["filterValue"] = self._filtervalue
+        return json
+
     @property
     def filterkey(self):
         """Filterkey getter
@@ -129,6 +156,25 @@ class QNotification(object):
         """Filtervalue setter
         """
         self._filtervalue = value
+
+class TaskStateChanged(TaskNotification):
+    """TaskStateChanged class
+    """
+    def __init__(self, subject, destination, filterkey, filtervalue, to, _from, state):
+        TaskNotification.__init__(self, subject, destination, filterkey, filtervalue)
+        self._to = to
+        self._from = _from
+        self._state = state
+
+    def json(self):
+        json = TaskNotification.json(self)
+        if self._to is not None:
+            json["to"] = self._to
+        if self._from is not None:
+            json["from"] = self._from
+        if self._state is not None:
+            json["state"] = self._state
+        return json
 
     @property
     def toregex(self):
@@ -165,3 +211,23 @@ class QNotification(object):
         """To setter
         """
         self._state = value
+
+class TaskCreated(TaskNotification):
+    """TaskCreated class
+    """
+    def __init__(self, subject, destination, filterkey, filtervalue):
+        TaskNotification.__init__(self, subject, destination, filterkey, filtervalue)
+
+    def json(self):
+        json = TaskNotification.json(self)
+        return json
+
+class TaskEnded(TaskNotification):
+    """TaskEnded class
+    """
+    def __init__(self, subject, destination, filterkey, filtervalue):
+        TaskNotification.__init__(self, subject, destination, filterkey, filtervalue)
+
+    def json(self):
+        json = TaskNotification.json(self)
+        return json
