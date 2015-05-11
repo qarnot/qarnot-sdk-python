@@ -18,7 +18,7 @@ class QNotification(object):
                   * filter.filterValue
 
                 optionnal
-                  * filter.subject Mail subject for the notification
+                  * filter.template Mail template for the notification
                   * filter.to To state regex (default to .*)
                   * filter.from From state regex (default to .*)
                   * filter.state From or To state regex (default to .*)
@@ -31,7 +31,7 @@ class QNotification(object):
         self._mask = jsonnotification['mask']
 
         destination = jsonnotification['filter']['destination']
-        subject = jsonnotification['filter']['subject']
+        template = jsonnotification['filter']['template'] if 'template' in jsonnotification['filter'] else None
 
         filterkey = jsonnotification['filter']['filterKey']
         filtervalue = jsonnotification['filter']['filterValue']
@@ -40,11 +40,11 @@ class QNotification(object):
             _from = jsonnotification['filter']['from']
             state = jsonnotification['filter']['state']
             to = jsonnotification['filter']['to']
-            self._filter = TaskStateChanged(subject, destination, filterkey, filtervalue, to, _from, state)
+            self._filter = TaskStateChanged(template, destination, filterkey, filtervalue, to, _from, state)
         elif self._mask == "TaskCreated":
-            self._filter = TaskCreated(subject, destination, filterkey, filtervalue)
+            self._filter = TaskCreated(template, destination, filterkey, filtervalue)
         elif self._mask == "TaskEnded":
-            self._filter = TaskEnded(subject, destination, filterkey, filtervalue)
+            self._filter = TaskEnded(template, destination, filterkey, filtervalue)
 
     @classmethod
     def _create(cls, connection, _filter):
@@ -79,11 +79,23 @@ class QNotification(object):
         """
         return self._id
 
+    @property
+    def filter(self):
+        """Filter getter
+        """
+        return self._filter
+
+    @filter.setter
+    def filter(self, value):
+        """Filter setter
+        """
+        self._filter = value
+
 class Filter(object):
     """Filter class
     """
-    def __init__(self, subject, destination):
-        self._subject = subject
+    def __init__(self, template, destination):
+        self._template = template
         self._destination = destination
 
     def json(self):
@@ -91,8 +103,8 @@ class Filter(object):
         """
         json = {}
         json["destination"] = self._destination
-        if self._subject is not None:
-            json["subject"] = self._subject
+        if self._template is not None:
+            json["template"] = self._template
         return json
 
     @property
@@ -108,22 +120,22 @@ class Filter(object):
         self._destination = value
 
     @property
-    def subject(self):
-        """Subject getter
+    def template(self):
+        """Template getter
         """
-        return self._subject
+        return self._template
 
-    @subject.setter
-    def subject(self, value):
-        """Subject setter
+    @template.setter
+    def template(self, value):
+        """Template setter
         """
-        self._subject = value
+        self._template = value
 
 class TaskNotification(Filter):
     """TaskNotification class
     """
-    def __init__(self, subject, destination, filterkey, filtervalue):
-        Filter.__init__(self, subject, destination)
+    def __init__(self, template, destination, filterkey, filtervalue):
+        Filter.__init__(self, template, destination)
         self._filterkey = filterkey
         self._filtervalue = filtervalue
 
@@ -160,8 +172,8 @@ class TaskNotification(Filter):
 class TaskStateChanged(TaskNotification):
     """TaskStateChanged class
     """
-    def __init__(self, subject, destination, filterkey, filtervalue, to, _from, state):
-        TaskNotification.__init__(self, subject, destination, filterkey, filtervalue)
+    def __init__(self, template, destination, filterkey, filtervalue, to, _from, state):
+        TaskNotification.__init__(self, template, destination, filterkey, filtervalue)
         self._to = to
         self._from = _from
         self._state = state
@@ -215,8 +227,8 @@ class TaskStateChanged(TaskNotification):
 class TaskCreated(TaskNotification):
     """TaskCreated class
     """
-    def __init__(self, subject, destination, filterkey, filtervalue):
-        TaskNotification.__init__(self, subject, destination, filterkey, filtervalue)
+    def __init__(self, template, destination, filterkey, filtervalue):
+        TaskNotification.__init__(self, template, destination, filterkey, filtervalue)
 
     def json(self):
         json = TaskNotification.json(self)
@@ -225,8 +237,8 @@ class TaskCreated(TaskNotification):
 class TaskEnded(TaskNotification):
     """TaskEnded class
     """
-    def __init__(self, subject, destination, filterkey, filtervalue):
-        TaskNotification.__init__(self, subject, destination, filterkey, filtervalue)
+    def __init__(self, template, destination, filterkey, filtervalue):
+        TaskNotification.__init__(self, template, destination, filterkey, filtervalue)
 
     def json(self):
         json = TaskNotification.json(self)
