@@ -198,6 +198,17 @@ class QTask(object):
 
         self.update(True)
 
+    def update_resources(self):
+        self.update(True)
+        resp = self._connection._patch(
+            get_url('task update', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingTaskException(resp.json()['message'], self._name)
+        raise_on_error(resp)
+
+        self.update(True)
+
     def delete(self, purge_resources=None, purge_results=None):
         """Delete this task on the server. Does nothing if it is already deleted.
 

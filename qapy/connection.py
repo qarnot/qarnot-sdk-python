@@ -94,6 +94,32 @@ class QApy(object):
             raise UnauthorizedException(self.auth)
         return ret
 
+    def _patch(self, url, json=None, **kwargs):
+        """perform a PATCH request on the cluster
+
+        :param url: :class:`string`,
+          relative url of the file (according to the cluster url)
+        :param json: the data to json serialize and post
+
+        :rtype: :class:`requests.Response`
+        :returns: The response to the given request.
+
+        :raises UnauthorizedException: invalid credentials
+
+        .. note:: Additional keyword arguments are passed to the underlying
+           :attr:`requests.Session.post()`.
+        """
+        if json != None:
+            if not 'headers' in kwargs:
+                kwargs['headers'] = dict()
+            kwargs['headers']['Content-Type'] = 'application/json'
+            kwargs['data'] = json_dumps(json)
+        ret = self._http.patch(self.cluster + url,
+                              timeout=self.timeout, **kwargs)
+        if ret.status_code == 401:
+            raise UnauthorizedException(self.auth)
+        return ret
+
     def _post(self, url, json=None, **kwargs):
         """perform a POST request on the cluster
 

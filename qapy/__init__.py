@@ -32,7 +32,7 @@ def get_url(key, **kwargs):
         'get profile' : '/tasks/profiles/{name}', #GET -> profile info
         'tasks' : '/tasks', #GET -> runing tasks; POST -> submit task
         'task force' : '/tasks/force', #POST -> force add
-        'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort
+        'task update' : '/tasks/{uuid}', #GET->result, DELETE->abort, #PATCH->update resources
         'task snapshot': '/tasks/{uuid}/snapshot/periodic', #POST -> snapshots
         'task instant' : '/tasks/{uuid}/snapshot', #POST-> get a snapshot
         'task stdout': '/tasks/{uuid}/stdout', #GET -> task stdout
