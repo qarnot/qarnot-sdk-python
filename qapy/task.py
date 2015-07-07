@@ -329,6 +329,22 @@ class QTask(object):
             self._dirty = True
         self._rescount = json_task['resultsCount']
 
+
+    def commit(self):
+        """Replicate local changes on the current object instance to the REST API
+
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
+        data = self._to_json()
+        resp = self._connection._put(get_url('task update', uuid=self._uuid), json=data)
+
+        if resp.status_code == 404:
+            raise MissingTaskException(resp.json()['message'], self._name)
+
+        raise_on_error(resp)
+
+
     def wait(self, timeout=None):
         """Wait for this task until it is completed.
 
