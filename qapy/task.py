@@ -39,6 +39,7 @@ class QTask(object):
         self.constants = {}
         self._auto_update = True
         self._update_cache_time = 5
+
         self._last_cache = time.time()
         """
         Dictionary [CST] = val.
@@ -62,6 +63,8 @@ class QTask(object):
         self._results_blacklist = None
         self._execution_cluster = {}
         self._error_reason = None
+        self._resource_disk_id = None
+        self._result_disk_id = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -285,7 +288,6 @@ class QTask(object):
             return
 
         now = time.time()
-
         if (now - self._last_cache) < self._update_cache_time and not flushcache:
             return
 
@@ -304,23 +306,11 @@ class QTask(object):
         self._profile = json_task['profile']
         self._framecount = json_task.get('frameCount')
         self._advanced_range = json_task.get('advancedRanges')
-        resource_disk_id = json_task['resourceDisk']
-        result_disk_id = json_task['resultDisk']
+        self._resource_disk_id = json_task['resourceDisk']
+        self._result_disk_id = json_task['resultDisk']
         self._execution_cluster = json_task['executionCluster']
 
         self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
-        try:
-            self._resource_disk = disk.QDisk._retrieve(self._connection,
-                                                       resource_disk_id)
-        except disk.MissingDiskException:
-            self._resource_disk = None
-
-        if result_disk_id is not None:
-            try:
-                self._result_disk = disk.QDisk._retrieve(self._connection,
-                                                         result_disk_id)
-            except disk.MissingDiskException:
-                self._result_disk = None
 
         self._uuid = json_task['id']
         self._state = json_task['state']
@@ -467,10 +457,15 @@ class QTask(object):
 
         Represents resource files."""
         if self._resource_disk is None:
-            _disk = disk.QDisk._create(self._connection,
-                                       "Resources: \"{0}\"".format(self._name),
-                                       force=self._force,
-                                       lock=False)
+            if self._resource_disk_id is None:
+                _disk = disk.QDisk._create(self._connection,
+                                           "Resources: \"{0}\"".format(self._name),
+                                           force=self._force,
+                                           lock=False)
+            else:
+                _disk = disk.QDisk._retrieve(self._connection,
+                                              self._resource_disk_id)
+
             self._resource_disk = _disk
 
         if self._auto_update:
@@ -488,6 +483,10 @@ class QTask(object):
         """:type: :class:`~qapy.disk.QDisk`
 
         Represents results files."""
+        if self._result_disk is None:
+            self._result_disk = disk.QDisk._retrieve(self._connection,
+                                                     self._result_disk_id)
+
         if self._auto_update:
             self.update()
 
