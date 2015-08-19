@@ -543,6 +543,10 @@ class QDisk(object):
                                            self._id)
         raise_on_error(response)
 
+        directory = os.path.dirname(local)
+        if not os.path.exists(directory):
+            os.makedirs(directory)
+
         with open(local, 'wb') as f_local:
             for elt in response.iter_content(512):
                 f_local.write(elt)
