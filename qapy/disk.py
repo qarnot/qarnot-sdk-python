@@ -579,7 +579,7 @@ class QDisk(object):
 
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
-               raise MissingDiskException(response.json()['message'],
+                raise MissingDiskException(response.json()['message'],
                                           self._id)
         raise_on_error(response)
 
@@ -625,10 +625,6 @@ class QDisk(object):
         """:type: :class:`string`
 
         The disk's description.
-
-        :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         return self._description
 
