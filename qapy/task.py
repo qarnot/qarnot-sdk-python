@@ -165,7 +165,7 @@ class QTask(object):
 
         if resp.status_code == 404:
             msg = self._resource_disk.uuid
-            self._resource_disk = None
+            self.resources = None
             raise disk.MissingDiskException(msg)
         elif resp.status_code == 403:
             raise MaxTaskException(resp.json()['message'])
@@ -236,28 +236,26 @@ class QTask(object):
         if self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
             self.abort()
 
-        if self._resource_disk:
-            self._resource_disk.update()
-
+        try:
+            self.resources.update()
             if purge_resources is None:
                 purge_resources = not self._resource_disk.locked
             if purge_resources:
-                try:
-                    self._resource_disk.delete()
-                except disk.MissingDiskException as e:
-                    warnings.warn(e.message)
-                self._resource_disk = None
+                self._resource_disk.delete()
+                self.resources = None
+        except disk.MissingDiskException as e:
+            warnings.warn(e.message)
 
-        if self._result_disk:
-            self._result_disk.update()
+        try:
+            self.results.update()
             if purge_results is None:
                 purge_results = not self._result_disk.locked
             if purge_results:
-                    try:
-                        self._result_disk.delete()
-                    except disk.MissingDiskException as e:
-                        warnings.warn(e.message)
-                    self._result_disk = None
+                self._result_disk.delete()
+                self._result_disk = None
+                self._result_disk_id = None
+        except disk.MissingDiskException as e:
+            warnings.warn(e.message)
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
@@ -462,6 +460,7 @@ class QTask(object):
                                            "Resources: \"{0}\"".format(self._name),
                                            force=self._force,
                                            lock=False)
+                self.resource_disk_id = _disk.uuid
             else:
                 _disk = disk.QDisk._retrieve(self._connection,
                                               self._resource_disk_id)
@@ -477,6 +476,10 @@ class QTask(object):
     def resources(self, value):
         """This is a setter."""
         self._resource_disk = value
+        if value is None:
+            self._resource_disk_id = None
+        else:
+            self._resource_disk_id = value.uuid
 
     @property
     def results(self):
@@ -507,11 +510,11 @@ class QTask(object):
         if not path.exists(output_dir):
             os.makedirs(output_dir)
 
-        if self._result_disk is not None and self._dirty:
-            for file_info in self._result_disk:
+        if self._dirty:
+            for file_info in self.results:
                 outpath = path.normpath(file_info.name.lstrip('/'))
-                self._result_disk.get_file(file_info, path.join(output_dir,
-                                                                outpath))
+                self.results.get_file(file_info, path.join(output_dir,
+                                                           outpath))
 
         return output_dir
 
