@@ -209,39 +209,6 @@ class QApy(object):
         disks = [QDisk(data, self) for data in response.json()]
         return disks
 
-    def profiles(self):
-        """Get the list of available profiles for submitting tasks.
-
-        :rtype: List of :class:`str`.
-        :returns: List of the names of profiles.
-
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
-        """
-        response = self._get(get_url('list profiles'))
-        raise_on_error(response)
-        if response.status_code != 200:
-            return None
-        return [QProfile(prof) for prof in response.json()]
-
-    def profile_info(self, profile):
-        """Get informations about a profile.
-
-        :param str profile: name of the profile
-
-        :rtype: :class:`QProfile`
-        :returns: The :class:`QProfile` corresponding to the requested profile.
-
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
-        :raises ValueError: no such profile
-        """
-        response = self._get(get_url('get profile', name=profile))
-        if response.status_code == 404:
-            raise QApyException('%s : %s' % (response.json()['message'], profile))
-        raise_on_error(response)
-        return QProfile(response.json())
-
     def tasks(self):
         """Get the list of tasks stored on this cluster for this user.
 
