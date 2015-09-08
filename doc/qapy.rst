@@ -1,10 +1,10 @@
-qapy package
-============
+SDK Documentation
+================
 
 Qarnot API
 
-Module contents
----------------
+Python module
+-------------
 
 .. automodule:: qapy
    :members:
@@ -13,33 +13,32 @@ Module contents
 
 .. autoexception:: qapy.QApyException
 
-qapy.connection module
-----------------------
-
+Connection
+----------
 .. automodule:: qapy.connection
    :members:
    :undoc-members:
    :show-inheritance:
 
 
-qapy.disk module
-----------------
+Disk
+----
 
 .. automodule:: qapy.disk
     :members:
     :undoc-members:
     :show-inheritance:
 
-qapy.task module
-----------------
+Task
+----
 
 .. automodule:: qapy.task
     :members:
     :undoc-members:
     :show-inheritance:
 
-qapy.notification module
-----------------
+Notification
+------------
 
 .. automodule:: qapy.notification
     :members:

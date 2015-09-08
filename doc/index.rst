@@ -3,16 +3,27 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to qapy's documentation!
-================================
+=================
+Qarnot Python SDK
+=================
 
-Contents:
+Q.apy is a Python library designed to interact with [Qarnot] HPC cloud computing service. It allows users to launch, manage and monitor payloads running on distributed computing nodes deployed in digital heaters developed and deployed by Qarnot. 
+
+Reference Docs
+==============
 
 .. toctree::
-   :maxdepth: 4
+   :maxdepth: 1
 
+   installation
+   basic
+   payload
+   credits
    qapy
-
+   samples
+   changelog
+   contributing
+   glossary
 
 Indices and tables
 ==================
