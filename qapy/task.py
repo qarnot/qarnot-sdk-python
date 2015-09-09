@@ -24,7 +24,7 @@ class QTask(object):
         :type connection: :class:`Qconnection`
         :param name: given name of the task
         :type name: :class:`string`
-        :param profile: which profile to use with this task
+        :param profile: which profile (payload) to use with this task
         :type profile: :class:`string`
         :param frameNbr: number of frame on which to run task
         :type frameNbr: :class:`int`
