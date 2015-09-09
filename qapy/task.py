@@ -143,9 +143,6 @@ class QTask(object):
     def submit(self):
         """Submit task to the cluster if it is not already submitted.
 
-        :rtype: :class:`string`
-        :returns: Status of the task (see :attr:`state`)
-
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
