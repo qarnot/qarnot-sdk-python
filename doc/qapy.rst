@@ -16,33 +16,34 @@ Python module
 Connection
 ----------
 .. automodule:: qapy.connection
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
+    :members:
+    :show-inheritance:
+    :special-members:
+    :exclude-members: __dict__,__weakref__
 
 Disk
 ----
 
 .. automodule:: qapy.disk
     :members:
-    :undoc-members:
     :show-inheritance:
+    :special-members:
+    :exclude-members: __dict__,__weakref__
 
 Task
 ----
 
 .. automodule:: qapy.task
     :members:
-    :undoc-members:
     :show-inheritance:
+    :special-members:
+    :exclude-members: __dict__,__weakref__
 
 Notification
 ------------
 
 .. automodule:: qapy.notification
     :members:
-    :undoc-members:
     :show-inheritance:
-
-
+    :special-members:
+    :exclude-members: __dict__,__weakref__

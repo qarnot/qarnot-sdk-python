@@ -17,21 +17,33 @@ class QTask(object):
        :meth:`qapy.connection.QApy.create_task`
        or retrieved with :meth:`qapy.connection.QApy.tasks`.
     """
-    def __init__(self, connection, name, profile, frameNbr, force):
+    def __init__(self, connection, name, profile, framecount_or_range, force):
         """Create a new :class:`QTask`.
 
         :param connection: the cluster on which to send the task
         :type connection: :class:`Qconnection`
         :param name: given name of the task
         :type name: :class:`string`
-        :param profile: which profile (payload) to use with this task
-        :type profile: :class:`string`
-        :param frameNbr: number of frame on which to run task
-        :type frameNbr: :class:`int`
+        :param str profile: which profile (payload) to use with this task
+
+        :param framecount_or_range: number of frame or range on  which to run task
+        :type framecount_or_range: int or str
+
+        :param bool force: remove an old task if the maximum number of allowed
+           tasks is reached. Plus, it will delete an old unlocked disk
+           if maximum number of disks is reached for resources and results
+
         """
         self._name = name
         self._profile = profile
-        self._framecount = frameNbr
+
+        if isinstance(framecount_or_range, int):
+            self._framecount = framecount_or_range
+            self._advanced_range = None
+        else:
+            self._advanced_range = framecount_or_range
+            self._framecount = 0
+
         self._force = force
         self._resource_disk = None
         self._result_disk = None
@@ -56,7 +68,6 @@ class QTask(object):
         self._snapshots = False
         self._dirty = False
         self._rescount = -1
-        self._advanced_range = None
         self._snapshot_whitelist = None
         self._snapshot_blacklist = None
         self._results_whitelist = None
@@ -676,6 +687,10 @@ class QTask(object):
         Number of frames needed for the task.
 
         Can be set until :meth:`run` is called.
+
+        :raises AttributeError: if :attr:`advanced_range` is not None when setting this property
+
+        .. warning:: This property is mutually exclusive with :attr:`advanced_range`
         """
         if self._auto_update:
             self.update()
@@ -687,8 +702,10 @@ class QTask(object):
         """Setter for framecount."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
-        else:
-            self._framecount = value
+
+        if self.advanced_range is not None:
+            raise AttributeError("Can't set framecount if advanced_range is not None")
+        self._framecount = value
 
     @property
     def advanced_range(self):
@@ -699,11 +716,13 @@ class QTask(object):
         Allows to select which frames will be computed.
         Should be None or match the following extended regular expression
         """r"""**"(\\[[0-9]+-[0-9]+\\])( \\[[0-9]+-[0-9]+\\])*"**
-
-        This parameter will override :attr:`framecount`.
         *[min-max]* will generate (max - min) frames from min to max (excluded).
 
         Can be set until :meth:`run` is called.
+
+        :raises AttributeError: if :attr:`framecount` is not 0 when setting this property
+
+        .. warning:: This property is mutually exclusive with :attr:`framecount`
         """
         if self._auto_update:
             self.update()
@@ -713,6 +732,8 @@ class QTask(object):
     @advanced_range.setter
     def advanced_range(self, value):
         """Setter for advanced_range."""
+        if self.framecount != 0:
+            raise AttributeError("Can't set advanced_range if framecount is not 0")
         self._advanced_range = value
 
 

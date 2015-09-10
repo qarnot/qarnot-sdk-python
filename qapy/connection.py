@@ -21,8 +21,6 @@ else:
 
 class QApy(object):
     """Represents the couple cluster/user to which submit tasks.
-
-    .. automethod:: __init__
     """
     def __init__(self, conf):
         """Create a connection to a cluster with given config file or
@@ -281,12 +279,14 @@ class QApy(object):
         """
         return QDisk._create(self, description, force, lock)
 
-    def create_task(self, name, profile, frame_nbr, force=False):
+    def create_task(self, name, profile, framecount_or_range, force=False):
         """Create a new :class:`~qapy.task.QTask`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
-        :param int frame_nbr: number of frame on which to run task
+        :param framecount_or_range: number of frame or range on  which to run task
+        :type framecount_or_range: int or str
+
         :param bool force: remove an old task if the maximum number of allowed
            tasks is reached. Plus, it will delete an old unlocked disk
            if maximum number of disks is reached for resources and results
@@ -296,7 +296,7 @@ class QApy(object):
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return QTask(self, name, profile, frame_nbr, force)
+        return QTask(self, name, profile, framecount_or_range, force)
 
     def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
         """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskStateChanged`.
