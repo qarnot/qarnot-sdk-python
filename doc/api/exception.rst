@@ -1,0 +1,3 @@
+Exception
+=========
+.. autoexception:: qapy.QApyException
