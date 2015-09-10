@@ -23,7 +23,7 @@ class QTask(object):
         :param connection: the cluster on which to send the task
         :type connection: :class:`Qconnection`
         :param name: given name of the task
-        :type name: :class:`string`
+        :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
 
         :param framecount_or_range: number of frame or range on  which to run task
@@ -107,7 +107,7 @@ class QTask(object):
         :param float job_timeout: the task will :meth:`abort` if it has not
           already finished
 
-        :rtype: :class:`string`
+        :rtype: :class:`str`
         :returns: Path to the directory containing the results (may be None).
 
         :raises qapy.QApyException: API general error, see message for details
@@ -134,7 +134,7 @@ class QTask(object):
 
         :param str output_dir: path to a directory that will contain the results
 
-        :rtype: :class:`string`
+        :rtype: :class:`str`
         :returns: Path to the directory containing the results (may be None).
 
         :raises qapy.QApyException: API general error, see message for details
@@ -282,7 +282,7 @@ class QTask(object):
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :rtype: :class:`string`
+        :rtype: :class:`str`
         :returns: State of the task (see :attr:`state`)
 
         :raises qapy.QApyException: API general error, see message for details
@@ -347,7 +347,7 @@ class QTask(object):
         :param float timeout: maximum time (in seconds) to wait before returning
            (None => no timeout)
 
-        :rtype: :class:`string`
+        :rtype: :class:`str`
         :returns: Is the task finished
 
         :raises qapy.QApyException: API general error, see message for details
@@ -433,7 +433,7 @@ class QTask(object):
 
     @property
     def state(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         State of the task.
 
@@ -627,7 +627,7 @@ class QTask(object):
 
     @property
     def uuid(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         The task's uuid.
 
@@ -640,7 +640,7 @@ class QTask(object):
 
     @property
     def name(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         The task's name.
 
@@ -661,7 +661,7 @@ class QTask(object):
 
     @property
     def profile(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         The profile to run the task with.
 
@@ -709,7 +709,7 @@ class QTask(object):
 
     @property
     def advanced_range(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         Advanced frame range selection.
 

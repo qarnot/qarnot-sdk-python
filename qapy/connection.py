@@ -95,7 +95,7 @@ class QApy(object):
     def _patch(self, url, json=None, **kwargs):
         """perform a PATCH request on the cluster
 
-        :param url: :class:`string`,
+        :param url: :class:`str`,
           relative url of the file (according to the cluster url)
         :param json: the data to json serialize and post
 
@@ -121,7 +121,7 @@ class QApy(object):
     def _post(self, url, json=None, **kwargs):
         """perform a POST request on the cluster
 
-        :param url: :class:`string`,
+        :param url: :class:`str`,
           relative url of the file (according to the cluster url)
         :param json: the data to json serialize and post
 
@@ -148,7 +148,7 @@ class QApy(object):
     def _delete(self, url, **kwargs):
         """Perform a DELETE request on the cluster.
 
-        :param url: :class:`string`,
+        :param url: :class:`str`,
           relative url of the file (according to the cluster url)
 
         :rtype: :class:`requests.Response`

@@ -507,7 +507,7 @@ class QDisk(object):
         :param str local: local name of the retrieved file
           (defaults to *remote*)
 
-        :rtype: :class:`string`
+        :rtype: :class:`str`
         :returns: The name of the output file.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -606,7 +606,7 @@ class QDisk(object):
 
     @property
     def uuid(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         The disk's UUID."""
         return self._id
@@ -626,7 +626,7 @@ class QDisk(object):
 
     @property
     def description(self):
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         The disk's description.
         """
@@ -706,7 +706,7 @@ class QFileInfo(object):
             self.lastchange = datetime.datetime.strptime(lastChange, "%Y-%m-%dT%H:%M:%SZ")
 
         self.name = name
-        """:type: :class:`string`
+        """:type: :class:`str`
 
         Path of the file on the :class:`QDisk`."""
         self.size = size
@@ -719,7 +719,7 @@ class QFileInfo(object):
         Is the file a directory."""
 
         self.sha1sum = sha1Sum
-        """:type: :class:`string`
+        """:type: :class:`str`
         SHA1 Sum of the file"""
 
     def __repr__(self):
