@@ -104,7 +104,7 @@ class QTask(object):
         """Submit a task, wait for the results and download them.
 
         :param str output_dir: path to a directory that will contain the results
-        :param float job_timeout: the task will :meth:`abort` if it has not
+        :param float job_timeout: Number of second before the task :meth:`abort` if it has not
           already finished
 
         :rtype: :class:`str`
