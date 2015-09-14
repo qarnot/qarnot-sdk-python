@@ -32,8 +32,10 @@ class QApy(object):
         * cluster_unsafe   (optional)
         * cluster_timeout  (optional)
         * client_auth
-        .. note:: qarnot.conf file format:
-        ::
+
+        Configuration sample:
+
+        .. code-block:: ini
 
            [cluster]
            # url of the REST API
@@ -45,6 +47,7 @@ class QApy(object):
            [client]
            # auth string of the client
            auth=login
+
         """
         self._http = requests.session()
 
