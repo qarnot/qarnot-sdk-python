@@ -347,7 +347,7 @@ class QTask(object):
         :param float timeout: maximum time (in seconds) to wait before returning
            (None => no timeout)
 
-        :rtype: :class:`str`
+        :rtype: :class:`bool`
         :returns: Is the task finished
 
         :raises qapy.QApyException: API general error, see message for details
