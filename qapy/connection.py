@@ -411,7 +411,15 @@ class QUserInfo(object):
         """:type: :class:`int`
 
         Maximum number of frames per task."""
-        self.executionTime = info['executionTime']
+        self.finishedExecutionTime = info['finishedExecutionTime']
+        """:type: :class:`int`
+
+        Finished computation time."""
+        self.runningExecutionTime = info['runningExecutionTime']
+        """:type: :class:`int`
+
+        Running computation time."""
+        self.totalExecutionTime = info['totalExecutionTime']
         """:type: :class:`int`
 
         Total computation time."""
