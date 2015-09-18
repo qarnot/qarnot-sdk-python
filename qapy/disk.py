@@ -442,9 +442,6 @@ class QDisk(object):
         :param str dest: name of the remote file
           (defaults to filename)
 
-        :rtype: :class:`bool`
-        :returns: whether the file has been successfully added
-
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
