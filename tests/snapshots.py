@@ -7,7 +7,6 @@ import time
 import qapy
 from os import walk
 from os.path import join
-import tempfile
 
 from qapy.disk import QUploadMode
 
@@ -18,18 +17,18 @@ if __name__ == "__main__":
         task.resources.add_file("example/script_verbose.py",
                                 mode=QUploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script_verbose.py"
-        task.submit_async(tempfile.mkdtemp())
+        task.submit()
+        task.snapshot(10)
 
-        while task.status() == 'Submitted':
-            time.sleep(10)
-            out = task.results()
+        while not task.wait(10):
+            out = task.download_results("output/")
             print(task.fresh_stdout(), end='')
             for dirname, dirs, files in walk(out):
                 for filename in files:
                     with open(join(dirname,filename)) as f:
                         print(f.read())
 
-        out = task.results()
+        out = task.download_results("output/")
         print(task.fresh_stdout(), end='')
         for dirname, dirs, files in walk(out):
             for filename in files:

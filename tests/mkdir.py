@@ -13,8 +13,10 @@ if __name__ == "__main__":
     with q.create_task("example task", "python", 3) as task:
         task.resources.add_file("example/script.py", mode=QUploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
-        out = task.submit('results/test')
+        task.submit()
+        task.wait()
         print(task.stdout(), end='')
+        out = task.download_results("output/")
         for dirname, dirs, files in walk(out):
             for filename in files:
                 with open(join(dirname,filename)) as f:

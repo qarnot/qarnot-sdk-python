@@ -3,7 +3,6 @@
 
 from __future__ import print_function
 
-import tempfile
 import qapy
 from qapy.disk import QUploadMode
 from os import walk
@@ -15,8 +14,9 @@ if __name__ == "__main__":
         task.resources.lock = True
         task.resources.add_file("example/script.py", mode=QUploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script.py"
-        out = tempfile.mkdtemp()
-        task.submit(out)
+        task.submit()
+        task.wait()
+        out = task.download_results("output/")
         print(task.stdout(), end='')
         for dirname, dirs, files in walk(out):
             for filename in files:
