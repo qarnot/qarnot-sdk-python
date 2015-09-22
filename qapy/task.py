@@ -210,6 +210,14 @@ class QTask(object):
         self.update(True)
 
     def update_resources(self):
+        """Update resources for a running task. Be sure to add new resources first.
+
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.task.MissingTaskException: task does not represent
+          a valid one
+        """
+
         self.update(True)
         resp = self._connection._patch(
             get_url('task update', uuid=self._uuid))
