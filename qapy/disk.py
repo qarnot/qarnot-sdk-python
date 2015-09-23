@@ -42,8 +42,10 @@ class QDisk(object):
         self._description = jsondisk["description"]
         self._locked = jsondisk["locked"]
         self._connection = connection
-        self._filethreads = {}
-        self._filecache = {}
+        self._filethreads = {} # A dictionary containing key:value where key is
+        #  the remote destination on disk, and value a running thread.
+        self._filecache = {} # A dictionary containing key:value where key is
+        #  the remote destination on disk, and value an opened Python File.
         self._add_mode = QUploadMode.blocking
 
     @classmethod
@@ -106,7 +108,6 @@ class QDisk(object):
         return cls(response.json(), connection)
 
     #Disk Management#
-
     def update(self):
 
         response = self._connection._get(get_url('disk info', name=self._id))
@@ -359,8 +360,8 @@ class QDisk(object):
 
         self._filethreads.clear()
 
-        for remote, local in self._filecache.items():
-            self._add_file(local, remote)
+        for remote, file in self._filecache.items():
+            self._add_file(file, remote)
 
         self._filecache.clear()
 
@@ -387,8 +388,8 @@ class QDisk(object):
         response = self._connection._post(url, json=data)
         raise_on_error(response)
 
-    def add_file(self, local, remote=None, mode=None):
-        """Add a file on the disk.
+    def add_file(self, local_or_file, remote=None, mode=None):
+        """Add a local file or a Python File on the disk.
 
         .. note::
            You can also use **disk[remote] = local**
@@ -397,7 +398,8 @@ class QDisk(object):
            In non blocking mode, you may receive an exception during an other
            operation (like :meth:`flush`).
 
-        :param str local: name of the local file
+        :param str|File local_or_file: name of the local file or an opened
+        Python File
         :param str remote: name of the remote file
           (defaults to *local*)
         :param mode: mode with which to add the file
@@ -412,51 +414,57 @@ class QDisk(object):
         :raises ValueError: file could not be created
         """
         mode = mode or self._add_mode
-        remote = remote or path.basename(local)
 
-        if isinstance(remote, QFileInfo):
-            remote = remote.name
+        if isinstance(local_or_file, str):
+            file = open(local_or_file, 'rb')
+        else:
+            file = local_or_file
 
-        previous = self._filethreads.get(remote)
-        if previous is not None: #ensure no 2 threads write on the same file
+        dest = remote or path.basename(file.name)
+        if isinstance(dest, QFileInfo):
+            dest = dest.name
+
+        # Ensure 2 threads do not write on the same file
+        previous = self._filethreads.get(dest)
+        if previous is not None:
             previous.join()
-            del self._filethreads[remote]
+            del self._filethreads[dest]
 
-        if remote in self._filecache: #do not delay a file added differently
-            del self._filecache[remote]
+        # Do not delay a file added differently
+        if dest in self._filecache:
+            self._filecache[dest].close()
+            del self._filecache[dest]
 
         if mode is QUploadMode.blocking:
-            return self._add_file(local, remote)
+            return self._add_file(file, dest)
         elif mode is QUploadMode.lazy:
-            self._filecache[remote] = local
+            self._filecache[dest] = file
         else:
-            thread = threading.Thread(None, self._add_file, remote,
-                                      (local, remote))
+            thread = threading.Thread( None, self._add_file, dest,
+                                      (file, dest))
             thread.start()
-            self._filethreads[remote] = thread
+            self._filethreads[dest] = thread
 
-    def _add_file(self, filename, dest):
+    def _add_file(self, file, dest):
         """Add a file on the disk.
 
-        :param str filename: name of the local file
-        :param str dest: name of the remote file
-          (defaults to filename)
+        :param File file: an opened Python File
+        :param str dest: name of the remote file (defaults to filename)
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
 
-        with open(filename, 'rb') as f_local:
-            response = self._connection._post(
-                get_url('update file', name=self._id,
-                        path=path.dirname(dest)),
-                files={'filedata': (path.basename(dest), f_local)})
+        response = self._connection._post(
+            get_url('update file', name=self._id, path=path.dirname(dest)),
+            files={'filedata': (path.basename(dest), file)})
 
-            if response.status_code == 404:
-                raise MissingDiskException(response.json()['message'],
-                                           self._id)
-            raise_on_error(response)
+        file.seek(0)
+
+        if response.status_code == 404:
+            raise MissingDiskException(response.json()['message'], self._id)
+        raise_on_error(response)
 
     def add_directory(self, local, remote="", mode=None):
         """ Add a directory to the disk. Does not follow symlinks.
@@ -513,16 +521,14 @@ class QDisk(object):
         :raises ValueError: no such file
           (:exc:`KeyError` with disk[file] syntax)
         """
+
+        def make_dirs(_local):
+            directory = os.path.dirname(_local)
+            if directory != '' and not os.path.exists(directory):
+                os.makedirs(directory)
+
         if isinstance(remote, QFileInfo):
             remote = remote.name
-
-        pending = self._filethreads.get(remote)
-        if pending is not None: #ensure file is done uploading
-            pending.join()
-
-        if remote in self._filecache:
-            self._add_file(remote, self._filecache[remote])
-            del self._filecache[remote]
 
         if local is None:
             local = path.basename(remote)
@@ -530,23 +536,39 @@ class QDisk(object):
         if path.isdir(local):
             local = path.join(local, path.basename(remote))
 
-        response = self._connection._get(
-            get_url('update file', name=self._id, path=remote),
-            stream=True)
+        # Ensure file is done uploading
+        pending = self._filethreads.get(remote)
+        if pending is not None:
+            pending.join()
 
-        if response.status_code == 404:
-            if response.json()['message'] == "No such disk":
-                raise MissingDiskException(response.json()['message'],
-                                           self._id)
-        raise_on_error(response)
+        if remote in self._filecache:
+            # In the case of a cached file it is available locally
+            self._add_file(self._filecache[remote], remote)
 
-        directory = os.path.dirname(local)
-        if not os.path.exists(directory):
-            os.makedirs(directory)
+            make_dirs(local)
+            with open(local, 'wb') as f_local:
+                for line in self._filecache[remote]:
+                    f_local.write(line)
 
-        with open(local, 'wb') as f_local:
-            for elt in response.iter_content(512):
-                f_local.write(elt)
+            self._filecache[remote].close()
+            del self._filecache[remote]
+        else:
+            # In other cases the file is only available remotely
+            response = self._connection._get(
+                get_url('update file', name=self._id, path=remote),
+                stream=True)
+
+            if response.status_code == 404:
+                if response.json()['message'] == "No such disk":
+                    raise MissingDiskException(response.json()['message'],
+                                               self._id)
+            raise_on_error(response)
+
+            make_dirs(local)
+            with open(local, 'wb') as f_local:
+                for elt in response.iter_content(512):
+                    f_local.write(elt)
+
         return local
 
     def delete_file(self, remote):
@@ -564,24 +586,27 @@ class QDisk(object):
           (:exc:`KeyError` with disk['file'] syntax)
 
         """
-        pending = self._filethreads.get(remote)
-        if pending is not None: #ensure 2 threads don't use the same file
+        dest = remote.name if isinstance(remote, QFileInfo) else remote
+
+        # Ensure 2 threads do not write on the same file
+        pending = self._filethreads.get(dest)
+        if pending is not None:
             pending.join()
 
-        if remote in self._filecache:
-            self._add_file(remote, self._filecache[remote])
-            del self._filecache[remote]
-
-        if isinstance(remote, QFileInfo):
-            remote = remote.name
+        # Remove the file from local cache if present
+        if dest in self._filecache:
+            self._filecache[dest].close()
+            del self._filecache[dest]
+            # The file is not present on the disk so just return
+            return
 
         response = self._connection._delete(
-            get_url('update file', name=self._id, path=remote))
+            get_url('update file', name=self._id, path=dest))
 
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
                 raise MissingDiskException(response.json()['message'],
-                                          self._id)
+                                           self._id)
         raise_on_error(response)
 
     def commit(self):
@@ -661,11 +686,11 @@ class QDisk(object):
         except ValueError:
             raise KeyError(filename)
 
-    def __setitem__(self, dest, filename):
+    def __setitem__(self, remote, filename):
         """x.__setitem__(i, y) <==> x[i]=y"""
         if path.isdir(filename):
-            return self.add_directory(filename, dest)
-        return self.add_file(filename, dest)
+            return self.add_directory(filename, remote)
+        return self.add_file(filename, remote)
 
     def __delitem__(self, filename):
         """x.__delitem__(y) <==> del x[y]"""
