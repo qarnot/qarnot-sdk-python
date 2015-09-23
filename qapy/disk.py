@@ -24,7 +24,7 @@ class QDisk(object):
        **must** be valid unix-like paths.
     """
 
-    #Creation#
+    # Creation
     def __init__(self, jsondisk, connection):
         """Initialize a disk from a dictionary.
 
@@ -107,7 +107,7 @@ class QDisk(object):
 
         return cls(response.json(), connection)
 
-    #Disk Management#
+    # Disk Management
     def update(self):
 
         response = self._connection._get(get_url('disk info', name=self._id))
@@ -231,13 +231,14 @@ class QDisk(object):
         :param bool verbose: Print information about synchronization operations
 
         .. warning::
-           Local changes are reflected on the server, a file present on the disk but
-           not in the local directory will be deleted from the disk.
+           Local changes are reflected on the server, a file present on the
+           disk but not in the local directory will be deleted from the disk.
 
            A file present in the directory but not in the disk will be uploaded.
 
         .. note::
-           The following parameters are used to determine wether synchronization is required :
+           The following parameters are used to determine whether
+           synchronization is required :
 
               * name
               * size
@@ -257,19 +258,22 @@ class QDisk(object):
     def sync_files(self, files, verbose=False):
         """Synchronize files  with the remote disks.
 
-        :param dict files: Dictionnary of synchronized files
+        :param dict files: Dictionary of synchronized files
         :param bool verbose: Print information about synchronization operations
 
-        Dictionnary key is the remote file path while value is the local file path.
+        Dictionary key is the remote file path while value is the local file
+        path.
 
         .. warning::
-           Local changes are reflected on the server, a file present on the disk but
+           Local changes are reflected on the server, a file present on the
+           disk but
            not in the local directory will be deleted from the disk.
 
            A file present in the directory but not in the disk will be uploaded.
 
         .. note::
-           The following parameters are used to determine wether synchronization is required :
+           The following parameters are used to determine whether
+           synchronization is required :
 
               * name
               * size
@@ -308,18 +312,19 @@ class QDisk(object):
         removes = remote - local
 
         sadds = sorted(adds, key=lambda x: x.sha1sum)
-        groupedadds = [list(g) for k, g in itertools.groupby(sadds, lambda x: x.sha1sum)]
+        groupedadds = [list(g) for k, g in itertools.groupby(
+            sadds, lambda x: x.sha1sum)]
 
         removelater = []
         for f in removes:
             try:
                 new = next(x for x in adds if x.sha1sum == f.sha1sum)
                 if verbose:
-                    print ("Rename: " + f.name +" to " + new.name + "Link & Delete")
+                    print ("Rename:", f.name, "to", new.name, "Link & Delete")
                 removelater.append(f)
             except StopIteration:
                 if verbose:
-                    print("Delete: " + f.name)
+                    print("Delete:", f.name)
                 self.delete_file(f.name)
 
         remote = self.list_files()
@@ -328,21 +333,21 @@ class QDisk(object):
             try:
                 rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum)
                 if verbose:
-                    print ("Link: " + rem.name + " <- " + entry[0].name)
+                    print ("Link:", rem.name, "<-", entry[0].name)
                 self.add_link(rem.name, entry[0].name)
             except StopIteration:
                 if verbose:
-                    print ("Upload: " + entry[0].name)
+                    print ("Upload:", entry[0].name)
                 self.add_file(entry[0].filepath, entry[0].name)
-            if len(entry) > 1: #duplicate files
+            if len(entry) > 1:  # duplicate files
                 for link in entry[1:]:
                     if verbose:
-                        print ("Link: " + entry[0].name + " <- " + link.name)
+                        print ("Link:", entry[0].name, "<-", link.name)
                     self.add_link(entry[0].name, link.name)
 
         for f in removelater:
             if verbose:
-                print ("Delete: " + f.name)
+                print ("Delete:", f.name)
             self.delete_file(f.name)
 
     def flush(self):
@@ -372,7 +377,8 @@ class QDisk(object):
         :param str linkname: name of the created file
 
         .. warning::
-           File size is counted twice, this method is meant to save upload time, not space.
+           File size is counted twice, this method is meant to save upload
+           time, not space.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -403,7 +409,8 @@ class QDisk(object):
         :param str remote: name of the remote file
           (defaults to *local*)
         :param mode: mode with which to add the file
-          (defaults to :attr:`~QUploadMode.blocking` if not set by :attr:`QDisk.add_mode`)
+          (defaults to :attr:`~QUploadMode.blocking` if not set by
+          :attr:`QDisk.add_mode`)
         :type mode: :class:`QUploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -676,9 +683,10 @@ class QDisk(object):
 
     #tostring
     def __str__(self):
-        return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ") + self.uuid + " - " + self.description
-    #operators#
+        return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ")\
+               + self.uuid + " - " + self.description
 
+    # Operators
     def __getitem__(self, filename):
         """x.__getitem__(y) <==> x[y]"""
         try:
@@ -709,12 +717,10 @@ class QDisk(object):
         """x.__iter__() <==> iter(x)"""
         return iter(self.list_files())
 
-###################
-# Utility Classes #
-###################
 
+# Utility Classes
 class QFileInfo(object):
-    """Informations about a file."""
+    """Information about a file."""
     def __init__(self, lastChange, name, size, fileFlags, sha1Sum):
 
         self.lastchange = None
@@ -725,7 +731,8 @@ class QFileInfo(object):
         if isinstance(lastChange, datetime.datetime):
             self.lastchange = lastChange
         else:
-            self.lastchange = datetime.datetime.strptime(lastChange, "%Y-%m-%dT%H:%M:%SZ")
+            self.lastchange = datetime.datetime.strptime(lastChange,
+                                                         "%Y-%m-%dT%H:%M:%SZ")
 
         self.name = name
         """:type: :class:`str`
@@ -745,7 +752,8 @@ class QFileInfo(object):
         SHA1 Sum of the file"""
 
     def __repr__(self):
-        template = 'QFileInfo(lastchange={0}, name={1}, size={2}, directory={3}, sha1sum={4})'
+        template = 'QFileInfo(lastchange={0}, name={1}, size={2}, '\
+                   'directory={3}, sha1sum={4})'
         return template.format(self.lastchange, self.name, self.size,
                                self.directory, self.sha1sum)
 
@@ -761,6 +769,7 @@ class QFileInfo(object):
                 hash(self.directory) ^
                 hash(self.sha1sum))
 
+
 class QUploadMode(object):
     """How to add files on a :class:`QDisk`."""
     blocking = 0
@@ -771,12 +780,10 @@ class QUploadMode(object):
     lazy = 2
     """Actual uploading is made by the :func:`~QDisk.flush` method call."""
 
-##############
-# Exceptions #
-##############
 
+# Exceptions
 class MissingDiskException(Exception):
-    """Non existant disk."""
+    """Non existing disk."""
     def __init__(self, message, name):
         super(MissingDiskException, self).__init__(
             "{0}: {1} ".format(message, name))

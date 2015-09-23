@@ -7,7 +7,9 @@ import warnings
 import os.path as path
 import os
 
-RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting', 'DownloadingResults']
+RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
+                              'FullyDispatched', 'PartiallyExecuting',
+                              'FullyExecuting', 'DownloadingResults']
 
 class QTask(object):
     """Represents a Qarnot job.
@@ -26,7 +28,8 @@ class QTask(object):
         :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
 
-        :param framecount_or_range: number of frame or range on  which to run task
+        :param framecount_or_range: number of frame or range on  which to run
+        task
         :type framecount_or_range: int or str
 
         :param bool force: remove an old task if the maximum number of allowed
@@ -539,7 +542,7 @@ class QTask(object):
         since the submission of the task.
 
         :rtype: :class:`str`
-        :returns: The standard ouput.
+        :returns: The standard output.
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -886,8 +889,7 @@ class QTask(object):
     def __str__(self):
         return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'.format(self.name, self._uuid, self._profile, self._framecount, self.state, (self._resource_disk.uuid if self._resource_disk is not None else ""), (self._result_disk.uuid if self._result_disk is not None else ""))
 
-    #context manager#
-
+    # Context manager
     def __enter__(self):
         return self
 
