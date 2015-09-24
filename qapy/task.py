@@ -11,6 +11,7 @@ RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyDispatched', 'PartiallyExecuting',
                               'FullyExecuting', 'DownloadingResults']
 
+
 class QTask(object):
     """Represents a Qarnot job.
 
@@ -66,7 +67,7 @@ class QTask(object):
         """
 
         self.constraints = {}
-        self._state = 'UnSubmitted' # RO property same for below
+        self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
         self._snapshots = False
         self._dirty = False
@@ -336,7 +337,6 @@ class QTask(object):
             self._dirty = True
         self._rescount = json_task['resultsCount']
 
-
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
@@ -350,7 +350,6 @@ class QTask(object):
             raise MissingTaskException(resp.json()['message'], self._name)
 
         raise_on_error(resp)
-
 
     def wait(self, timeout=None):
         """Wait for this task until it is completed.
@@ -409,7 +408,7 @@ class QTask(object):
             self._snapshots = interval
             return
         resp = self._connection._post(get_url('task snapshot', uuid=self._uuid),
-                                      json={"interval" : interval})
+                                      json={"interval": interval})
 
         if resp.status_code == 400:
             raise ValueError(interval)
@@ -420,7 +419,7 @@ class QTask(object):
 
         self._snapshots = True
 
-    def instant(self): #change to snapshot and other to snapshot_periodic ?
+    def instant(self):
         """Make a snapshot of the current task.
 
         :raises qapy.QApyException: API general error, see message for details
@@ -747,7 +746,6 @@ class QTask(object):
             raise AttributeError("Can't set advanced_range if framecount is not 0")
         self._advanced_range = value
 
-
     @property
     def snapshot_whitelist(self):
         """Snapshot white list
@@ -854,7 +852,7 @@ class QTask(object):
 
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
-        self.resources #init resource_disk if not done
+        self.resources  # init resource_disk if not done
         const_list = [
             {'key': key, 'value': value}
             for key, value in self.constants.items()
@@ -908,6 +906,7 @@ class MissingTaskException(Exception):
     def __init__(self, message, name):
         super(MissingTaskException, self).__init__(
             "{0}: {1}".format(message, name))
+
 
 class MaxTaskException(Exception):
     """Max number of tasks reached."""
