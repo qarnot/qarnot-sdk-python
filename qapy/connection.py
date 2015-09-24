@@ -9,7 +9,7 @@ import requests
 import sys
 from json import dumps as json_dumps
 
-if sys.version_info[0] >= 3: # module renamed in py3
+if sys.version_info[0] >= 3:  # module renamed in py3
     import configparser as config
 else:
     import ConfigParser as config
@@ -110,8 +110,8 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
         """
-        if json != None:
-            if not 'headers' in kwargs:
+        if json is not None:
+            if 'headers' not in kwargs:
                 kwargs['headers'] = dict()
             kwargs['headers']['Content-Type'] = 'application/json'
             kwargs['data'] = json_dumps(json)
@@ -136,8 +136,8 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
         """
-        if json != None:
-            if not 'headers' in kwargs:
+        if json is not None:
+            if 'headers' not in kwargs:
                 kwargs['headers'] = dict()
             kwargs['headers']['Content-Type'] = 'application/json'
             kwargs['data'] = json_dumps(json)
@@ -146,7 +146,6 @@ class QApy(object):
         if ret.status_code == 401:
             raise UnauthorizedException(self.auth)
         return ret
-
 
     def _delete(self, url, **kwargs):
         """Perform a DELETE request on the cluster.
@@ -170,8 +169,8 @@ class QApy(object):
 
     def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
-        if json != None:
-            if not 'headers' in kwargs:
+        if json is not None:
+            if 'headers' not in kwargs:
                 kwargs['headers'] = dict()
             kwargs['headers']['Content-Type'] = 'application/json'
             kwargs['data'] = json_dumps(json)
@@ -315,7 +314,6 @@ class QApy(object):
         nfilter = notification.TaskStateChanged(template, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
         return QNotification._create(self, nfilter)
 
-
     def create_task_created_notification(self, destination, filterkey, filtervalue, template=None):
         """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskCreated`.
 
@@ -327,7 +325,6 @@ class QApy(object):
         nfilter = notification.TaskCreated(template, destination, filterkey, filtervalue)
         return QNotification._create(self, nfilter)
 
-
     def create_task_ended_notification(self, destination, filterkey, filtervalue, template=None):
         """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskEnded`.
 
@@ -338,7 +335,6 @@ class QApy(object):
         """
         nfilter = notification.TaskEnded(template, destination, filterkey, filtervalue)
         return QNotification._create(self, nfilter)
-
 
     def notifications(self):
         """Get the list of notifications for the user
@@ -423,6 +419,7 @@ class QUserInfo(object):
         """:type: :class:`int`
 
         Total computation time."""
+
 
 class QProfile(object):
     """Informations about a profile."""
