@@ -2,6 +2,7 @@
 
 from qapy import get_url, raise_on_error
 
+
 class QNotification(object):
     """A Qarnot Notification
     """
@@ -51,8 +52,8 @@ class QNotification(object):
         """Create a new QNotification
         """
         data = {
-            "mask" : type(_filter).__name__,
-            "filter" : _filter.json()
+            "mask": type(_filter).__name__,
+            "filter": _filter.json()
             }
         url = get_url('notification')
         response = connection._post(url, json=data)
@@ -90,6 +91,7 @@ class QNotification(object):
         """Filter setter
         """
         self._filter = value
+
 
 class Filter(object):
     """Filter class
@@ -131,6 +133,7 @@ class Filter(object):
         """
         self._template = value
 
+
 class TaskNotification(Filter):
     """TaskNotification class
     """
@@ -168,6 +171,7 @@ class TaskNotification(Filter):
         """Filtervalue setter
         """
         self._filtervalue = value
+
 
 class TaskStateChanged(TaskNotification):
     """TaskStateChanged class
@@ -224,6 +228,7 @@ class TaskStateChanged(TaskNotification):
         """
         self._state = value
 
+
 class TaskCreated(TaskNotification):
     """TaskCreated class
     """
@@ -233,6 +238,7 @@ class TaskCreated(TaskNotification):
     def json(self):
         json = TaskNotification.json(self)
         return json
+
 
 class TaskEnded(TaskNotification):
     """TaskEnded class
