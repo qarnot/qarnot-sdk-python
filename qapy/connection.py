@@ -1,6 +1,6 @@
 """Module describing a connection."""
 
-from qapy import get_url, raise_on_error, QApyException
+from qapy import get_url, raise_on_error
 from qapy.disk import QDisk, MissingDiskException
 from qapy.task import QTask, MissingTaskException
 from qapy.notification import QNotification
@@ -116,7 +116,7 @@ class QApy(object):
             kwargs['headers']['Content-Type'] = 'application/json'
             kwargs['data'] = json_dumps(json)
         ret = self._http.patch(self.cluster + url,
-                              timeout=self.timeout, **kwargs)
+                               timeout=self.timeout, **kwargs)
         if ret.status_code == 401:
             raise UnauthorizedException(self.auth)
         return ret

@@ -479,10 +479,10 @@ class QTask(object):
                                            "Resources: \"{0}\"".format(self._name),
                                            force=self._force,
                                            lock=False)
-                self.resource_disk_id = _disk.uuid
+                self._resource_disk_id = _disk.uuid
             else:
                 _disk = disk.QDisk._retrieve(self._connection,
-                                              self._resource_disk_id)
+                                             self._resource_disk_id)
 
             self._resource_disk = _disk
 
@@ -829,7 +829,7 @@ class QTask(object):
     @property
     def auto_update(self):
         """Auto update state, default to True
-           When auto update is disabled properties will always return cached value 
+           When auto update is disabled properties will always return cached value
            for the object and a call to :meth:`update` will be required to get latest values from the REST Api.
         """
         return self._auto_update

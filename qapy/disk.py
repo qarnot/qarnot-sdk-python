@@ -3,8 +3,7 @@
 from __future__ import print_function
 
 from qapy import get_url, raise_on_error
-import os.path as path
-import posixpath as ppath
+import posixpath
 import os
 import os.path
 import hashlib
@@ -109,7 +108,11 @@ class QDisk(object):
 
     # Disk Management
     def update(self):
-
+        """Update disk instance from remote API
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        """
         response = self._connection._get(get_url('disk info', name=self._id))
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'],
@@ -165,8 +168,8 @@ class QDisk(object):
             raise_on_error(response)
 
         local = local or ".".join([self._id, extension])
-        if path.isdir(local):
-            local = path.join(local, ".".join([self._id, extension]))
+        if os.path.isdir(local):
+            local = os.path.join(local, ".".join([self._id, extension]))
 
         with open(local, 'wb') as f_local:
             for elt in response.iter_content():
@@ -248,7 +251,7 @@ class QDisk(object):
             directory = directory + '/'
 
         filesdict = {}
-        for root, subdirs, files in os.walk(directory):
+        for root, _, files in os.walk(directory):
             for x in files:
                 filepath = os.path.join(root, x)
                 name = filepath[len(directory) - 1:]
@@ -312,7 +315,7 @@ class QDisk(object):
         removes = remote - local
 
         sadds = sorted(adds, key=lambda x: x.sha1sum)
-        groupedadds = [list(g) for k, g in itertools.groupby(
+        groupedadds = [list(g) for _, g in itertools.groupby(
             sadds, lambda x: x.sha1sum)]
 
         removelater = []
@@ -365,8 +368,8 @@ class QDisk(object):
 
         self._filethreads.clear()
 
-        for remote, file in self._filecache.items():
-            self._add_file(file, remote)
+        for remote, f in self._filecache.items():
+            self._add_file(f, remote)
 
         self._filecache.clear()
 
@@ -423,11 +426,11 @@ class QDisk(object):
         mode = mode or self._add_mode
 
         if isinstance(local_or_file, str):
-            file = open(local_or_file, 'rb')
+            f = open(local_or_file, 'rb')
         else:
-            file = local_or_file
+            f = local_or_file
 
-        dest = remote or path.basename(file.name)
+        dest = remote or os.path.basename(f.name)
         if isinstance(dest, QFileInfo):
             dest = dest.name
 
@@ -447,12 +450,11 @@ class QDisk(object):
         elif mode is QUploadMode.lazy:
             self._filecache[dest] = file
         else:
-            thread = threading.Thread( None, self._add_file, dest,
-                                      (file, dest))
+            thread = threading.Thread(None, self._add_file, dest, (file, dest))
             thread.start()
             self._filethreads[dest] = thread
 
-    def _add_file(self, file, dest):
+    def _add_file(self, f, dest):
         """Add a file on the disk.
 
         :param File file: an opened Python File
@@ -464,10 +466,10 @@ class QDisk(object):
         """
 
         response = self._connection._post(
-            get_url('update file', name=self._id, path=path.dirname(dest)),
-            files={'filedata': (path.basename(dest), file)})
+            get_url('update file', name=self._id, path=os.path.dirname(dest)),
+            files={'filedata': (os.path.basename(dest), f)})
 
-        file.seek(0)
+        f.seek(0)
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'], self._id)
@@ -503,8 +505,8 @@ class QDisk(object):
         for dirpath, _, files in os.walk(local):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
-                self.add_file(path.join(dirpath, filename),
-                              ppath.join(remote_loc, filename), mode)
+                self.add_file(os.path.join(dirpath, filename),
+                              posixpath.join(remote_loc, filename), mode)
 
     def get_file(self, remote, local=None):
         """Get a file from the disk.
@@ -538,10 +540,10 @@ class QDisk(object):
             remote = remote.name
 
         if local is None:
-            local = path.basename(remote)
+            local = os.path.basename(remote)
 
-        if path.isdir(local):
-            local = path.join(local, path.basename(remote))
+        if os.path.isdir(local):
+            local = os.path.join(local, os.path.basename(remote))
 
         # Ensure file is done uploading
         pending = self._filethreads.get(remote)
@@ -694,7 +696,7 @@ class QDisk(object):
 
     def __setitem__(self, remote, filename):
         """x.__setitem__(i, y) <==> x[i]=y"""
-        if path.isdir(filename):
+        if os.path.isdir(filename):
             return self.add_directory(filename, remote)
         return self.add_file(filename, remote)
 
