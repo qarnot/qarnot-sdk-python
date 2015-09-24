@@ -550,8 +550,6 @@ class QDisk(object):
 
         if remote in self._filecache:
             # In the case of a cached file it is available locally
-            self._add_file(self._filecache[remote], remote)
-
             make_dirs(local)
             with open(local, 'wb') as f_local:
                 for line in self._filecache[remote]:
