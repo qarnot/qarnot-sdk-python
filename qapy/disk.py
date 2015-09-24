@@ -11,6 +11,7 @@ import datetime
 import threading
 import itertools
 
+
 class QDisk(object):
     """Represents a resource/result disk on the cluster.
 
@@ -41,9 +42,9 @@ class QDisk(object):
         self._description = jsondisk["description"]
         self._locked = jsondisk["locked"]
         self._connection = connection
-        self._filethreads = {} # A dictionary containing key:value where key is
+        self._filethreads = {}  # A dictionary containing key:value where key is
         #  the remote destination on disk, and value a running thread.
-        self._filecache = {} # A dictionary containing key:value where key is
+        self._filecache = {}  # A dictionary containing key:value where key is
         #  the remote destination on disk, and value an opened Python File.
         self._add_mode = QUploadMode.blocking
 
@@ -68,8 +69,8 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         data = {
-            "description" : description,
-            "locked" : lock
+            "description": description,
+            "locked": lock
             }
         url = get_url('disk force') if force else get_url('disk folder')
         response = connection._post(url, json=data)
@@ -80,7 +81,6 @@ class QDisk(object):
 
         disk_id = response.json()
         return cls._retrieve(connection, disk_id['guid'])
-
 
     @classmethod
     def _retrieve(cls, connection, disk_id):
@@ -175,7 +175,6 @@ class QDisk(object):
             for elt in response.iter_content():
                 f_local.write(elt)
         return local
-
 
     def list_files(self):
         """List files on the whole disk.
@@ -389,8 +388,8 @@ class QDisk(object):
         """
         data = [
             {
-                "target" : target,
-                "linkName" : linkname
+                "target": target,
+                "linkName": linkname
             }
         ]
         url = get_url('link disk', name=self._id)
@@ -623,8 +622,8 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         data = {
-            "description" : self._description,
-            "locked" : self._locked
+            "description": self._description,
+            "locked": self._locked
             }
         resp = self._connection._put(get_url('disk info', name=self._id),
                                      json=data)
@@ -681,7 +680,6 @@ class QDisk(object):
         """Change disk's lock state."""
         self._locked = value
 
-    #tostring
     def __str__(self):
         return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ")\
                + self.uuid + " - " + self.description
@@ -787,6 +785,7 @@ class MissingDiskException(Exception):
     def __init__(self, message, name):
         super(MissingDiskException, self).__init__(
             "{0}: {1} ".format(message, name))
+
 
 class MaxDiskException(Exception):
     """Max number of disks reached."""
