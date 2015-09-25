@@ -445,11 +445,11 @@ class QDisk(object):
             del self._filecache[dest]
 
         if mode is QUploadMode.blocking:
-            return self._add_file(file, dest)
+            return self._add_file(f, dest)
         elif mode is QUploadMode.lazy:
-            self._filecache[dest] = file
+            self._filecache[dest] = f
         else:
-            thread = threading.Thread(None, self._add_file, dest, (file, dest))
+            thread = threading.Thread(None, self._add_file, dest, (f, dest))
             thread.start()
             self._filethreads[dest] = thread
 
