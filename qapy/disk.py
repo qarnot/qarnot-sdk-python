@@ -555,9 +555,6 @@ class QDisk(object):
             with open(local, 'wb') as f_local:
                 for line in self._filecache[remote]:
                     f_local.write(line)
-
-            self._filecache[remote].close()
-            del self._filecache[remote]
         else:
             # In other cases the file is only available remotely
             response = self._connection._get(
