@@ -506,6 +506,50 @@ class QDisk(object):
                 self.add_file(os.path.join(dirpath, filename),
                               posixpath.join(remote_loc, filename), mode)
 
+    def get_file_iterator(self, remote, chunk_size=1024):
+        """Get a file iterator from the disk.
+
+        .. note::
+           This function is a generator, and thus can be used in a for loop
+
+        :param str|QFileInfo remote: the name of the remote file or a QFileInfo
+        :param int chunk_size: Size of chunks to be yield
+
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises ValueError: no such file
+        """
+
+        if isinstance(remote, QFileInfo):
+            remote = remote.name
+
+        # Ensure file is done uploading
+        pending = self._filethreads.get(remote)
+        if pending is not None:
+            pending.join()
+
+        if remote in self._filecache:
+            self._filecache[remote].seek(0)
+            while True:
+                chunk = self._filecache[remote].read(chunk_size)
+                if not chunk:
+                    break
+                yield chunk
+        else:
+            response = self._connection._get(
+                get_url('update file', name=self._id, path=remote),
+                stream=True)
+
+            if response.status_code == 404:
+                if response.json()['message'] == "No such disk":
+                    raise MissingDiskException(response.json()['message'],
+                                               self._id)
+            raise_on_error(response)
+
+            for chunk in response.iter_content(chunk_size):
+                yield chunk
+
     def get_file(self, remote, local=None):
         """Get a file from the disk.
 
@@ -515,7 +559,7 @@ class QDisk(object):
         .. warning::
            Doesn't work with directories. Prefer the use of :meth:`get_archive`.
 
-        :param str remote: the name of the remote file
+        :param str|QFileInfo remote: the name of the remote file or a QFileInfo
         :param str local: local name of the retrieved file
           (defaults to *remote*)
 
@@ -543,34 +587,10 @@ class QDisk(object):
         if os.path.isdir(local):
             local = os.path.join(local, os.path.basename(remote))
 
-        # Ensure file is done uploading
-        pending = self._filethreads.get(remote)
-        if pending is not None:
-            pending.join()
-
-        if remote in self._filecache:
-            # In the case of a cached file it is available locally
-            make_dirs(local)
-            with open(local, 'wb') as f_local:
-                self._filecache[remote].seek(0)
-                for line in self._filecache[remote]:
-                    f_local.write(line)
-        else:
-            # In other cases the file is only available remotely
-            response = self._connection._get(
-                get_url('update file', name=self._id, path=remote),
-                stream=True)
-
-            if response.status_code == 404:
-                if response.json()['message'] == "No such disk":
-                    raise MissingDiskException(response.json()['message'],
-                                               self._id)
-            raise_on_error(response)
-
-            make_dirs(local)
-            with open(local, 'wb') as f_local:
-                for elt in response.iter_content(512):
-                    f_local.write(elt)
+        make_dirs(local)
+        with open(local, 'wb') as f_local:
+            for chunk in self.get_file_iterator(remote):
+                f_local.write(chunk)
 
         return local
 
