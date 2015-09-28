@@ -464,11 +464,10 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
 
+        f.seek(0)
         response = self._connection._post(
             get_url('update file', name=self._id, path=os.path.dirname(dest)),
             files={'filedata': (os.path.basename(dest), f)})
-
-        f.seek(0)
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'], self._id)
@@ -553,6 +552,7 @@ class QDisk(object):
             # In the case of a cached file it is available locally
             make_dirs(local)
             with open(local, 'wb') as f_local:
+                self._filecache[remote].seek(0)
                 for line in self._filecache[remote]:
                     f_local.write(line)
         else:
