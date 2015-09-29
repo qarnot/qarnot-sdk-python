@@ -77,6 +77,7 @@ class QTask(object):
         self._results_whitelist = None
         self._results_blacklist = None
         self._execution_cluster = {}
+        self._status = None
         self._error_reason = None
         self._resource_disk_id = None
         self._result_disk_id = None
@@ -327,7 +328,7 @@ class QTask(object):
         self._resource_disk_id = json_task['resourceDisk']
         self._result_disk_id = json_task['resultDisk']
         self._execution_cluster = json_task['executionCluster']
-
+        self._status = json_task['status']
         self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
 
         self._uuid = json_task['id']
@@ -807,6 +808,15 @@ class QTask(object):
         self._results_blacklist = value
 
     @property
+    def status(self):
+        """Status of the task
+        """
+        if self._auto_update:
+            self.update()
+
+        return QTaskStatus(self._status)
+
+    @property
     def execution_cluster(self):
         """Various statistics about running task
         """
@@ -895,6 +905,67 @@ class QTask(object):
         if (exc_type is None) or exc_type != MissingTaskException:
             self.delete()
         return False
+
+# Status
+
+class QTaskStatus(object):
+    """Task status
+    """
+    def __init__(self, entries):
+        self.download_progress = entries['downloadProgress']
+        """:type: :class:`float`
+
+        Resources download progress to the instances."""
+
+        self.execution_progress = entries['executionProgress']
+        """:type: :class:`float`
+
+        Task execution progress."""
+
+        self.upload_progress = entries['uploadProgress']
+        """:type: :class:`float`
+
+        Task results upload progress to the API."""
+
+        self.instance_count = entries['instanceCount']
+        """:type: :class:`int`
+
+        Number of running instances."""
+
+        self.download_time = entries['downloadTime']
+        """:type: :class:`int`
+
+        Resources download time to the instances in seconds."""
+
+        self.execution_time = entries['executionTime']
+        """:type: :class:`int`
+
+        Task execution time in seconds."""
+
+        self.upload_time = entries['uploadTime']
+        """:type: :class:`int`
+
+        Task results upload time to the API in seconds"""
+
+        self.succeeded_range = entries['succeededRange']
+        """:type: :class:`str`
+
+        Successful frames range."""
+
+        self.executed_range = entries['executedRange']
+        """:type: :class:`str`
+
+        Executed frames range."""
+
+        self.failed_range = entries['failedRange']
+        """:type: :class:`str`
+
+        Failed frames range."""
+
+        self.error = entries['error'] if 'error' in entries else ""
+        """:type: :class:`str`
+
+        Error reason if any."""
 
 
 ##############
