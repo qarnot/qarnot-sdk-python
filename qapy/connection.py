@@ -371,51 +371,53 @@ class QApy(object):
 class QUserInfo(object):
     """Informations about a qapy user."""
     def __init__(self, info):
-        self.diskCount = info['diskCount']
+        self.__dict__.update(info) # DEPRECATED, keep it for old camel case version
+
+        self.disk_count = info['diskCount']
         """:type: :class:`int`
 
         Number of disks owned by the user."""
-        self.maxDisk = info['maxDisk']
+        self.max_disk = info['maxDisk']
         """:type: :class:`int`
 
         Maximum number of disks allowed (resource and result disks)."""
-        self.quotaBytes = info['quotaBytes']
+        self.quota_bytes = info['quotaBytes']
         """:type: :class:`int`
 
         Total storage space allowed for the user's disks (in Bytes)."""
-        self.usedQuotaBytes = info['usedQuotaBytes']
+        self.used_quota_bytes = info['usedQuotaBytes']
         """:type: :class:`int`
 
         Total storage space used by the user's disks (in Bytes)."""
-        self.taskCount = info['taskCount']
+        self.task_count = info['taskCount']
         """:type: :class:`int`
 
         Total number of tasks belonging to the user."""
-        self.maxTask = info['maxTask']
+        self.max_task = info['maxTask']
         """:type: :class:`int`
 
         Maximum number of tasks the user is allowed to create."""
-        self.runningTaskCount = info['runningTaskCount']
+        self.running_task_count = info['runningTaskCount']
         """:type: :class:`int`
 
         Number of tasks currently in 'Submitted' state."""
-        self.maxRunningTask = info['maxRunningTask']
+        self.max_running_task = info['maxRunningTask']
         """:type: :class:`int`
 
         Maximum number of running tasks."""
-        self.maxInstances = info['maxInstances']
+        self.max_instances = info['maxInstances']
         """:type: :class:`int`
 
         Maximum number of frames per task."""
-        self.finishedExecutionTime = info['finishedExecutionTime']
+        self.finished_execution_time = info['finishedExecutionTime']
         """:type: :class:`int`
 
         Finished computation time."""
-        self.runningExecutionTime = info['runningExecutionTime']
+        self.running_execution_time = info['runningExecutionTime']
         """:type: :class:`int`
 
         Running computation time."""
-        self.totalExecutionTime = info['totalExecutionTime']
+        self.total_execution_time = info['totalExecutionTime']
         """:type: :class:`int`
 
         Total computation time."""
