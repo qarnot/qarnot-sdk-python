@@ -8,7 +8,7 @@ import qapy.notification as notification
 import requests
 import sys
 from json import dumps as json_dumps
-
+from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
     import configparser as config
 else:
@@ -89,11 +89,18 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :func:`requests.Session.get`.
         """
-        ret = self._http.get(self.cluster + url, timeout=self.timeout,
-                             **kwargs)
-        if ret.status_code == 401:
-            raise UnauthorizedException(self.auth)
-        return ret
+        while True:
+            try:
+                ret = self._http.get(self.cluster + url, timeout=self.timeout,
+                                     **kwargs)
+                if ret.status_code == 401:
+                    raise UnauthorizedException(self.auth)
+                return ret
+            except ConnectionError as exception:
+                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
+                    pass
+                else:
+                    raise
 
     def _patch(self, url, json=None, **kwargs):
         """perform a PATCH request on the cluster
@@ -110,16 +117,23 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
         """
-        if json is not None:
-            if 'headers' not in kwargs:
-                kwargs['headers'] = dict()
-            kwargs['headers']['Content-Type'] = 'application/json'
-            kwargs['data'] = json_dumps(json)
-        ret = self._http.patch(self.cluster + url,
-                               timeout=self.timeout, **kwargs)
-        if ret.status_code == 401:
-            raise UnauthorizedException(self.auth)
-        return ret
+        while True:
+            try:
+                if json is not None:
+                    if 'headers' not in kwargs:
+                        kwargs['headers'] = dict()
+                    kwargs['headers']['Content-Type'] = 'application/json'
+                    kwargs['data'] = json_dumps(json)
+                ret = self._http.patch(self.cluster + url,
+                                       timeout=self.timeout, **kwargs)
+                if ret.status_code == 401:
+                    raise UnauthorizedException(self.auth)
+                return ret
+            except ConnectionError as exception:
+                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
+                    pass
+                else:
+                    raise
 
     def _post(self, url, json=None, **kwargs):
         """perform a POST request on the cluster
@@ -136,16 +150,23 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
         """
-        if json is not None:
-            if 'headers' not in kwargs:
-                kwargs['headers'] = dict()
-            kwargs['headers']['Content-Type'] = 'application/json'
-            kwargs['data'] = json_dumps(json)
-        ret = self._http.post(self.cluster + url,
-                              timeout=self.timeout, **kwargs)
-        if ret.status_code == 401:
-            raise UnauthorizedException(self.auth)
-        return ret
+        while True:
+            try:
+                if json is not None:
+                    if 'headers' not in kwargs:
+                        kwargs['headers'] = dict()
+                    kwargs['headers']['Content-Type'] = 'application/json'
+                    kwargs['data'] = json_dumps(json)
+                ret = self._http.post(self.cluster + url,
+                                      timeout=self.timeout, **kwargs)
+                if ret.status_code == 401:
+                    raise UnauthorizedException(self.auth)
+                return ret
+            except ConnectionError as exception:
+                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
+                    pass
+                else:
+                    raise
 
     def _delete(self, url, **kwargs):
         """Perform a DELETE request on the cluster.
@@ -161,24 +182,39 @@ class QApy(object):
         .. note:: Additional keyword arguments are passed to the underlying
           :attr:`requests.Session.delete()`.
         """
-        ret = self._http.delete(self.cluster + url,
-                                timeout=self.timeout, **kwargs)
-        if ret.status_code == 401:
-            raise UnauthorizedException(self.auth)
-        return ret
+
+        while True:
+            try:
+                ret = self._http.delete(self.cluster + url,
+                                        timeout=self.timeout, **kwargs)
+                if ret.status_code == 401:
+                    raise UnauthorizedException(self.auth)
+                return ret
+            except ConnectionError as exception:
+                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
+                    pass
+                else:
+                    raise
 
     def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
-        if json is not None:
-            if 'headers' not in kwargs:
-                kwargs['headers'] = dict()
-            kwargs['headers']['Content-Type'] = 'application/json'
-            kwargs['data'] = json_dumps(json)
-        ret = self._http.put(self.cluster + url,
-                             timeout=self.timeout, **kwargs)
-        if ret.status_code == 401:
-            raise UnauthorizedException(self.auth)
-        return ret
+        while True:
+            try:
+                if json is not None:
+                    if 'headers' not in kwargs:
+                        kwargs['headers'] = dict()
+                    kwargs['headers']['Content-Type'] = 'application/json'
+                    kwargs['data'] = json_dumps(json)
+                ret = self._http.put(self.cluster + url,
+                                     timeout=self.timeout, **kwargs)
+                if ret.status_code == 401:
+                    raise UnauthorizedException(self.auth)
+                return ret
+            except ConnectionError as exception:
+                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
+                    pass
+                else:
+                    raise
 
     def user_info(self):
         """Get informations of the current user on the cluster.
