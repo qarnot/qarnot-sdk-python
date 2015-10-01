@@ -264,8 +264,8 @@ class QTask(object):
             if purge_resources:
                 self._resource_disk.delete()
                 self.resources = None
-        except disk.MissingDiskException as e:
-            warnings.warn(e.message)
+        except disk.MissingDiskException as exception:
+            warnings.warn(exception.message)
 
         try:
             self.results.update()
@@ -275,8 +275,8 @@ class QTask(object):
                 self._result_disk.delete()
                 self._result_disk = None
                 self._result_disk_id = None
-        except disk.MissingDiskException as e:
-            warnings.warn(e.message)
+        except disk.MissingDiskException as exception:
+            warnings.warn(exception.message)
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
