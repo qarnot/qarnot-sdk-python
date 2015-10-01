@@ -251,8 +251,8 @@ class QDisk(object):
 
         filesdict = {}
         for root, _, files in os.walk(directory):
-            for x in files:
-                filepath = os.path.join(root, x)
+            for file_ in files:
+                filepath = os.path.join(root, file_)
                 name = filepath[len(directory) - 1:]
                 filesdict[name] = filepath
         self.sync_files(filesdict, verbose)
@@ -282,23 +282,25 @@ class QDisk(object):
               * sha1sum
         """
         def generate_file_sha1(filepath, blocksize=2**20):
-            m = hashlib.sha1()
-            with open(filepath, "rb") as f:
+            """Generate SHA1 from file"""
+            sha1 = hashlib.sha1()
+            with open(filepath, "rb") as file_:
                 while True:
-                    buf = f.read(blocksize)
+                    buf = file_.read(blocksize)
                     if not buf:
                         break
-                    m.update(buf)
-            return m.hexdigest()
+                    sha1.update(buf)
+            return sha1.hexdigest()
 
         def create_qfi(name, filepath):
+            """Create a QFI from a file"""
             if not name.startswith('/'):
                 name = '/' + name
-            t = os.path.getmtime(filepath)
-            dt = datetime.datetime.utcfromtimestamp(t)
-            dt = dt.replace(microsecond=0)
-            s = os.stat(filepath).st_size
-            qfi = QFileInfo(dt, name, s, "file", generate_file_sha1(filepath))
+            mtime = os.path.getmtime(filepath)
+            dtutc = datetime.datetime.utcfromtimestamp(mtime)
+            dtutc = dtutc.replace(microsecond=0)
+            size = os.stat(filepath).st_size
+            qfi = QFileInfo(dtutc, name, size, "file", generate_file_sha1(filepath))
             qfi.filepath = filepath
             return qfi
 
@@ -318,16 +320,16 @@ class QDisk(object):
             sadds, lambda x: x.sha1sum)]
 
         removelater = []
-        for f in removes:
+        for file_ in removes:
             try:
-                new = next(x for x in adds if x.sha1sum == f.sha1sum)
+                new = next(x for x in adds if x.sha1sum == file_.sha1sum)
                 if verbose:
-                    print ("Rename:", f.name, "to", new.name, "Link & Delete")
-                removelater.append(f)
+                    print ("Rename:", file_.name, "to", new.name, "Link & Delete")
+                removelater.append(file_)
             except StopIteration:
                 if verbose:
-                    print("Delete:", f.name)
-                self.delete_file(f.name)
+                    print("Delete:", file_.name)
+                self.delete_file(file_.name)
 
         remote = self.list_files()
 
@@ -347,10 +349,10 @@ class QDisk(object):
                         print ("Link:", entry[0].name, "<-", link.name)
                     self.add_link(entry[0].name, link.name)
 
-        for f in removelater:
+        for file_ in removelater:
             if verbose:
-                print ("Delete:", f.name)
-            self.delete_file(f.name)
+                print ("Delete:", file_.name)
+            self.delete_file(file_.name)
 
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
@@ -367,8 +369,8 @@ class QDisk(object):
 
         self._filethreads.clear()
 
-        for remote, f in self._filecache.items():
-            self._add_file(f, remote)
+        for remote, file_ in self._filecache.items():
+            self._add_file(file_, remote)
 
         self._filecache.clear()
 
@@ -425,11 +427,11 @@ class QDisk(object):
         mode = mode or self._add_mode
 
         if isinstance(local_or_file, str):
-            f = open(local_or_file, 'rb')
+            file_ = open(local_or_file, 'rb')
         else:
-            f = local_or_file
+            file_ = local_or_file
 
-        dest = remote or os.path.basename(f.name)
+        dest = remote or os.path.basename(file_.name)
         if isinstance(dest, QFileInfo):
             dest = dest.name
 
@@ -445,18 +447,18 @@ class QDisk(object):
             del self._filecache[dest]
 
         if mode is QUploadMode.blocking:
-            return self._add_file(f, dest)
+            return self._add_file(file_, dest)
         elif mode is QUploadMode.lazy:
-            self._filecache[dest] = f
+            self._filecache[dest] = file_
         else:
-            thread = threading.Thread(None, self._add_file, dest, (f, dest))
+            thread = threading.Thread(None, self._add_file, dest, (file_, dest))
             thread.start()
             self._filethreads[dest] = thread
 
-    def _add_file(self, f, dest):
+    def _add_file(self, file_, dest):
         """Add a file on the disk.
 
-        :param File file: an opened Python File
+        :param File file_: an opened Python File
         :param str dest: name of the remote file (defaults to filename)
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -464,10 +466,10 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
 
-        f.seek(0)
+        file_.seek(0)
         response = self._connection._post(
             get_url('update file', name=self._id, path=os.path.dirname(dest)),
-            files={'filedata': (os.path.basename(dest), f)})
+            files={'filedata': (os.path.basename(dest), file_)})
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'], self._id)
@@ -574,6 +576,7 @@ class QDisk(object):
         """
 
         def make_dirs(_local):
+            """Make directory if needed"""
             directory = os.path.dirname(_local)
             if directory != '' and not os.path.exists(directory):
                 os.makedirs(directory)
@@ -765,6 +768,8 @@ class QFileInfo(object):
         self.sha1sum = sha1Sum
         """:type: :class:`str`
         SHA1 Sum of the file"""
+
+        self.filepath = None  # Only for sync
 
     def __repr__(self):
         template = 'QFileInfo(lastchange={0}, name={1}, size={2}, '\
