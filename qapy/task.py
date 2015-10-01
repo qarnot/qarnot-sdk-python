@@ -906,8 +906,8 @@ class QTask(object):
             self.delete()
         return False
 
-# Status
 
+# Status
 class QTaskStatus(object):
     """Task status
     """

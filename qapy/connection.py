@@ -371,7 +371,7 @@ class QApy(object):
 class QUserInfo(object):
     """Informations about a qapy user."""
     def __init__(self, info):
-        self.__dict__.update(info) # DEPRECATED, keep it for old camel case version
+        self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
 
         self.disk_count = info['diskCount']
         """:type: :class:`int`
