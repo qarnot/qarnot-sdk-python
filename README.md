@@ -1,7 +1,9 @@
 # Qarnot Computing Python SDK
 
-## Generating documentation:
+## Generating documentation
 
-To make documentation for this api use command
+To generate the SDK documentation you can use the following command
 
-    cd doc && make html
+    make -C doc html
+
+The index of the doc is then generated in `doc/_build/html/index.html`
