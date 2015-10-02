@@ -1,4 +1,4 @@
-#Python API for Qarnot Tasks
+# Qarnot Computing Python SDK
 
 ## Generating documentation:
 
