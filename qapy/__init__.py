@@ -2,7 +2,7 @@
 
 __all__ = ["task", "connection", "disk", "notification"]
 
-__version__ = '0.1.0'
+__version__ = '0.8.0'
 
 
 class QApyException(Exception):

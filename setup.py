@@ -5,7 +5,7 @@ import qapy
 
 setup(name='qapy',
       version= qapy.__version__,
-      description= 'qarnot computing task api',
-      author='Michael Willame',
+      description= 'Qarnot Computing SDK',
+      author='Qarnot Computing',
       packages=['qapy'],
-      requires=['requests', 'enum34'])
+      requires=['requests'])
