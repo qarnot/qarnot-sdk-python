@@ -10,9 +10,9 @@ import sys
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
-    import configparser as config #pylint: disable=import-error
+    import configparser as config  # pylint: disable=import-error
 else:
-    import ConfigParser as config #pylint: disable=import-error
+    import ConfigParser as config  # pylint: disable=import-error
 
 
 #########
