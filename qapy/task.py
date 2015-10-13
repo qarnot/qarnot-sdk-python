@@ -895,7 +895,14 @@ class QTask(object):
         return json_task
 
     def __str__(self):
-        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'.format(self.name, self._uuid, self._profile, self._framecount, self.state, (self._resource_disk.uuid if self._resource_disk is not None else ""), (self._result_disk.uuid if self._result_disk is not None else ""))
+        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'\
+            .format(self.name,
+                    self._uuid,
+                    self._profile,
+                    self._framecount,
+                    self.state,
+                    (self._resource_disk.uuid if self._resource_disk is not None else ""),
+                    (self._result_disk.uuid if self._result_disk is not None else ""))
 
     # Context manager
     def __enter__(self):
