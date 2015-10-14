@@ -6,11 +6,11 @@ from qapy import get_url, raise_on_error
 class QNotification(object):
     """A Qarnot Notification
     """
-    def __init__(self, jsonnotification, connection):
+    def __init__(self, json_notification, connection):
         """Initialize a notification from a dictionary
 
-        :param dict jsonnotification: Dictionary representing the notification,
-                must contain following keys:
+        :param dict json_notification: Dictionary representing the
+                notification, must contain following keys:
 
                   * id: string, the notification's GUID
                   * mask: TaskStateChanged
@@ -28,19 +28,19 @@ class QNotification(object):
         """
         self._connection = connection
 
-        self._id = jsonnotification['id']
-        self._mask = jsonnotification['mask']
+        self._id = json_notification['id']
+        self._mask = json_notification['mask']
 
-        destination = jsonnotification['filter']['destination']
-        template = jsonnotification['filter']['template'] if 'template' in jsonnotification['filter'] else None
+        destination = json_notification['filter']['destination']
+        template = json_notification['filter']['template'] if 'template' in json_notification['filter'] else None
 
-        filterkey = jsonnotification['filter']['filterKey']
-        filtervalue = jsonnotification['filter']['filterValue']
+        filterkey = json_notification['filter']['filterKey']
+        filtervalue = json_notification['filter']['filterValue']
 
         if self._mask == "TaskStateChanged":
-            _from = jsonnotification['filter']['from']
-            state = jsonnotification['filter']['state']
-            to = jsonnotification['filter']['to']
+            _from = json_notification['filter']['from']
+            state = json_notification['filter']['state']
+            to = json_notification['filter']['to']
             self._filter = TaskStateChanged(template, destination, filterkey, filtervalue, to, _from, state)
         elif self._mask == "TaskCreated":
             self._filter = TaskCreated(template, destination, filterkey, filtervalue)

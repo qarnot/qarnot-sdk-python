@@ -395,7 +395,8 @@ class QApy(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
-        response = self._get(get_url('notification update', uuid=notification_guid))
+        url = get_url('notification update', uuid=notification_guid)
+        response = self._get(url)
         raise_on_error(response)
         return QNotification(response.json(), self)
 

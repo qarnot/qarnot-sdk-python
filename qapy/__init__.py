@@ -30,7 +30,7 @@ def get_url(key, **kwargs):
         'link disk': '/disks/link/{name}',  # POST -> create links
         'ls disk': '/disks/list/{name}/{path}',  # GET -> ls on the dir {path}
         'update file': '/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file
-        'tasks': '/tasks',  # GET -> runing tasks; POST -> submit task
+        'tasks': '/tasks',  # GET -> running tasks; POST -> submit task
         'task force': '/tasks/force',  # POST -> force add
         'task update': '/tasks/{uuid}',  # GET->result; DELETE -> abort, PATCH -> update resources
         'task snapshot': '/tasks/{uuid}/snapshot/periodic',  # POST -> snapshots
