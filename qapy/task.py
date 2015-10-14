@@ -237,7 +237,7 @@ class QTask(object):
         """Delete this task on the server. Does nothing if it is already deleted.
 
         :param bool purge_resources: if None disk will be deleted unless locked,
-                otherwire parameter value is used to determine if the disk is also deleted.
+                otherwise parameter value is used to determine if the disk is also deleted.
                 Defaults to None.
 
         :param bool purge_results: if None disk will be deleted unless locked,
@@ -290,7 +290,7 @@ class QTask(object):
     def update(self, flushcache=False):
         """
         Update the task object from the REST Api.
-        The flushcache parameters can be used to force the update, otherwise a cached version of the object
+        The flushcache parameter can be used to force the update, otherwise a cached version of the object
         will be served when accessing properties of the object.
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
@@ -980,7 +980,7 @@ class QTaskStatus(object):
 ##############
 
 class MissingTaskException(Exception):
-    """Non existant task."""
+    """Non existent task."""
     def __init__(self, message, name):
         super(MissingTaskException, self).__init__(
             "{0}: {1}".format(message, name))

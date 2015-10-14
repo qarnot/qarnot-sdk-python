@@ -217,10 +217,10 @@ class QApy(object):
                     raise
 
     def user_info(self):
-        """Get informations of the current user on the cluster.
+        """Get information of the current user on the cluster.
 
         :rtype: :class:`QUserInfo`
-        :returns: Requested informations.
+        :returns: Requested information.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
@@ -238,7 +238,7 @@ class QApy(object):
 
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for detailse
+        :raises qapy.QApyException: API general error, see message for details
         """
         response = self._get(get_url('disk folder'))
         raise_on_error(response)
@@ -278,7 +278,7 @@ class QApy(object):
         if response.status_code == 404:
             raise MissingTaskException(response.json()['message'], guid)
         raise_on_error(response)
-        temptask = QTask(self, "stub", None, 0, False)
+        temptask = QTask(self, "stub", '', 0, False)
         temptask._update(response.json())
         return temptask
 
@@ -405,7 +405,7 @@ class QApy(object):
 ###################
 
 class QUserInfo(object):
-    """Informations about a qapy user."""
+    """Information about a qapy user."""
     def __init__(self, info):
         self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
 
@@ -460,7 +460,7 @@ class QUserInfo(object):
 
 
 class QProfile(object):
-    """Informations about a profile."""
+    """Information about a profile."""
     def __init__(self, info):
         self.name = info['name']
         """:type: :class:`str`

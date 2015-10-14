@@ -7,9 +7,9 @@ class QNotification(object):
     """A Qarnot Notification
     """
     def __init__(self, jsonnotification, connection):
-        """Initialize a notification from a dictionnary
+        """Initialize a notification from a dictionary
 
-        :param dict jsonnotification: Dictionnary representing the notification,
+        :param dict jsonnotification: Dictionary representing the notification,
                 must contain following keys:
 
                   * id: string, the notification's GUID
@@ -18,7 +18,7 @@ class QNotification(object):
                   * filter.filterKey
                   * filter.filterValue
 
-                optionnal
+                optional
                   * filter.template Mail template for the notification
                   * filter.to To state regex (default to .*)
                   * filter.from From state regex (default to .*)
