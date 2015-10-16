@@ -135,7 +135,7 @@ class QApy(object):
                 else:
                     raise
 
-    def _post(self, url, json=None, **kwargs):
+    def _post(self, url, json=None, *args, **kwargs):
         """perform a POST request on the cluster
 
         :param url: :class:`str`,
@@ -158,7 +158,7 @@ class QApy(object):
                     kwargs['headers']['Content-Type'] = 'application/json'
                     kwargs['data'] = json_dumps(json)
                 ret = self._http.post(self.cluster + url,
-                                      timeout=self.timeout, **kwargs)
+                                      timeout=self.timeout, *args, **kwargs)
                 if ret.status_code == 401:
                     raise UnauthorizedException(self.auth)
                 return ret

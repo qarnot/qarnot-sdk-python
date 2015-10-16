@@ -10,6 +10,7 @@ import hashlib
 import datetime
 import threading
 import itertools
+from requests_toolbelt import MultipartEncoder
 
 
 class QDisk(object):
@@ -467,9 +468,18 @@ class QDisk(object):
         """
 
         file_.seek(0)
+
+        # As python requests does not implements Multipart/form-data file
+        # upload streaming, and as this would be painful for us to implement,
+        # we decided to use requests-toolbelt which provides this useful
+        # functionality.
+
+        m = MultipartEncoder(
+            fields={'filedata': (os.path.basename(dest), file_)})
+
         response = self._connection._post(
             get_url('update file', name=self._id, path=os.path.dirname(dest)),
-            files={'filedata': (os.path.basename(dest), file_)})
+            data=m, headers={'Content-Type': m.content_type})
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'], self._id)
