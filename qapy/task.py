@@ -51,6 +51,7 @@ class QTask(object):
         self._force = force
         self._resource_disk = None
         self._result_disk = None
+        self._extra_resource_disks = []
         self._connection = connection
         self.constants = {}
         self._auto_update = True
@@ -326,6 +327,17 @@ class QTask(object):
         self._framecount = json_task.get('frameCount')
         self._advanced_range = json_task.get('advancedRanges')
         self._resource_disk_id = json_task['resourceDisk']
+
+        extra_resource_disks_ids = json_task['extraResourceDisks'] if 'extraResourceDisks' in json_task else None
+
+        if 'extraResourceDisks' in json_task:
+            try:
+                for extra_disk_id in json_task['extraResourceDisks']:
+                    self._extra_resource_disks.append(disk.QDisk._retrieve(self._connection,
+                                                                           extra_disk_id))
+            except Exception as exception:
+                pass  # FIXME
+
         self._result_disk_id = json_task['resultDisk']
         self._execution_cluster = json_task['executionCluster']
         self._status = json_task['status']
@@ -467,6 +479,14 @@ class QTask(object):
         if self._auto_update:
             self.update()
         return self._state
+
+    @property
+    def extra_resources(self):
+        return self._extra_resource_disks
+
+    @extra_resources.setter
+    def extra_resources(self, value):
+        self._extra_resource_disks = value
 
     @property
     def resources(self):
@@ -879,6 +899,10 @@ class QTask(object):
             'constants': const_list,
             'constraints': constr_list
         }
+
+        if len(self._extra_resource_disks) > 0:
+            json_task['extraResourceDisks'] = [x.uuid for x in self._extra_resource_disks]
+
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
         else:
