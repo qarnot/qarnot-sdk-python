@@ -34,4 +34,11 @@ Finally you have to install in your environment the required dependencies runnin
 
    pip install -r requirements.txt
 
+If you plan to send large files to the API, we advise you to install the
+optional requests-toolbelt dependency in order not to overuse your memory:
+
+.. code-block:: bash
+
+   pip install -r optional-requirements.txt
+
 You are now ready to use the Qarnot SDK.

@@ -465,11 +465,24 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-
         file_.seek(0)
-        response = self._connection._post(
-            get_url('update file', name=self._id, path=os.path.dirname(dest)),
-            files={'filedata': (os.path.basename(dest), file_)})
+
+        url = get_url('update file', name=self._id, path=os.path.dirname(dest))
+
+        try:
+            # If requests_toolbelt is installed, we can use its
+            # MultipartEncoder to stream the upload and save memory overuse
+            from requests_toolbelt import MultipartEncoder  # noqa
+            m = MultipartEncoder(
+                fields={'filedata': (os.path.basename(dest), file_)})
+            response = self._connection._post(
+                url,
+                data=m,
+                headers={'Content-Type': m.content_type})
+        except ImportError:
+            response = self._connection._post(
+                url,
+                files={'filedata': (os.path.basename(dest), file_)})
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'], self._id)
