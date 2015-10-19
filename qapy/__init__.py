@@ -43,4 +43,5 @@ def get_url(key, **kwargs):
     }
     return urls[key].format(**kwargs)
 
-from .connection import QApy
+import qapy.connection  # noqa
+QApy = qapy.connection.QAp
