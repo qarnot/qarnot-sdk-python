@@ -29,7 +29,7 @@ class ExtraResourceDisks(object):
             return None
 
     def add_disk(self, disk_uuid):
-        if not disk_uuid in self._disks_uuids:
+        if disk_uuid not in self._disks_uuids:
             if self._get(disk_uuid):
                 self._disks_uuids.add(disk_uuid)
 
