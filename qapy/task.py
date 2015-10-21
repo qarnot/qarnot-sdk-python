@@ -1,20 +1,67 @@
 """Module to handle a task."""
 
-import qapy.disk as disk
-from qapy import get_url, raise_on_error
+from os import makedirs, path
 import time
 import warnings
-import os.path as path
-import os
+
+from qapy import disk
+from qapy import get_url, raise_on_error
+from qapy.disk import MissingDiskException
+from qapy.utils import OrderedSet, EmptyOrderedSetException
 
 RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyDispatched', 'PartiallyExecuting',
                               'FullyExecuting', 'DownloadingResults']
 
 
+class ExtraResourceDisks(object):
+    def __init__(self, connection):
+        self._disks_uuids = OrderedSet()
+        self._connection = connection
+
+    def __len__(self):
+        return len(self._disks_uuids)
+
+    def _get(self, disk_uuid):
+        try:
+            return disk.QDisk._retrieve(self._connection, disk_uuid)
+        except MissingDiskException:
+            return None
+
+    def add_disk(self, disk_uuid):
+        if not disk_uuid in self._disks_uuids:
+            if self._get(disk_uuid):
+                self._disks_uuids.add(disk_uuid)
+
+    def remove_disk(self, disk_uuid):
+        self._disks_uuids.discard(disk_uuid)
+
+    def refresh(self):
+        for d_uuid in self._disks_uuids:
+            if self._get(d_uuid) is None:
+                self.remove_disk(d_uuid)
+
+    def list_disks(self):
+        l = []
+        for d_uuid in self._disks_uuids:
+            d = self._get(d_uuid)
+            l.append(d) if d else self.remove_disk(d_uuid)
+        return l
+
+    def list_uuids(self):
+        return list(self._disks_uuids)
+
+    def clean(self):
+        try:
+            while True:
+                self._disks_uuids.pop()
+        except EmptyOrderedSetException:
+            pass
+
+
 class QTask(object):
     """Represents a Qarnot job.
-
+g
     .. note::
        A :class:`QTask` must be created with
        :meth:`qapy.connection.QApy.create_task`
@@ -51,7 +98,7 @@ class QTask(object):
         self._force = force
         self._resource_disk = None
         self._result_disk = None
-        self._extra_resource_disks = []
+        self._extra_resource_disks = ExtraResourceDisks(connection)
         self._connection = connection
         self.constants = {}
         self._auto_update = True
@@ -328,15 +375,9 @@ class QTask(object):
         self._advanced_range = json_task.get('advancedRanges')
         self._resource_disk_id = json_task['resourceDisk']
 
-        extra_resource_disks_ids = json_task['extraResourceDisks'] if 'extraResourceDisks' in json_task else None
-
         if 'extraResourceDisks' in json_task:
-            try:
-                for extra_disk_id in json_task['extraResourceDisks']:
-                    self._extra_resource_disks.append(disk.QDisk._retrieve(self._connection,
-                                                                           extra_disk_id))
-            except Exception as exception:
-                pass  # FIXME
+            for d_uuid in json_task['extraResourceDisks']:
+                self._extra_resource_disks.add_disk(d_uuid)
 
         self._result_disk_id = json_task['resultDisk']
         self._execution_cluster = json_task['executionCluster']
@@ -482,11 +523,13 @@ class QTask(object):
 
     @property
     def extra_resources(self):
-        return self._extra_resource_disks
+        return self._extra_resource_disks.list_disks()
 
     @extra_resources.setter
-    def extra_resources(self, value):
-        self._extra_resource_disks = value
+    def extra_resources(self, disks):
+        self._extra_resource_disks.clean()
+        for d in disks:
+            self._extra_resource_disks.add_disk(d.uuid)
 
     @property
     def resources(self):
@@ -547,7 +590,7 @@ class QTask(object):
             self.update()
 
         if not path.exists(output_dir):
-            os.makedirs(output_dir)
+            makedirs(output_dir)
 
         if self._dirty:
             for file_info in self.results:
@@ -901,7 +944,7 @@ class QTask(object):
         }
 
         if len(self._extra_resource_disks) > 0:
-            json_task['extraResourceDisks'] = [x.uuid for x in self._extra_resource_disks]
+            json_task['extraResourceDisks'] = self._extra_resource_disks.list_uuids()
 
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
