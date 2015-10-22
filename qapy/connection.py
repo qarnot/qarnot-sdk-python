@@ -52,9 +52,10 @@ class QApy(object):
         self._http = requests.session()
 
         if isinstance(conf, dict):
-            self.cluster = conf['cluster_url']
-            self._http.headers.update({"Authorization": conf['client_auth']})
-            self.auth = conf['client_auth']
+            self.cluster = conf.get('cluster_url')
+            self._http.headers.update(
+                {"Authorization": conf.get('client_auth')})
+            self.auth = conf.get('client_auth')
             self.timeout = conf.get('cluster_timeout')
             if conf.get('cluster_unsafe'):
                 self._http.verify = False
@@ -64,8 +65,8 @@ class QApy(object):
                 cfg.readfp(cfgfile)
 
                 self.cluster = cfg.get('cluster', 'url')
-                self._http.headers.update({"Authorization": cfg.get('client',
-                                                                    'auth')})
+                self._http.headers.update(
+                    {"Authorization": cfg.get('client', 'auth')})
                 self.auth = cfg.get('client', 'auth')
                 self.timeout = None
                 if cfg.has_option('cluster', 'timeout'):
