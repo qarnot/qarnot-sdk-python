@@ -1,26 +1,23 @@
-import pytest
 from functools import reduce
 import random
 
-from tests.conftest import qapy_connection, create_disks,\
-    create_and_add_disks, exec_x_times, MAX_NB_DISKS
 from qapy.task import ExtraResourceDisks
+from tests.conftest import create_disks, create_and_add_disks, MAX_NB_DISKS
+
 
 class TestSuite:
-
     def test_init(self):
         erd = ExtraResourceDisks(None)
         assert len(erd) == 0
 
-    def test_add_non_existing(self):
-        erd = ExtraResourceDisks(qapy_connection(clean=True))
+    def test_add_non_existing(self, connection):
+        erd = ExtraResourceDisks(connection)
         erd.add_disk('1') # Not existing
         assert erd.list_disks() == []
         assert erd.list_uuids() == []
         assert len(erd) == 0
 
-    def test_add_and_list(self):
-        connection = qapy_connection(clean=True)
+    def test_add_and_list(self, connection):
         erd = ExtraResourceDisks(connection)
         nb_disks = random.randrange(1, MAX_NB_DISKS)
         print('testing with {} disks'.format(nb_disks))
@@ -30,8 +27,7 @@ class TestSuite:
         assert reduce(lambda x, y: x and y,
                       [d_uuid in disks_uuids for d_uuid in erd.list_uuids()])
 
-    def test_len_and_clean(self):
-        connection = qapy_connection(clean=True)
+    def test_len_and_clean(self, connection):
         erd = ExtraResourceDisks(connection)
         nb_disks = random.randrange(1, MAX_NB_DISKS)
         print('testing with {} disks'.format(nb_disks))
@@ -50,10 +46,9 @@ class TestSuite:
         erd.clean()
         assert len(erd) == 0
 
-    def test_remove_disk_and_list(self):
-        connection = qapy_connection(clean=True)
+    def test_remove_disk_and_list(self, connection):
         erd = ExtraResourceDisks(connection)
-        nb_disks = random.randrange(1, MAX_NB_DISKS)
+        nb_disks = random.randrange(2, MAX_NB_DISKS)
         print('testing with {} disks'.format(nb_disks))
         disks, disks_uuids = create_and_add_disks(connection, erd, nb_disks)
         uuid_del = disks_uuids[nb_disks - 1]
@@ -65,8 +60,7 @@ class TestSuite:
         assert reduce(lambda x, y: x and y,
                       [d_uuid in disks_uuids for d_uuid in erd.list_uuids()])
 
-    def test_refresh(self):
-        connection = qapy_connection(clean=True)
+    def test_refresh(self, connection):
         erd = ExtraResourceDisks(connection)
         nb_disks = random.randrange(1, MAX_NB_DISKS)
         print('testing with {} disks'.format(nb_disks))
