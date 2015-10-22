@@ -39,6 +39,6 @@ optional requests-toolbelt dependency in order not to overuse your memory:
 
 .. code-block:: bash
 
-   pip install -r optional-requirements.txt
+   pip install -r requirements-optional.txt
 
 You are now ready to use the Qarnot SDK.
