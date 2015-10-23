@@ -324,7 +324,7 @@ class QDisk(object):
             try:
                 new = next(x for x in adds if x.sha1sum == file_.sha1sum)
                 if verbose:
-                    print ("Rename:", file_.name, "to", new.name, "Link & Delete")
+                    print("Rename:", file_.name, "to", new.name, "Link & Delete")
                 removelater.append(file_)
             except StopIteration:
                 if verbose:
@@ -337,21 +337,21 @@ class QDisk(object):
             try:
                 rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum)
                 if verbose:
-                    print ("Link:", rem.name, "<-", entry[0].name)
+                    print("Link:", rem.name, "<-", entry[0].name)
                 self.add_link(rem.name, entry[0].name)
             except StopIteration:
                 if verbose:
-                    print ("Upload:", entry[0].name)
+                    print("Upload:", entry[0].name)
                 self.add_file(entry[0].filepath, entry[0].name)
             if len(entry) > 1:  # duplicate files
                 for link in entry[1:]:
                     if verbose:
-                        print ("Link:", entry[0].name, "<-", link.name)
+                        print("Link:", entry[0].name, "<-", link.name)
                     self.add_link(entry[0].name, link.name)
 
         for file_ in removelater:
             if verbose:
-                print ("Delete:", file_.name)
+                print("Delete:", file_.name)
             self.delete_file(file_.name)
 
     def flush(self):
@@ -714,8 +714,10 @@ class QDisk(object):
         self._locked = value
 
     def __str__(self):
-        return ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ")\
-               + self.uuid + " - " + self.description
+        return (
+            ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ") +
+            self.uuid + " - " + self.description
+        )
 
     # Operators
     def __getitem__(self, filename):
