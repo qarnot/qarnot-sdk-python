@@ -4,7 +4,6 @@ from distutils.core import setup
 from os import mkdir
 from setuptools.command.test import test as TestCommand
 import shutil
-from tests.conftest import TMP_DIR
 import sys
 
 import qapy
@@ -37,10 +36,10 @@ class PyTest(TestCommand):
         """Run tests."""
         # import here, cause outside the eggs aren't loaded
         import pytest
-        shutil.rmtree(TMP_DIR, ignore_errors=True)
-        mkdir(TMP_DIR)
+        shutil.rmtree('tests/tmp', ignore_errors=True)
+        mkdir('tests/tmp')
         errno = pytest.main(self.pytest_args)
-        shutil.rmtree(TMP_DIR, ignore_errors=True)
+        shutil.rmtree('tests/tmp', ignore_errors=True)
         sys.exit(errno)
 
 setup(name='qapy',

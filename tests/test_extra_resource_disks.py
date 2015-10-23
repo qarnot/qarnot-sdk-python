@@ -2,7 +2,7 @@ from functools import reduce
 import random
 
 from qapy.task import ExtraResourceDisks
-from tests.conftest import create_disks, create_and_add_disks, MAX_NB_DISKS
+from conftest import create_disks, create_and_add_disks, MAX_NB_DISKS
 
 
 class TestSuite:

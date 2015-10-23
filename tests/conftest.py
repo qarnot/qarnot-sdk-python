@@ -17,17 +17,6 @@ def exec_x_times(nb_runs):
     return decorator
 
 
-def call_with_each(*params):
-    def decorator(function):
-        @functools.wraps(function)
-        def wrapper(*args, **kwargs):
-            for param in params:
-                kwargs['param'] = param
-                function(*args, **kwargs)
-        return wrapper
-    return decorator
-
-
 @pytest.fixture(scope="function")
 def connection(clean=True):
     q = qapy.QApy('qarnot.conf')
