@@ -42,11 +42,11 @@ class ExtraResourceDisks(object):
                 self.remove_disk(d_uuid)
 
     def list_disks(self):
-        l = []
+        result = []
         for d_uuid in self._disks_uuids:
-            d = self._get(d_uuid)
-            l.append(d) if d else self.remove_disk(d_uuid)
-        return l
+            disk = self._get(d_uuid)
+            result.append(disk) if disk else self.remove_disk(d_uuid)
+        return result
 
     def list_uuids(self):
         return list(self._disks_uuids)
@@ -61,7 +61,7 @@ class ExtraResourceDisks(object):
 
 class QTask(object):
     """Represents a Qarnot job.
-g
+
     .. note::
        A :class:`QTask` must be created with
        :meth:`qapy.connection.QApy.create_task`
