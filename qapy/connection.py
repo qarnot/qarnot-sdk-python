@@ -231,6 +231,13 @@ class QApy(object):
         ret = resp.json()
         return QUserInfo(ret)
 
+    def _disks_get(self, global_):
+        url_name = 'global disk folder' if global_ else 'disk folder'
+        response = self._get(get_url(url_name))
+        raise_on_error(response)
+        disks = [QDisk(data, self) for data in response.json()]
+        return disks
+
     def disks(self):
         """Get the list of disks on this cluster for this user.
 
@@ -241,10 +248,19 @@ class QApy(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
-        response = self._get(get_url('disk folder'))
-        raise_on_error(response)
-        disks = [QDisk(data, self) for data in response.json()]
-        return disks
+        return self._disks_get(global_=False)
+
+    def global_disks(self):
+        """Get the list of globally available disks on this cluster.
+
+        :rtype: List of :class:`~qapy.disk.QDisk`.
+        :returns: Disks on the cluster available for every user.
+
+
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qapy.QApyException: API general error, see message for details
+        """
+        return self._disks_get(global_=True)
 
     def tasks(self):
         """Get the list of tasks stored on this cluster for this user.

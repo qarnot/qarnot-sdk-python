@@ -23,6 +23,7 @@ def get_url(key, **kwargs):
     """
     urls = {
         'disk folder': '/disks',  # GET -> list; POST -> add
+        'global disk folder': '/disks/global',  # GET -> list
         'disk force': '/disks/force',  # POST -> force add
         'disk info': '/disks/{name}',  # DELETE -> remove; PUT -> update
         'get disk': '/disks/archive/{name}.{ext}',  # GET-> disk archive

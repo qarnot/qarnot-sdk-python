@@ -41,6 +41,7 @@ class QDisk(object):
         self._id = jsondisk["id"]
         self._description = jsondisk["description"]
         self._locked = jsondisk["locked"]
+        self._global = jsondisk["global"]
         self._connection = connection
         self._filethreads = {}  # A dictionary containing key:value where key is
         #  the remote destination on disk, and value a running thread.
@@ -697,6 +698,20 @@ class QDisk(object):
     def description(self, value):
         """Description setter"""
         self._description = value
+
+    @property
+    def globally_available(self):
+        """:type: :class:`bool`
+
+        The disk's global availability. If True, the disk is available for any
+        user on the cluster, else it is only available for the owner.
+        """
+        return self._global
+
+    @globally_available.setter
+    def globally_available(self, value):
+        """Change disk's global availability."""
+        self._global = value
 
     @property
     def locked(self):
