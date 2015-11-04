@@ -273,7 +273,7 @@ class QApy(object):
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
-        return [QTask.from_json(self, task) for task in response.json()]
+        return [QTask.from_json(self, task, False) for task in response.json()]
 
     def retrieve_task(self, guid):
         """Retrieve a :class:`qapy.task.QTask` from its guid
@@ -290,7 +290,7 @@ class QApy(object):
         if response.status_code == 404:
             raise MissingTaskException(response.json()['message'], guid)
         raise_on_error(response)
-        return QTask.from_json(self, response.json())
+        return QTask.from_json(self, response.json(), False)
 
     def retrieve_disk(self, guid):
         """Retrieve a :class:`~qapy.disk.QDisk` from its guid

@@ -149,7 +149,7 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
         raise_on_error(resp)
-        return QTask.from_json(connection, resp.json())
+        return QTask.from_json(connection, resp.json(), False)
 
     def run(self, output_dir, job_timeout=None):
         """Submit a task, wait for the results and download them.
@@ -390,7 +390,7 @@ class QTask(object):
         self._rescount = json_task['resultsCount']
 
     @classmethod
-    def from_json(cls, connection, json_task):
+    def from_json(cls, connection, json_task, force):
         """Create a QTask object from a json task.
 
         :param qapy.connection.QConnection connection: the cluster connection
@@ -401,7 +401,7 @@ class QTask(object):
                        json_task['name'],
                        json_task['profile'],
                        json_task['frameCount'],
-                       json_task['force'])
+                       force)
         new_task._update(json_task)
         return new_task
 
