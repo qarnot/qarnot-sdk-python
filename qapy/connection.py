@@ -310,7 +310,8 @@ class QApy(object):
         raise_on_error(response)
         return QDisk(response.json(), self)
 
-    def create_disk(self, description, force=False, lock=False):
+    def create_disk(self, description, force=False, lock=False,
+                    global_disk=False):
         """Create a new :class:`~qapy.disk.QDisk`.
 
         :param str description: a short description of the disk
@@ -325,7 +326,7 @@ class QApy(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        return QDisk._create(self, description, force, lock)
+        return QDisk._create(self, description, force, lock, global_disk)
 
     def create_task(self, name, profile, framecount_or_range, force=False):
         """Create a new :class:`~qapy.task.QTask`.

@@ -52,7 +52,8 @@ class QDisk(object):
         self._add_mode = QUploadMode.blocking
 
     @classmethod
-    def _create(cls, connection, description, force=False, lock=False):
+    def _create(cls, connection, description, force=False, lock=False,
+                global_disk=False):
         """
         Create a disk on a cluster.
 
@@ -73,7 +74,8 @@ class QDisk(object):
         """
         data = {
             "description": description,
-            "locked": lock
+            "locked": lock,
+            "global": global_disk
             }
         url = get_url('disk force') if force else get_url('disk folder')
         response = connection._post(url, json=data)
