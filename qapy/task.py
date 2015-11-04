@@ -76,7 +76,7 @@ class QTask(object):
         :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
 
-        :param framecount_or_range: number of frame or range on  which to run
+        :param framecount_or_range: number of frame or range on which to run
         task
         :type framecount_or_range: int or str
 
@@ -149,9 +149,7 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
         raise_on_error(resp)
-        task = cls(connection, "stub", None, 0, False)
-        task._update(resp.json())
-        return task
+        return QTask.from_json(connection, resp.json())
 
     def run(self, output_dir, job_timeout=None):
         """Submit a task, wait for the results and download them.
@@ -390,6 +388,23 @@ class QTask(object):
         if self._rescount < json_task['resultsCount']:
             self._dirty = True
         self._rescount = json_task['resultsCount']
+
+    @classmethod
+    def from_json(cls, connection, json_task):
+        """Create a QTask object from a json task.
+
+        :param qapy.connection.QConnection connection: the cluster connection
+        :param dict json_task: Dictionary representing the task
+        :returns: The created :class:`~qapy.task.QTask`.
+        """
+        new_task = cls(connection,
+                       json_task['name'],
+                       json_task['profile'],
+                       json_task['frameCount'],
+                       json_task['force'])
+        new_task._update(json_task)
+        return new_task
+
 
     def commit(self):
         """Replicate local changes on the current object instance to the REST API

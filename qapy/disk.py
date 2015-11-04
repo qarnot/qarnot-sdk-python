@@ -128,6 +128,8 @@ class QDisk(object):
         self._file_count = jsondisk["fileCount"]
         self._used_space_bytes = jsondisk["usedSpaceBytes"]
         self._locked = jsondisk["locked"]
+        self._file_count = jsondisk["fileCount"]
+        self._used_space_bytes = jsondisk["usedSpaceBytes"]
 
     def delete(self):
         """Delete the disk represented by this :class:`QDisk`.
