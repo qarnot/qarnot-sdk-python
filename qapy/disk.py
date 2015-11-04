@@ -40,6 +40,8 @@ class QDisk(object):
         """
         self._id = jsondisk["id"]
         self._description = jsondisk["description"]
+        self._file_count = jsondisk["fileCount"]
+        self._used_space_bytes = jsondisk["usedSpaceBytes"]
         self._locked = jsondisk["locked"]
         self._global = jsondisk["global"]
         self._connection = connection
@@ -123,6 +125,8 @@ class QDisk(object):
         jsondisk = response.json()
         self._id = jsondisk["id"]
         self._description = jsondisk["description"]
+        self._file_count = jsondisk["fileCount"]
+        self._used_space_bytes = jsondisk["usedSpaceBytes"]
         self._locked = jsondisk["locked"]
 
     def delete(self):
@@ -712,6 +716,22 @@ class QDisk(object):
     def globally_available(self, value):
         """Change disk's global availability."""
         self._global = value
+
+    @property
+    def file_count(self):
+        """:type: :class:`int`
+
+        The number of files on the disk.
+        """
+        return self._file_count
+
+    @property
+    def used_space_bytes(self):
+        """:type: :class:`int`
+
+        The total space used on the disk in bytes.
+        """
+        return self._used_space_bytes
 
     @property
     def locked(self):
