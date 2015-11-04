@@ -787,6 +787,16 @@ class QDisk(object):
         """x.__iter__() <==> iter(x)"""
         return iter(self.list_files())
 
+    def __eq__(self, other):
+        """x.__eq__(y) <==> x == y"""
+        if isinstance(other, self.__class__):
+            return self._id == other._id
+        return False
+
+    def __ne__(self, other):
+        """x.__ne__(y) <==> x != y"""
+        return not self.__eq__(other)
+
 
 # Utility Classes
 class QFileInfo(object):
