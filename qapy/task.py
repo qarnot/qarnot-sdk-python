@@ -405,7 +405,6 @@ class QTask(object):
         new_task._update(json_task)
         return new_task
 
-
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
