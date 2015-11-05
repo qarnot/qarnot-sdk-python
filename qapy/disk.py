@@ -474,7 +474,10 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        file_.seek(0)
+        try:
+            file_.seek(0)
+        except AttributeError:
+            pass
 
         url = get_url('update file', name=self._id, path=os.path.dirname(dest))
 
@@ -554,7 +557,10 @@ class QDisk(object):
             pending.join()
 
         if remote in self._filecache:
-            self._filecache[remote].seek(0)
+            try:
+                self._filecache[remote].seek(0)
+            except AttributeError:
+                pass
             while True:
                 chunk = self._filecache[remote].read(chunk_size)
                 if not chunk:
