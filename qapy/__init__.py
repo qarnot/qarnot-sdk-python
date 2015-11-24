@@ -44,6 +44,7 @@ def get_url(key, **kwargs):
 import qapy.connection  # noqa
 QApy = qapy.connection.QApy
 
+from subprocess import Popen, PIPE # noqa
 def call_git_describe(abbrev=4):
     try:
         p = Popen(['git', 'describe', '--tags', '--dirty', '--always'],
