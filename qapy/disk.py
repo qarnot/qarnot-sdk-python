@@ -43,7 +43,10 @@ class QDisk(object):
         self._file_count = jsondisk["fileCount"]
         self._used_space_bytes = jsondisk["usedSpaceBytes"]
         self._locked = jsondisk["locked"]
-        self._global = jsondisk["global"]
+        if "global" in jsondisk:
+          self._global = jsondisk["global"]
+        else:
+          self._global = {}
         self._connection = connection
         self._filethreads = {}  # A dictionary containing key:value where key is
         #  the remote destination on disk, and value a running thread.
