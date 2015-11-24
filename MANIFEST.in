@@ -1,0 +1,3 @@
+recursive-include doc *
+include RELEASE-VERSION
+prune doc/_build

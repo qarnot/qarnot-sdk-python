@@ -3,6 +3,7 @@
 from distutils.core import setup
 from os import mkdir
 from setuptools.command.test import test as TestCommand
+from subprocess import Popen, PIPE
 import shutil
 import sys
 
@@ -46,6 +47,8 @@ setup(name='qapy',
       version= qapy.__version__,
       description= 'Qarnot Computing SDK',
       author='Qarnot Computing',
+      author_email='support@qarnot-computing.com',
+      url='http://qarnotcomputing.com',
       packages=['qapy'],
       requires=['requests'],
       tests_require=['pytest', 'pytest-cov'],
