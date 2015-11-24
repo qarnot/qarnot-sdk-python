@@ -2,6 +2,7 @@
 
 __all__ = ["task", "connection", "disk", "notification"]
 
+
 class QApyException(Exception):
     """General QApy exception"""
     def __init__(self, msg):
@@ -44,7 +45,9 @@ def get_url(key, **kwargs):
 import qapy.connection  # noqa
 QApy = qapy.connection.QApy
 
-from subprocess import Popen, PIPE # noqa
+from subprocess import Popen, PIPE  # noqa
+
+
 def call_git_describe(abbrev=4):
     try:
         p = Popen(['git', 'describe', '--tags', '--dirty', '--always'],
@@ -55,6 +58,7 @@ def call_git_describe(abbrev=4):
 
     except:
         return None
+
 
 def call_git_rev_parse():
     try:
@@ -71,6 +75,7 @@ def call_git_rev_parse():
         return branch + "-" + sha1
     except:
         return None
+
 
 def read_release_version():
     try:
