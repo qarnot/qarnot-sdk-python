@@ -410,7 +410,13 @@ class QDisk(object):
         response = self._connection._post(url, json=data)
         raise_on_error(response)
 
-    def add_file(self, local_or_file, remote=None, mode=None):
+    def _is_executable(self, file):
+        try:
+            return os.access(file.name, os.X_OK)
+        except IOError:
+            return False
+
+    def add_file(self, local_or_file, remote=None, mode=None, **kwargs):
         """Add a local file or a Python File on the disk.
 
         .. note::
@@ -459,15 +465,15 @@ class QDisk(object):
             del self._filecache[dest]
 
         if mode is QUploadMode.blocking:
-            return self._add_file(file_, dest)
+            return self._add_file(file_, dest, **kwargs)
         elif mode is QUploadMode.lazy:
             self._filecache[dest] = file_
         else:
-            thread = threading.Thread(None, self._add_file, dest, (file_, dest))
+            thread = threading.Thread(None, self._add_file, dest, (file_, dest), **kwargs)
             thread.start()
             self._filethreads[dest] = thread
 
-    def _add_file(self, file_, dest):
+    def _add_file(self, file_, dest, **kwargs):
         """Add a file on the disk.
 
         :param File file_: an opened Python File
@@ -477,6 +483,7 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
+
         try:
             file_.seek(0)
         except AttributeError:
@@ -502,6 +509,11 @@ class QDisk(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'], self._id)
         raise_on_error(response)
+
+        # Update file settings
+        if not 'executable' in kwargs:
+            kwargs['executable'] = self._is_executable(file_)
+        self.update_file_settings(os.path.basename(dest), **kwargs)
 
     def add_directory(self, local, remote="", mode=None):
         """ Add a directory to the disk. Does not follow symlinks.
@@ -627,6 +639,22 @@ class QDisk(object):
                 f_local.write(chunk)
 
         return local
+
+    def update_file_settings(self, remote_path, **kwargs):
+        settings = dict(**kwargs)
+
+        if len(settings) < 1:
+            return
+
+        response = self._connection._put(
+            get_url('update file', name=self._id, path=remote_path),
+            json=settings)
+
+        if response.status_code == 404:
+                if response.json()['message'] == "No such disk":
+                    raise MissingDiskException(response.json()['message'],
+                                               self._id)
+        raise_on_error(response)
 
     def delete_file(self, remote):
         """Delete a file from the disk.
@@ -841,6 +869,11 @@ class QFileInfo(object):
         self.sha1sum = sha1Sum
         """:type: :class:`str`
         SHA1 Sum of the file"""
+
+        if not self.directory:
+            self.executable = fileFlags == 'executableFile'
+            """:type: :class:`bool`
+            Is the file executable."""
 
         self.filepath = None  # Only for sync
 

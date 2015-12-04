@@ -28,7 +28,7 @@ def get_url(key, **kwargs):
         'tree disk': '/disks/tree/{name}',  # GET -> ls on the disk
         'link disk': '/disks/link/{name}',  # POST -> create links
         'ls disk': '/disks/list/{name}/{path}',  # GET -> ls on the dir {path}
-        'update file': '/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file
+        'update file': '/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file; PUT -> update file settings
         'tasks': '/tasks',  # GET -> running tasks; POST -> submit task
         'task force': '/tasks/force',  # POST -> force add
         'task update': '/tasks/{uuid}',  # GET->result; DELETE -> abort, PATCH -> update resources
