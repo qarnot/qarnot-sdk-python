@@ -511,7 +511,7 @@ class QDisk(object):
         raise_on_error(response)
 
         # Update file settings
-        if not 'executable' in kwargs:
+        if 'executable' not in kwargs:
             kwargs['executable'] = self._is_executable(file_)
         self.update_file_settings(os.path.basename(dest), **kwargs)
 
