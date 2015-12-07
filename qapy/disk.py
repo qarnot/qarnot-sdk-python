@@ -702,8 +702,9 @@ class QDisk(object):
         """
         data = {
             "description": self._description,
-            "locked": self._locked
-            }
+            "locked": self._locked,
+            "global": self.globally_available,
+        }
         resp = self._connection._put(get_url('disk info', name=self._id),
                                      json=data)
         if resp.status_code == 404:

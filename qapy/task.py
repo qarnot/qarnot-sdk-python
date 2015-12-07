@@ -223,9 +223,9 @@ class QTask(object):
         resp = self._connection._post(url, json=payload)
 
         if resp.status_code == 404:
-            msg = self._resource_disk.uuid
+            disk_id = self._resource_disk.uuid
             self.resources = None
-            raise disk.MissingDiskException(msg)
+            raise disk.MissingDiskException(resp.json()['message'], disk_id)
         elif resp.status_code == 403:
             raise MaxTaskException(resp.json()['message'])
         raise_on_error(resp)
