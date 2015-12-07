@@ -513,7 +513,7 @@ class QDisk(object):
         # Update file settings
         if 'executable' not in kwargs:
             kwargs['executable'] = self._is_executable(file_)
-        self.update_file_settings(os.path.basename(dest), **kwargs)
+        self.update_file_settings(dest, **kwargs)
 
     def add_directory(self, local, remote="", mode=None):
         """ Add a directory to the disk. Does not follow symlinks.
