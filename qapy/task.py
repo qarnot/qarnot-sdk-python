@@ -400,7 +400,7 @@ class QTask(object):
         new_task = cls(connection,
                        json_task['name'],
                        json_task['profile'],
-                       json_task['frameCount'],
+                       json_task.get('frameCount'),
                        force)
         new_task._update(json_task)
         return new_task
