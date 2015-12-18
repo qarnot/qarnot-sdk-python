@@ -397,10 +397,14 @@ class QTask(object):
         :param dict json_task: Dictionary representing the task
         :returns: The created :class:`~qapy.task.QTask`.
         """
+        if 'frameCount' in json_task:
+            framecount_or_range = json_task['frameCount']
+        else:
+            framecount_or_range = json_task['advancedRanges']
         new_task = cls(connection,
                        json_task['name'],
                        json_task['profile'],
-                       json_task.get('frameCount', json_task['advancedRanges']),
+                       framecount_or_range,
                        force)
         new_task._update(json_task)
         return new_task
