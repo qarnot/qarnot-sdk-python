@@ -426,10 +426,10 @@ class QDisk(object):
            In non blocking mode, you may receive an exception during an other
            operation (like :meth:`flush`).
 
-        :param str|File local_or_file: name of the local file or an opened
+        :param str|File local_or_file: path of the local file or an opened
           Python File
         :param str remote: name of the remote file
-          (defaults to *local*)
+          (defaults to *local_or_file*)
         :param mode: mode with which to add the file
           (defaults to :attr:`~QUploadMode.blocking` if not set by
           :attr:`QDisk.add_mode`)
