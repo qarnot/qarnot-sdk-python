@@ -427,7 +427,7 @@ class QDisk(object):
            operation (like :meth:`flush`).
 
         :param str|File local_or_file: name of the local file or an opened
-        Python File
+          Python File
         :param str remote: name of the remote file
           (defaults to *local*)
         :param mode: mode with which to add the file
