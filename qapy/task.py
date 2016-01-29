@@ -2,6 +2,7 @@
 
 from os import makedirs, path
 import time
+import datetime
 import warnings
 
 from qapy import disk
@@ -126,6 +127,7 @@ class QTask(object):
         self._results_blacklist = None
         self._execution_cluster = {}
         self._status = None
+        self._creation_date = None
         self._error_reason = None
         self._resource_disk_id = None
         self._result_disk_id = None
@@ -380,6 +382,7 @@ class QTask(object):
         self._result_disk_id = json_task['resultDisk']
         self._execution_cluster = json_task['executionCluster']
         self._status = json_task['status']
+        self._creation_date = datetime.datetime.strptime(json_task['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
         self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
 
         self._uuid = json_task['id']
@@ -896,6 +899,15 @@ class QTask(object):
             self.update()
 
         return QTaskStatus(self._status)
+
+    @property
+    def creation_date(self):
+        """Creation date of the task (UTC Time)
+        """
+        if self._auto_update:
+            self.update()
+
+        return self._creation_date
 
     @property
     def execution_cluster(self):
