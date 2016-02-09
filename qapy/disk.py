@@ -331,16 +331,15 @@ class QDisk(object):
         groupedadds = [list(g) for _, g in itertools.groupby(
             sadds, lambda x: x.sha1sum)]
 
-        removelater = []
         for file_ in removes:
-            try:
-                new = next(x for x in adds if x.sha1sum == file_.sha1sum)
-                if verbose:
-                    print("Rename:", file_.name, "to", new.name, "Link & Delete")
-                removelater.append(file_)
-            except StopIteration:
-                if verbose:
-                    print("Delete:", file_.name)
+            renames = [x for x in adds if x.sha1sum == file_.sha1sum]
+            if len(renames) > 0:
+                for dup in renames:
+                    if verbose:
+                        print("Copy", file_.name, "to", dup.name)
+                    self.add_link(file_.name, dup.name)
+            if verbose:
+                print ("remove ", file_.name)
                 self.delete_file(file_.name)
 
         remote = self.list_files()
@@ -348,6 +347,8 @@ class QDisk(object):
         for entry in groupedadds:
             try:
                 rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum)
+                if rem.name == entry[0].name:
+                    continue
                 if verbose:
                     print("Link:", rem.name, "<-", entry[0].name)
                 self.add_link(rem.name, entry[0].name)
@@ -360,11 +361,6 @@ class QDisk(object):
                     if verbose:
                         print("Link:", entry[0].name, "<-", link.name)
                     self.add_link(entry[0].name, link.name)
-
-        for file_ in removelater:
-            if verbose:
-                print("Delete:", file_.name)
-            self.delete_file(file_.name)
 
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
