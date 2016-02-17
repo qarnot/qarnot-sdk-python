@@ -13,7 +13,10 @@ def raise_on_error(response):
     if response.status_code == 503:
         raise QApyException("Service Unavailable")
     if response.status_code != 200:
-        raise QApyException(response.json()['message'])
+        try:
+            raise QApyException(response.json()['message'])
+        except ValueError:
+            raise QApyException(response.text)
 
 
 def get_url(key, **kwargs):
