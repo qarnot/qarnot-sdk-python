@@ -302,7 +302,8 @@ class QTask(object):
         """
         if self._uuid is None:
             return
-        if self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
+        if self._status is not None and \
+           self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
             self.abort()
 
         try:
@@ -380,8 +381,10 @@ class QTask(object):
                 self._extra_resource_disks.add_disk(d_uuid)
 
         self._result_disk_id = json_task['resultDisk']
-        self._execution_cluster = json_task['executionCluster']
-        self._status = json_task['status']
+        if 'executionCluster' in json_task:
+            self._execution_cluster = json_task['executionCluster']
+        if 'status' in json_task:
+            self._status = json_task['status']
         self._creation_date = datetime.datetime.strptime(json_task['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
         self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
 
@@ -898,7 +901,9 @@ class QTask(object):
         if self._auto_update:
             self.update()
 
-        return QTaskStatus(self._status)
+        if self._status:
+            return QTaskStatus(self._status)
+        return self._status
 
     @property
     def creation_date(self):
