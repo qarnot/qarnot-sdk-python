@@ -538,6 +538,8 @@ class QDisk(object):
 
         if not os.path.isdir(local):
             raise IOError("Not a valid directory")
+        if not remote.endswith('/'):
+            remote += '/'
         for dirpath, _, files in os.walk(local):
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
