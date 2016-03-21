@@ -3,8 +3,7 @@
 from qapy import get_url, raise_on_error
 from qapy.disk import QDisk, MissingDiskException
 from qapy.task import QTask, MissingTaskException
-from qapy.notification import QNotification
-import qapy.notification as notification
+from qapy.notification import QNotification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
 import sys
 from json import dumps as json_dumps
@@ -358,7 +357,7 @@ class QApy(object):
         :param str fromregex: (optional) Regex to match the "From" value on a state change, default to ".*"
         :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
         """
-        nfilter = notification.TaskStateChanged(template, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
+        nfilter = TaskStateChanged(template, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
         return QNotification._create(self, nfilter)
 
     def create_task_created_notification(self, destination, filterkey, filtervalue, template=None):
@@ -369,7 +368,7 @@ class QApy(object):
         :param str filtervalue: regex to match for the filter key
         :param str template: (optionnal) Template for the notification
         """
-        nfilter = notification.TaskCreated(template, destination, filterkey, filtervalue)
+        nfilter = TaskCreated(template, destination, filterkey, filtervalue)
         return QNotification._create(self, nfilter)
 
     def create_task_ended_notification(self, destination, filterkey, filtervalue, template=None):
@@ -380,7 +379,7 @@ class QApy(object):
         :param str filtervalue: regex to match for the filter key
         :param str template: (optionnal) Template for the notification
         """
-        nfilter = notification.TaskEnded(template, destination, filterkey, filtervalue)
+        nfilter = TaskEnded(template, destination, filterkey, filtervalue)
         return QNotification._create(self, nfilter)
 
     def notifications(self):
