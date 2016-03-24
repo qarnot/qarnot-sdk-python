@@ -51,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'qapy'
-copyright = u'2015, Qarnot Computing'
+copyright = u'2016, Qarnot Computing'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -211,7 +211,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
   ('index', 'qapy.tex', u'qapy Documentation',
-   u'Author', 'manual'),
+   u'Qarnot computing', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -241,7 +241,7 @@ latex_documents = [
 # (source start file, name, description, authors, manual section).
 man_pages = [
     ('index', 'qapy', u'qapy Documentation',
-     [u'Author'], 1)
+     [u'Qarnot computing'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -255,7 +255,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
   ('index', 'qapy', u'qapy Documentation',
-   u'Author', 'qapy', 'One line description of project.',
+   u'Qarnot computing', 'qapy', 'Qarnot computing Python SDK.',
    'Miscellaneous'),
 ]
 
@@ -276,9 +276,9 @@ texinfo_documents = [
 
 # Bibliographic Dublin Core info.
 epub_title = u'qapy'
-epub_author = u'Author'
-epub_publisher = u'Author'
-epub_copyright = u'2014, Author'
+epub_author = u'Qarnot computing'
+epub_publisher = u'Qarnot computing'
+epub_copyright = u'2016, Qarnot computing'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'apy'

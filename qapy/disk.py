@@ -117,6 +117,7 @@ class QDisk(object):
     # Disk Management
     def update(self):
         """Update disk instance from remote API
+
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
