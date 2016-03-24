@@ -74,6 +74,8 @@ class QApy(object):
                 if cfg.has_option('cluster', 'unsafe') \
                    and cfg.getboolean('cluster', 'unsafe'):
                     self._http.verify = False
+        self._get('/')
+
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
