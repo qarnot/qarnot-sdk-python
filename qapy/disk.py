@@ -594,14 +594,29 @@ class QDisk(object):
             for chunk in response.iter_content(chunk_size):
                 yield chunk
 
+    def get_all_files(self, output_dir):
+        """Get all files the disk.
+
+        :param str output_dir: local directory for the retrieved files.
+
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
+
+        .. warning:: Will override *output_dir* content.
+
+        """
+
+        for file_info in self:
+            outpath = os.path.normpath(file_info.name.lstrip('/'))
+            self.get_file(file_info, os.path.join(output_dir,
+                                                  outpath))
+
     def get_file(self, remote, local=None):
         """Get a file from the disk.
 
         .. note::
            You can also use **disk[file]**
-
-        .. warning::
-           Doesn't work with directories. Prefer the use of :meth:`get_archive`.
 
         :param str|QFileInfo remote: the name of the remote file or a QFileInfo
         :param str local: local name of the retrieved file

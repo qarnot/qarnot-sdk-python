@@ -615,10 +615,7 @@ class QTask(object):
             makedirs(output_dir)
 
         if self._dirty:
-            for file_info in self.results:
-                outpath = path.normpath(file_info.name.lstrip('/'))
-                self.results.get_file(file_info, path.join(output_dir,
-                                                           outpath))
+            self.results.get_all_files(output_dir)
 
     def stdout(self):
         """Get the standard output of the task
