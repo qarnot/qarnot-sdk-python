@@ -604,10 +604,14 @@ class QTask(object):
     def download_results(self, output_dir):
         """Download results in given *output_dir*.
 
-        :rtype: :class:`str`
-        :returns: The path containing task results.
+        :param str output_dir: local directory for the retrieved files.
+
+        :raises qapy.disk.MissingDiskException: the disk is not on the server
+        :raises qapy.QApyException: API general error, see message for details
+        :raises qapy.connection.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
+
         """
 
         if self._uuid is not None:
@@ -621,8 +625,6 @@ class QTask(object):
                 outpath = path.normpath(file_info.name.lstrip('/'))
                 self.results.get_file(file_info, path.join(output_dir,
                                                            outpath))
-
-        return output_dir
 
     def stdout(self):
         """Get the standard output of the task
