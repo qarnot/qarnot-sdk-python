@@ -160,9 +160,6 @@ class QTask(object):
         :param float job_timeout: Number of second before the task :meth:`abort` if it has not
           already finished
 
-        :rtype: :class:`str`
-        :returns: Path to the directory containing the results (may be None).
-
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.disk.MissingDiskException:
@@ -179,16 +176,13 @@ class QTask(object):
         self.wait(timeout=job_timeout)
         if job_timeout is not None:
             self.abort()
-        return self.download_results(output_dir)
+        self.download_results(output_dir)
 
     def resume(self, output_dir):
         """Resume waiting for this task if it is still in submitted mode.
         Equivalent to :meth:`wait` + :meth:`results`.
 
         :param str output_dir: path to a directory that will contain the results
-
-        :rtype: :class:`str`
-        :returns: Path to the directory containing the results (may be None).
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -202,7 +196,7 @@ class QTask(object):
         if self._uuid is None:
             return output_dir
         self.wait()
-        return self.download_results(output_dir)
+        self.download_results(output_dir)
 
     def submit(self):
         """Submit task to the cluster if it is not already submitted.
