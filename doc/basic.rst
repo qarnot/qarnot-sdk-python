@@ -43,6 +43,6 @@ And here is a little sample to start a task running your `myscript.py` Python sc
             print task.fresh_stdout()
 
         outdir = tempfile.mkdtemp()
-        print "Download resultuts to " + outdir
+        print "Download results to " + outdir
         task.download_results(outdir)
 
