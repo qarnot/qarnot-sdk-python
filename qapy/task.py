@@ -4,11 +4,16 @@ from os import makedirs, path
 import time
 import datetime
 import warnings
+import sys
 
 from qapy import disk
 from qapy import get_url, raise_on_error
 from qapy.disk import MissingDiskException
 from qapy.utils import OrderedSet, EmptyOrderedSetException
+try:
+    from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar
+except:
+    pass
 
 RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyDispatched', 'PartiallyExecuting',
@@ -423,12 +428,12 @@ class QTask(object):
 
         raise_on_error(resp)
 
-    def wait(self, timeout=None):
+    def wait(self, timeout=None, live_progress=None):
         """Wait for this task until it is completed.
 
         :param float timeout: maximum time (in seconds) to wait before returning
            (None => no timeout)
-
+        :param bool live_progress: display a live progress
         :rtype: :class:`bool`
         :returns: Is the task finished
 
@@ -437,6 +442,21 @@ class QTask(object):
         :raises qapy.task.MissingTaskException: task does not represent a valid
           one
         """
+
+        live_progress = live_progress and sys.stdout.isatty()
+
+        if live_progress:
+            try:
+                widgets = [
+                    Percentage(),
+                    ' ', AnimatedMarker(),
+                    ' ', Bar(),
+                    ' ', AdaptiveETA()
+                ]
+                progressbar = ProgressBar(widgets=widgets, max_value=100)
+            except Exception as e:
+                live_progress = False
+
         start = time.time()
         if self._uuid is None:
             self.update(True)
@@ -446,7 +466,20 @@ class QTask(object):
 
         self.update(True)
         while self._state in RUNNING_DOWNLOADING_STATES:
-            time.sleep(nap)
+            if live_progress:
+                n = 0
+                progress = 0
+                while True:
+                    time.sleep(1)
+                    n += 1
+                    if n >= nap:
+                        break
+                    if n % 2 == 0:
+                        progress = self.status.execution_progress if self.status is not None else 0
+                    progressbar.update(progress)
+            else:
+                time.sleep(nap)
+
             self.update(True)
 
             if timeout is not None:
