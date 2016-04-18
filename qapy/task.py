@@ -158,12 +158,13 @@ class QTask(object):
         raise_on_error(resp)
         return QTask.from_json(connection, resp.json(), False)
 
-    def run(self, output_dir, job_timeout=None):
+    def run(self, output_dir, job_timeout=None, live_progress=False):
         """Submit a task, wait for the results and download them.
 
         :param str output_dir: path to a directory that will contain the results
         :param float job_timeout: Number of second before the task :meth:`abort` if it has not
           already finished
+        :param bool live_progress: display a live progress
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -178,16 +179,17 @@ class QTask(object):
         .. warning:: Will override *output_dir* content.
         """
         self.submit()
-        self.wait(timeout=job_timeout)
+        self.wait(timeout=job_timeout, live_progress=live_progress)
         if job_timeout is not None:
             self.abort()
         self.download_results(output_dir)
 
-    def resume(self, output_dir):
+    def resume(self, output_dir, live_progress=False):
         """Resume waiting for this task if it is still in submitted mode.
         Equivalent to :meth:`wait` + :meth:`results`.
 
         :param str output_dir: path to a directory that will contain the results
+        :param bool live_progress: display a live progress
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -200,7 +202,7 @@ class QTask(object):
         """
         if self._uuid is None:
             return output_dir
-        self.wait()
+        self.wait(live_progress=live_progress)
         self.download_results(output_dir)
 
     def submit(self):
@@ -428,7 +430,7 @@ class QTask(object):
 
         raise_on_error(resp)
 
-    def wait(self, timeout=None, live_progress=None):
+    def wait(self, timeout=None, live_progress=False):
         """Wait for this task until it is completed.
 
         :param float timeout: maximum time (in seconds) to wait before returning
@@ -474,8 +476,7 @@ class QTask(object):
                     n += 1
                     if n >= nap:
                         break
-                    if n % 2 == 0:
-                        progress = self.status.execution_progress if self.status is not None else 0
+                    progress = self.status.execution_progress if self.status is not None else 0
                     progressbar.update(progress)
             else:
                 time.sleep(nap)
