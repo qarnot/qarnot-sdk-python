@@ -631,10 +631,11 @@ class QTask(object):
 
         return self._result_disk
 
-    def download_results(self, output_dir):
+    def download_results(self, output_dir, progress=None):
         """Download results in given *output_dir*.
 
         :param str output_dir: local directory for the retrieved files.
+        :param bool|fun(float,str) progress: can be a callback or True to display a progress bar
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -651,7 +652,7 @@ class QTask(object):
             makedirs(output_dir)
 
         if self._dirty:
-            self.results.get_all_files(output_dir)
+            self.results.get_all_files(output_dir, progress=progress)
 
     def stdout(self):
         """Get the standard output of the task
