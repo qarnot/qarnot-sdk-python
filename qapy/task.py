@@ -184,11 +184,13 @@ class QTask(object):
             self.abort()
         self.download_results(output_dir)
 
-    def resume(self, output_dir, live_progress=False):
+    def resume(self, output_dir, job_timeout=None, live_progress=False):
         """Resume waiting for this task if it is still in submitted mode.
         Equivalent to :meth:`wait` + :meth:`results`.
 
         :param str output_dir: path to a directory that will contain the results
+        :param float job_timeout: Number of second before the task :meth:`abort` if it has not
+          already finished
         :param bool live_progress: display a live progress
 
         :raises qapy.QApyException: API general error, see message for details
@@ -202,7 +204,7 @@ class QTask(object):
         """
         if self._uuid is None:
             return output_dir
-        self.wait(live_progress=live_progress)
+        self.wait(timeout=job_timeout, live_progress=live_progress)
         self.download_results(output_dir)
 
     def submit(self):
