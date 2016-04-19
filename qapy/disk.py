@@ -12,7 +12,7 @@ import threading
 import itertools
 
 try:
-    from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar
+    from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar, AdaptiveTransferSpeed
 except:
     pass
 
@@ -552,7 +552,7 @@ class QDisk(object):
                 self.add_file(os.path.join(dirpath, filename),
                               posixpath.join(remote_loc, filename), mode)
 
-    def get_file_iterator(self, remote, chunk_size=4096, callback=None):
+    def get_file_iterator(self, remote, chunk_size=4096, progress=None):
         """Get a file iterator from the disk.
 
         .. note::
@@ -566,6 +566,11 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
         """
+
+        progressbar = None
+
+        def _cb(count, total, remote):
+            progressbar.update(count)
 
         if isinstance(remote, QFileInfo):
             remote = remote.name
@@ -597,20 +602,40 @@ class QDisk(object):
             raise_on_error(response)
 
             total_length = float(response.headers.get('content-length'))
+            print(str(progress))
+            if progress is not None:
+                if progress is True:
+                    progress = _cb
+                    try:
+                        widgets = [
+                            remote,
+                            ' ', Percentage(),
+                            ' ', AnimatedMarker(),
+                            ' ', Bar(),
+                            ' ', AdaptiveETA(),
+                            ' ', AdaptiveTransferSpeed(unit='B')
+                        ]
+                        progressbar = ProgressBar(widgets=widgets, max_value=total_length)
+                    except Exception as e:
+                        print (str(e))
+                        progress = False
+            elif progress is False:
+                progress = None
+
             count = 0
-            progress = 0.0
             for chunk in response.iter_content(chunk_size):
-                progress = count * chunk_size * 100 / total_length
-                count += 1
-                if callback is not None:
-                    callback(progress, remote)
+                count += len(chunk)
+                if progress is not None:
+                    progress(count, total_length, remote)
                 yield chunk
+        if progress:
+            progressbar.finish()
 
     def get_all_files(self, output_dir, progress=None):
         """Get all files the disk.
 
         :param str output_dir: local directory for the retrieved files.
-        :param bool|fun(float,str) progress: can be a callback or True to display a progress bar
+        :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -634,7 +659,7 @@ class QDisk(object):
         :param str|QFileInfo remote: the name of the remote file or a QFileInfo
         :param str local: local name of the retrieved file
           (defaults to *remote*)
-        :param bool|fun(float,str) progress: can be a callback or True to display a progress bar
+        :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
         :rtype: :class:`str`
         :returns: The name of the output file.
@@ -646,11 +671,6 @@ class QDisk(object):
           (:exc:`KeyError` with disk[file] syntax)
         """
 
-        progressbar = None
-
-        def _cb(progress, remote):
-            progressbar.update(progress)
-
         def make_dirs(_local):
             """Make directory if needed"""
             directory = os.path.dirname(_local)
@@ -659,23 +679,6 @@ class QDisk(object):
 
         if isinstance(remote, QFileInfo):
             remote = remote.name
-
-        if progress is not None:
-            if progress is True:
-                progress = _cb
-                try:
-                    widgets = [
-                        remote,
-                        ' ', Percentage(),
-                        ' ', AnimatedMarker(),
-                        ' ', Bar(),
-                        ' ', AdaptiveETA()
-                    ]
-                    progressbar = ProgressBar(widgets=widgets, max_value=100)
-                except Exception as e:
-                    progress = False
-            elif progress is False:
-                progress = None
 
         if local is None:
             local = os.path.basename(remote)
@@ -686,10 +689,8 @@ class QDisk(object):
         make_dirs(local)
 
         with open(local, 'wb') as f_local:
-            for chunk in self.get_file_iterator(remote, callback=progress):
+            for chunk in self.get_file_iterator(remote, progress=progress):
                 f_local.write(chunk)
-        if progress:
-            progressbar.finish()
         return local
 
     def update_file_settings(self, remote_path, **kwargs):

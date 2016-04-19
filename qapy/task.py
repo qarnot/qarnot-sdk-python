@@ -493,6 +493,8 @@ class QTask(object):
                 else:
                     nap = min(10, timeout - elapsed)
         self.update(True)
+        if live_progress:
+            progressbar.finish()
         return True
 
     def snapshot(self, interval):
@@ -635,7 +637,7 @@ class QTask(object):
         """Download results in given *output_dir*.
 
         :param str output_dir: local directory for the retrieved files.
-        :param bool|fun(float,str) progress: can be a callback or True to display a progress bar
+        :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
