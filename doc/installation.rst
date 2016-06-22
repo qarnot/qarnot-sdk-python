@@ -7,7 +7,7 @@ example one of the following commands:
 
 .. code-block:: bash
 
-   $ apt-get install python-virtual
+   $ apt-get install python-virtualenv
    $ easy_install virtualenv
    $ pip install virtualenv
 
