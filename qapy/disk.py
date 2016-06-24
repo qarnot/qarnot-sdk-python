@@ -618,7 +618,7 @@ class QDisk(object):
                         progressbar = ProgressBar(widgets=widgets, max_value=total_length)
                     except Exception as e:
                         print (str(e))
-                        progress = False
+                        progress = None
             elif progress is False:
                 progress = None
 
