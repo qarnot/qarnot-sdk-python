@@ -187,7 +187,7 @@ class QTask(object):
 
     def resume(self, output_dir, job_timeout=None, live_progress=False, results_progress=None):
         """Resume waiting for this task if it is still in submitted mode.
-        Equivalent to :meth:`wait` + :meth:`results`.
+        Equivalent to :meth:`wait` + :meth:`download_results`.
 
         :param str output_dir: path to a directory that will contain the results
         :param float job_timeout: Number of second before the task :meth:`abort` if it has not
@@ -220,7 +220,7 @@ class QTask(object):
         .. note:: Will ensure all added file are on the resource disk
            regardless of their uploading mode.
 
-        .. note:: To get the results, call :meth:`results` once the job is done.
+        .. note:: To get the results, call :meth:`download_results` once the job is done.
         """
         url = get_url('task force') if self._force else get_url('tasks')
         if self._uuid is not None:
@@ -515,7 +515,7 @@ class QTask(object):
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
 
-        .. note:: To get the temporary results, call :meth:`results`.
+        .. note:: To get the temporary results, call :meth:`download_results`.
         """
         if self._uuid is None:
             self._snapshots = interval
@@ -540,7 +540,7 @@ class QTask(object):
         :raises qapy.task.MissingTaskException: task does not represent a
           valid one
 
-        .. note:: To get the temporary results, call :meth:`results`.
+        .. note:: To get the temporary results, call :meth:`download_results`.
         """
         if self._uuid is None:
             return
@@ -574,7 +574,7 @@ class QTask(object):
 
         .. warning::
            this is the state of the task when the object was retrieved,
-           call :meth:`results` for up to date value.
+           call :meth:`update` for up to date value.
         """
         if self._auto_update:
             self.update()
