@@ -9,7 +9,6 @@ import sys
 from qapy import disk
 from qapy import get_url, raise_on_error
 from qapy.disk import MissingDiskException
-from qapy.utils import OrderedSet, EmptyOrderedSetException
 try:
     from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar
 except:
@@ -18,51 +17,6 @@ except:
 RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyDispatched', 'PartiallyExecuting',
                               'FullyExecuting', 'DownloadingResults']
-
-
-class ExtraResourceDisks(object):
-    def __init__(self, connection):
-        self._disks_uuids = OrderedSet()
-        self._connection = connection
-
-    def __len__(self):
-        return len(self._disks_uuids)
-
-    def _get(self, disk_uuid):
-        try:
-            return disk.QDisk._retrieve(self._connection, disk_uuid)
-        except MissingDiskException:
-            return None
-
-    def add_disk(self, disk_uuid):
-        if disk_uuid not in self._disks_uuids:
-            if self._get(disk_uuid):
-                self._disks_uuids.add(disk_uuid)
-
-    def remove_disk(self, disk_uuid):
-        self._disks_uuids.discard(disk_uuid)
-
-    def refresh(self):
-        for d_uuid in self._disks_uuids:
-            if self._get(d_uuid) is None:
-                self.remove_disk(d_uuid)
-
-    def list_disks(self):
-        result = []
-        for d_uuid in self._disks_uuids:
-            disk = self._get(d_uuid)
-            result.append(disk) if disk else self.remove_disk(d_uuid)
-        return result
-
-    def list_uuids(self):
-        return list(self._disks_uuids)
-
-    def clean(self):
-        try:
-            while True:
-                self._disks_uuids.pop()
-        except EmptyOrderedSetException:
-            pass
 
 
 class QTask(object):
@@ -102,9 +56,8 @@ class QTask(object):
             self._framecount = 0
 
         self._force = force
-        self._resource_disk = None
+        self._resource_disks = []
         self._result_disk = None
-        self._extra_resource_disks = ExtraResourceDisks(connection)
         self._connection = connection
         self.constants = {}
         self._auto_update = True
@@ -134,7 +87,7 @@ class QTask(object):
         self._status = None
         self._creation_date = None
         self._error_reason = None
-        self._resource_disk_id = None
+        self._resource_disks_ids = []
         self._result_disk_id = None
 
     @classmethod
@@ -225,14 +178,13 @@ class QTask(object):
         url = get_url('task force') if self._force else get_url('tasks')
         if self._uuid is not None:
             return self._state
-        self.resources.flush()
+        for rdisk in self.resources:
+            rdisk.flush()
         payload = self._to_json()
         resp = self._connection._post(url, json=payload)
 
         if resp.status_code == 404:
-            disk_id = self._resource_disk.uuid
-            self.resources = None
-            raise disk.MissingDiskException(resp.json()['message'], disk_id)
+            raise disk.MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
             raise MaxTaskException(resp.json()['message'])
         raise_on_error(resp)
@@ -311,15 +263,21 @@ class QTask(object):
            self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
             self.abort()
 
-        try:
-            self.resources.update()
-            if purge_resources is None:
-                purge_resources = not self._resource_disk.locked
-            if purge_resources:
-                self._resource_disk.delete()
-                self.resources = None
-        except disk.MissingDiskException as exception:
-            warnings.warn(exception.message)
+        if purge_resources in [None, True]:
+            toremove = []
+
+            for rdisk in self.resources:
+                try:
+                    rdisk.update()
+                    if purge_resources is None:
+                        purge_resources = not rdisk.locked
+                    if purge_resources:
+                        rdisk.delete()
+                        toremove.append(rdisk)
+                except disk.MissingDiskException as exception:
+                    warnings.warn(exception.message)
+            for tr in toremove:
+                self.resources.remove(tr)
 
         try:
             self.results.update()
@@ -379,12 +337,7 @@ class QTask(object):
         self._profile = json_task['profile']
         self._framecount = json_task.get('frameCount')
         self._advanced_range = json_task.get('advancedRanges')
-        self._resource_disk_id = json_task['resourceDisk']
-
-        if 'extraResourceDisks' in json_task:
-            for d_uuid in json_task['extraResourceDisks']:
-                self._extra_resource_disks.add_disk(d_uuid)
-
+        self._resource_disks_ids = json_task['resourceDisks']
         self._result_disk_id = json_task['resultDisk']
         if 'executionCluster' in json_task:
             self._execution_cluster = json_task['executionCluster']
@@ -581,46 +534,26 @@ class QTask(object):
         return self._state
 
     @property
-    def extra_resources(self):
-        return self._extra_resource_disks.list_disks()
-
-    @extra_resources.setter
-    def extra_resources(self, disks):
-        self._extra_resource_disks.clean()
-        for d in disks:
-            self._extra_resource_disks.add_disk(d.uuid)
-
-    @property
     def resources(self):
-        """:type: :class:`~qapy.disk.QDisk`
+        """:type: list(:class:`~qapy.disk.QDisk`)
 
         Represents resource files."""
-        if self._resource_disk is None:
-            if self._resource_disk_id is None:
-                _disk = disk.QDisk._create(self._connection,
-                                           "Resources: \"{0}\"".format(self._name),
-                                           force=self._force,
-                                           lock=False)
-                self._resource_disk_id = _disk.uuid
-            else:
-                _disk = disk.QDisk._retrieve(self._connection,
-                                             self._resource_disk_id)
-
-            self._resource_disk = _disk
-
         if self._auto_update:
             self.update()
 
-        return self._resource_disk
+        if not self._resource_disks:
+            for did in self._resource_disks_ids:
+                d = disk.QDisk._retrieve(self._connection,
+                                         did)
+                self._resource_disks.append(d)
+
+        return self._resource_disks
 
     @resources.setter
     def resources(self, value):
         """This is a setter."""
-        self._resource_disk = value
-        if value is None:
-            self._resource_disk_id = None
-        else:
-            self._resource_disk_id = value.uuid
+        self._resource_disks = value
+        self._resource_disks_ids = [d.uuid for d in value]
 
     @property
     def results(self):
@@ -1008,13 +941,10 @@ class QTask(object):
         json_task = {
             'name': self._name,
             'profile': self._profile,
-            'resourceDisk': self._resource_disk.uuid,
+            'resourceDisks': self._resource_disks_ids,
             'constants': const_list,
             'constraints': constr_list
         }
-
-        if len(self._extra_resource_disks) > 0:
-            json_task['extraResourceDisks'] = self._extra_resource_disks.list_uuids()
 
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
@@ -1038,7 +968,7 @@ class QTask(object):
                     self._profile,
                     self._framecount,
                     self.state,
-                    (self._resource_disk.uuid if self._resource_disk is not None else ""),
+                    (self._resource_disks_ids if self._resource_disks is not None else ""),
                     (self._result_disk.uuid if self._result_disk is not None else ""))
 
     # Context manager

@@ -306,7 +306,7 @@ class QApy(object):
 
         response = self._get(get_url('disk info', name=guid))
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'], guid)
+            raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
         return QDisk(response.json(), self)
 

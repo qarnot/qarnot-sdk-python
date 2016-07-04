@@ -113,8 +113,7 @@ class QDisk(object):
         response = connection._get(get_url('disk info', name=disk_id))
 
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'],
-                                       disk_id)
+            raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
         return cls(response.json(), connection)
@@ -129,8 +128,7 @@ class QDisk(object):
         """
         response = self._connection._get(get_url('disk info', name=self._id))
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'],
-                                       self._id)
+            raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
         jsondisk = response.json()
@@ -153,8 +151,7 @@ class QDisk(object):
             get_url('disk info', name=self._id))
 
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'],
-                                       self._id)
+            raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
     def get_archive(self, extension='zip', local=None):
@@ -178,8 +175,7 @@ class QDisk(object):
             stream=True)
 
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'],
-                                       self._id)
+            raise MissingDiskException(response.json()['message'])
         elif response.status_code == 400:
             raise ValueError('invalid file format : {0}', extension)
         else:
@@ -210,8 +206,7 @@ class QDisk(object):
         response = self._connection._get(
             get_url('tree disk', name=self._id))
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'],
-                                       self._id)
+            raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
@@ -239,8 +234,7 @@ class QDisk(object):
             get_url('ls disk', name=self._id, path=directory))
         if response.status_code == 404:
             if response.json()['message'] == 'no such disk':
-                raise MissingDiskException(response.json()['message'],
-                                           self._id)
+                raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
         return [QFileInfo(**f) for f in response.json()]
 
@@ -509,7 +503,7 @@ class QDisk(object):
                 files={'filedata': (os.path.basename(dest), file_)})
 
         if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'], self._id)
+            raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
         # Update file settings
@@ -597,8 +591,7 @@ class QDisk(object):
 
             if response.status_code == 404:
                 if response.json()['message'] == "No such disk":
-                    raise MissingDiskException(response.json()['message'],
-                                               self._id)
+                    raise MissingDiskException(response.json()['message'])
             raise_on_error(response)
 
             total_length = float(response.headers.get('content-length'))
@@ -705,8 +698,7 @@ class QDisk(object):
 
         if response.status_code == 404:
                 if response.json()['message'] == "No such disk":
-                    raise MissingDiskException(response.json()['message'],
-                                               self._id)
+                    raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
     def delete_file(self, remote):
@@ -743,8 +735,7 @@ class QDisk(object):
 
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
-                raise MissingDiskException(response.json()['message'],
-                                           self._id)
+                raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
     def commit(self):
@@ -761,8 +752,7 @@ class QDisk(object):
         resp = self._connection._put(get_url('disk info', name=self._id),
                                      json=data)
         if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'],
-                                       self._id)
+            raise MissingDiskException(resp.json()['message'])
         raise_on_error(resp)
 
     @property
@@ -964,9 +954,8 @@ class QUploadMode(object):
 # Exceptions
 class MissingDiskException(Exception):
     """Non existing disk."""
-    def __init__(self, message, name):
-        super(MissingDiskException, self).__init__(
-            "{0}: {1} ".format(message, name))
+    def __init__(self, message):
+        super(MissingDiskException, self).__init__(message)
 
 
 class MaxDiskException(Exception):
