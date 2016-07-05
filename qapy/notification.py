@@ -223,7 +223,7 @@ class TaskStateChanged(TaskNotification):
         return self._state
 
     @stateregex.setter
-    def state_regex(self, value):
+    def stateregex(self, value):
         """To setter
         """
         self._state = value
