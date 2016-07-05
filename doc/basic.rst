@@ -13,8 +13,6 @@ Here is a basic one, check :class:`~qapy.connection.QApy` for details.
    [cluster]
    # url of the REST API
    url=https://rest01.qarnot.net
-   # No SSL verification ?
-   unsafe=False
    [client]
    # auth string of the client
    auth=token
