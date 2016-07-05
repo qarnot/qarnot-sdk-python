@@ -275,36 +275,36 @@ class QApy(object):
         raise_on_error(response)
         return [QTask.from_json(self, task, False) for task in response.json()]
 
-    def retrieve_task(self, guid):
-        """Retrieve a :class:`qapy.task.QTask` from its guid
+    def retrieve_task(self, uuid):
+        """Retrieve a :class:`qapy.task.QTask` from its uuid
 
-        :param str guid: Desired task guid
+        :param str uuid: Desired task uuid
         :rtype: :class:`~qapi.task.QTask`
-        :returns: Existing task defined by the given guid
+        :returns: Existing task defined by the given uuid
         :raises qapy.task.MissingTaskException: task does not exist
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
 
-        response = self._get(get_url('task update', uuid=guid))
+        response = self._get(get_url('task update', uuid=uuid))
         if response.status_code == 404:
-            raise MissingTaskException(response.json()['message'], guid)
+            raise MissingTaskException(response.json()['message'], uuid)
         raise_on_error(response)
         return QTask.from_json(self, response.json(), False)
 
-    def retrieve_disk(self, guid):
-        """Retrieve a :class:`~qapy.disk.QDisk` from its guid
+    def retrieve_disk(self, uuid):
+        """Retrieve a :class:`~qapy.disk.QDisk` from its uuid
 
-        :param str guid: Desired disk guid
+        :param str uuid: Desired disk uuid
         :rtype: :class:`~qapi.disk.QDisk`
-        :returns: Existing disk defined by the given guid
+        :returns: Existing disk defined by the given uuid
         :raises ValueError: no such disk
         :raises qapy.disk.MissingDiskException: disk does not exist
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
 
-        response = self._get(get_url('disk info', name=guid))
+        response = self._get(get_url('disk info', name=uuid))
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
@@ -396,17 +396,17 @@ class QApy(object):
         notifications = [QNotification(data, self) for data in response.json()]
         return notifications
 
-    def retrieve_notification(self, notification_guid):
-        """Retrieve a :class:~qapy.notification.QNotification` from it's guid
+    def retrieve_notification(self, uuid):
+        """Retrieve a :class:~qapy.notification.QNotification` from it's uuid
 
-        :param str notification_guid: Id of the notification
+        :param str uuid: Id of the notification
         :rtype: :class:`~qapi.notification.QNotification`
-        :returns: Existing notification defined by the given guid
+        :returns: Existing notification defined by the given uuid
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
-        url = get_url('notification update', uuid=notification_guid)
+        url = get_url('notification update', uuid=uuid)
         response = self._get(url)
         raise_on_error(response)
         return QNotification(response.json(), self)

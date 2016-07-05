@@ -87,8 +87,8 @@ class QTask(object):
         self._status = None
         self._creation_date = None
         self._error_reason = None
-        self._resource_disks_ids = []
-        self._result_disk_id = None
+        self._resource_disks_uuids = []
+        self._result_disk_uuid = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -188,7 +188,7 @@ class QTask(object):
         elif resp.status_code == 403:
             raise MaxTaskException(resp.json()['message'])
         raise_on_error(resp)
-        self._uuid = resp.json()['guid']
+        self._uuid = resp.json()['uuid']
 
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
@@ -286,7 +286,7 @@ class QTask(object):
             if purge_results:
                 self._result_disk.delete()
                 self._result_disk = None
-                self._result_disk_id = None
+                self._result_disk_uuid = None
         except disk.MissingDiskException as exception:
             warnings.warn(exception.message)
 
@@ -337,8 +337,8 @@ class QTask(object):
         self._profile = json_task['profile']
         self._framecount = json_task.get('frameCount')
         self._advanced_range = json_task.get('advancedRanges')
-        self._resource_disks_ids = json_task['resourceDisks']
-        self._result_disk_id = json_task['resultDisk']
+        self._resource_disks_uuids = json_task['resourceDisks']
+        self._result_disk_uuid = json_task['resultDisk']
         if 'executionCluster' in json_task:
             self._execution_cluster = json_task['executionCluster']
         if 'status' in json_task:
@@ -346,7 +346,7 @@ class QTask(object):
         self._creation_date = datetime.datetime.strptime(json_task['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
         self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
 
-        self._uuid = json_task['id']
+        self._uuid = json_task['uuid']
         self._state = json_task['state']
 
         if self._rescount < json_task['resultsCount']:
@@ -542,9 +542,9 @@ class QTask(object):
             self.update()
 
         if not self._resource_disks:
-            for did in self._resource_disks_ids:
+            for duuid in self._resource_disks_uuids:
                 d = disk.QDisk._retrieve(self._connection,
-                                         did)
+                                         duuid)
                 self._resource_disks.append(d)
 
         return self._resource_disks
@@ -553,7 +553,7 @@ class QTask(object):
     def resources(self, value):
         """This is a setter."""
         self._resource_disks = value
-        self._resource_disks_ids = [d.uuid for d in value]
+        self._resource_disks_uuids = [d.uuid for d in value]
 
     @property
     def results(self):
@@ -562,7 +562,7 @@ class QTask(object):
         Represents results files."""
         if self._result_disk is None:
             self._result_disk = disk.QDisk._retrieve(self._connection,
-                                                     self._result_disk_id)
+                                                     self._result_disk_uuid)
 
         if self._auto_update:
             self.update()
@@ -941,7 +941,7 @@ class QTask(object):
         json_task = {
             'name': self._name,
             'profile': self._profile,
-            'resourceDisks': self._resource_disks_ids,
+            'resourceDisks': self._resource_disks_uuids,
             'constants': const_list,
             'constraints': constr_list
         }
@@ -968,7 +968,7 @@ class QTask(object):
                     self._profile,
                     self._framecount,
                     self.state,
-                    (self._resource_disks_ids if self._resource_disks is not None else ""),
+                    (self._resource_disks_uuids if self._resource_disks is not None else ""),
                     (self._result_disk.uuid if self._result_disk is not None else ""))
 
     # Context manager

@@ -12,7 +12,7 @@ class QNotification(object):
         :param dict json_notification: Dictionary representing the
                 notification, must contain following keys:
 
-                  * id: string, the notification's GUID
+                  * uuid: string, the notification's uuid
                   * mask: TaskStateChanged
                   * filter.destination: string, destination (email)
                   * filter.filterKey
@@ -28,7 +28,7 @@ class QNotification(object):
         """
         self._connection = connection
 
-        self._id = json_notification['id']
+        self._uuid = json_notification['uuid']
         self._mask = json_notification['mask']
 
         destination = json_notification['filter']['destination']
@@ -58,7 +58,7 @@ class QNotification(object):
         url = get_url('notification')
         response = connection._post(url, json=data)
         raise_on_error(response)
-        rid = response.json()['guid']
+        rid = response.json()['uuid']
         response = connection._get(get_url('notification update', uuid=rid))
         raise_on_error(response)
         return QNotification(response.json(), connection)
@@ -71,14 +71,14 @@ class QNotification(object):
         """
 
         response = self._connection._delete(
-            get_url('notification update', uuid=self._id))
+            get_url('notification update', uuid=self._uuid))
         raise_on_error(response)
 
     @property
-    def id(self):
-        """Id Getter
+    def uuid(self):
+        """Uuid Getter
         """
-        return self._id
+        return self._uuid
 
     @property
     def filter(self):

@@ -36,14 +36,14 @@ class QDisk(object):
         :param dict jsondisk: Dictionary representing the disk,
           must contain following keys:
 
-            * id: string, the disk's UUID
+            * uuid: string, the disk's UUID
 
             * description: string, a short description of the disk
 
         :param :class:`qapy.connection.QApy` connection:
           the cluster on which the disk is
         """
-        self._id = jsondisk["id"]
+        self._uuid = jsondisk["uuid"]
         self._description = jsondisk["description"]
         self._file_count = jsondisk["fileCount"]
         self._used_space_bytes = jsondisk["usedSpaceBytes"]
@@ -92,16 +92,16 @@ class QDisk(object):
         else:
             raise_on_error(response)
 
-        disk_id = response.json()
-        return cls._retrieve(connection, disk_id['guid'])
+        disk_uuid = response.json()
+        return cls._retrieve(connection, disk_uuid['uuid'])
 
     @classmethod
-    def _retrieve(cls, connection, disk_id):
+    def _retrieve(cls, connection, disk_uuid):
         """Retrieve information of a disk on a cluster.
 
         :param :class:`qapy.connection.QApy` connection: the cluster
             to get the disk from
-        :param str disk_id: the UUID of the disk to retrieve
+        :param str disk_uuid: the UUID of the disk to retrieve
 
         :rtype: :class:`QDisk`
         :returns: The retrieved disk.
@@ -110,7 +110,7 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        response = connection._get(get_url('disk info', name=disk_id))
+        response = connection._get(get_url('disk info', name=disk_uuid))
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
@@ -126,13 +126,13 @@ class QDisk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        response = self._connection._get(get_url('disk info', name=self._id))
+        response = self._connection._get(get_url('disk info', name=self._uuid))
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
         jsondisk = response.json()
-        self._id = jsondisk["id"]
+        self._uuid = jsondisk["uuid"]
         self._description = jsondisk["description"]
         self._file_count = jsondisk["fileCount"]
         self._used_space_bytes = jsondisk["usedSpaceBytes"]
@@ -148,7 +148,7 @@ class QDisk(object):
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._delete(
-            get_url('disk info', name=self._id))
+            get_url('disk info', name=self._uuid))
 
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
@@ -171,7 +171,7 @@ class QDisk(object):
         :raises ValueError: invalid extension format
         """
         response = self._connection._get(
-            get_url('get disk', name=self._id, ext=extension),
+            get_url('get disk', name=self._uuid, ext=extension),
             stream=True)
 
         if response.status_code == 404:
@@ -181,9 +181,9 @@ class QDisk(object):
         else:
             raise_on_error(response)
 
-        local = local or ".".join([self._id, extension])
+        local = local or ".".join([self._uuid, extension])
         if os.path.isdir(local):
-            local = os.path.join(local, ".".join([self._id, extension]))
+            local = os.path.join(local, ".".join([self._uuid, extension]))
 
         with open(local, 'wb') as f_local:
             for elt in response.iter_content():
@@ -204,7 +204,7 @@ class QDisk(object):
         self.flush()
 
         response = self._connection._get(
-            get_url('tree disk', name=self._id))
+            get_url('tree disk', name=self._uuid))
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
@@ -231,7 +231,7 @@ class QDisk(object):
         self.flush()
 
         response = self._connection._get(
-            get_url('ls disk', name=self._id, path=directory))
+            get_url('ls disk', name=self._uuid, path=directory))
         if response.status_code == 404:
             if response.json()['message'] == 'no such disk':
                 raise MissingDiskException(response.json()['message'])
@@ -402,7 +402,7 @@ class QDisk(object):
                 "linkName": linkname
             }
         ]
-        url = get_url('link disk', name=self._id)
+        url = get_url('link disk', name=self._uuid)
         response = self._connection._post(url, json=data)
         raise_on_error(response)
 
@@ -485,7 +485,7 @@ class QDisk(object):
         except AttributeError:
             pass
 
-        url = get_url('update file', name=self._id, path=os.path.dirname(dest))
+        url = get_url('update file', name=self._uuid, path=os.path.dirname(dest))
 
         try:
             # If requests_toolbelt is installed, we can use its
@@ -586,7 +586,7 @@ class QDisk(object):
                 yield chunk
         else:
             response = self._connection._get(
-                get_url('update file', name=self._id, path=remote),
+                get_url('update file', name=self._uuid, path=remote),
                 stream=True)
 
             if response.status_code == 404:
@@ -693,7 +693,7 @@ class QDisk(object):
             return
 
         response = self._connection._put(
-            get_url('update file', name=self._id, path=remote_path),
+            get_url('update file', name=self._uuid, path=remote_path),
             json=settings)
 
         if response.status_code == 404:
@@ -731,7 +731,7 @@ class QDisk(object):
             return
 
         response = self._connection._delete(
-            get_url('update file', name=self._id, path=dest))
+            get_url('update file', name=self._uuid, path=dest))
 
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
@@ -749,7 +749,7 @@ class QDisk(object):
             "locked": self._locked,
             "global": self.globally_available,
         }
-        resp = self._connection._put(get_url('disk info', name=self._id),
+        resp = self._connection._put(get_url('disk info', name=self._uuid),
                                      json=data)
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'])
@@ -760,7 +760,7 @@ class QDisk(object):
         """:type: :class:`str`
 
         The disk's UUID."""
-        return self._id
+        return self._uuid
 
     @property
     def add_mode(self):
@@ -873,7 +873,7 @@ class QDisk(object):
     def __eq__(self, other):
         """x.__eq__(y) <==> x == y"""
         if isinstance(other, self.__class__):
-            return self._id == other._id
+            return self._uuid == other._uuid
         return False
 
     def __ne__(self, other):
