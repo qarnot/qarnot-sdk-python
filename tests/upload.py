@@ -4,17 +4,17 @@
 from __future__ import print_function
 
 import qapy
-from qapy.disk import QUploadMode
+from qapy.disk import UploadMode
 from os import walk
 from os.path import join
 
 if __name__ == "__main__":
     q = qapy.QApy('example/qarnot.conf')
     with q.create_task("example task", "python", 3) as task:
-        task.resources.add_file("example/script.py", mode=QUploadMode.lazy)
+        task.resources.add_file("example/script.py", mode=UploadMode.lazy)
         task.resources.add_file("example/script.py",
-                                mode=QUploadMode.background)
-        task.resources.add_file("example/script.py", mode=QUploadMode.blocking)
+                                mode=UploadMode.background)
+        task.resources.add_file("example/script.py", mode=UploadMode.blocking)
         task.constants['PYTHON_SCRIPT'] = "script.py"
         task.submit()
         task.wait()

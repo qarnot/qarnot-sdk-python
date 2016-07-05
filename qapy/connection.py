@@ -1,9 +1,9 @@
 """Module describing a connection."""
 
 from qapy import get_url, raise_on_error
-from qapy.disk import QDisk, MissingDiskException
-from qapy.task import QTask, MissingTaskException
-from qapy.notification import QNotification, TaskCreated, TaskEnded, TaskStateChanged
+from qapy.disk import Disk, MissingDiskException
+from qapy.task import Task, MissingTaskException
+from qapy.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
 import sys
 from json import dumps as json_dumps
@@ -220,7 +220,7 @@ class QApy(object):
     def user_info(self):
         """Get information of the current user on the cluster.
 
-        :rtype: :class:`QUserInfo`
+        :rtype: :class:`UserInfo`
         :returns: Requested information.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -229,19 +229,19 @@ class QApy(object):
         resp = self._get(get_url('user'))
         raise_on_error(resp)
         ret = resp.json()
-        return QUserInfo(ret)
+        return UserInfo(ret)
 
     def _disks_get(self, global_):
         url_name = 'global disk folder' if global_ else 'disk folder'
         response = self._get(get_url(url_name))
         raise_on_error(response)
-        disks = [QDisk(data, self) for data in response.json()]
+        disks = [Disk(data, self) for data in response.json()]
         return disks
 
     def disks(self):
         """Get the list of disks on this cluster for this user.
 
-        :rtype: List of :class:`~qapy.disk.QDisk`.
+        :rtype: List of :class:`~qapy.disk.Disk`.
         :returns: Disks on the cluster owned by the user.
 
 
@@ -253,7 +253,7 @@ class QApy(object):
     def global_disks(self):
         """Get the list of globally available disks on this cluster.
 
-        :rtype: List of :class:`~qapy.disk.QDisk`.
+        :rtype: List of :class:`~qapy.disk.Disk`.
         :returns: Disks on the cluster available for every user.
 
 
@@ -265,7 +265,7 @@ class QApy(object):
     def tasks(self):
         """Get the list of tasks stored on this cluster for this user.
 
-        :rtype: List of :class:`~qapy.task.QTask`.
+        :rtype: List of :class:`~qapy.task.Task`.
         :returns: Tasks stored on the cluster owned by the user.
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -273,13 +273,13 @@ class QApy(object):
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
-        return [QTask.from_json(self, task, False) for task in response.json()]
+        return [Task.from_json(self, task, False) for task in response.json()]
 
     def retrieve_task(self, uuid):
-        """Retrieve a :class:`qapy.task.QTask` from its uuid
+        """Retrieve a :class:`qapy.task.Task` from its uuid
 
         :param str uuid: Desired task uuid
-        :rtype: :class:`~qapi.task.QTask`
+        :rtype: :class:`~qapi.task.Task`
         :returns: Existing task defined by the given uuid
         :raises qapy.task.MissingTaskException: task does not exist
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -290,13 +290,13 @@ class QApy(object):
         if response.status_code == 404:
             raise MissingTaskException(response.json()['message'], uuid)
         raise_on_error(response)
-        return QTask.from_json(self, response.json(), False)
+        return Task.from_json(self, response.json(), False)
 
     def retrieve_disk(self, uuid):
-        """Retrieve a :class:`~qapy.disk.QDisk` from its uuid
+        """Retrieve a :class:`~qapy.disk.Disk` from its uuid
 
         :param str uuid: Desired disk uuid
-        :rtype: :class:`~qapi.disk.QDisk`
+        :rtype: :class:`~qapi.disk.Disk`
         :returns: Existing disk defined by the given uuid
         :raises ValueError: no such disk
         :raises qapy.disk.MissingDiskException: disk does not exist
@@ -308,11 +308,11 @@ class QApy(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
-        return QDisk(response.json(), self)
+        return Disk(response.json(), self)
 
     def create_disk(self, description, force=False, lock=False,
                     global_disk=False):
-        """Create a new :class:`~qapy.disk.QDisk`.
+        """Create a new :class:`~qapy.disk.Disk`.
 
         :param str description: a short description of the disk
         :param bool force: delete an old unlocked disk
@@ -320,16 +320,16 @@ class QApy(object):
         :param bool lock: prevents the disk to be removed
           by a subsequent :meth:`create_disk` with force set to True
 
-        :rtype: :class:`qapy.disk.QDisk`
-        :returns: The created :class:`~qapy.disk.QDisk`.
+        :rtype: :class:`qapy.disk.Disk`
+        :returns: The created :class:`~qapy.disk.Disk`.
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        return QDisk._create(self, description, force, lock, global_disk)
+        return Disk._create(self, description, force, lock, global_disk)
 
     def create_task(self, name, profile, framecount_or_range, force=False):
-        """Create a new :class:`~qapy.task.QTask`.
+        """Create a new :class:`~qapy.task.Task`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
@@ -340,15 +340,15 @@ class QApy(object):
            tasks is reached. Plus, it will delete an old unlocked disk
            if maximum number of disks is reached for resources and results
 
-        :rtype: :class:`~qapy.task.QTask`
-        :returns: The created :class:`~qapy.task.QTask`.
+        :rtype: :class:`~qapy.task.Task`
+        :returns: The created :class:`~qapy.task.Task`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return QTask(self, name, profile, framecount_or_range, force)
+        return Task(self, name, profile, framecount_or_range, force)
 
     def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
-        """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskStateChanged`.
+        """Create a new :class:`qapy.notification.Notification` with a filter of type :class:`qapy.notification.TaskStateChanged`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -359,10 +359,10 @@ class QApy(object):
         :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
         """
         nfilter = TaskStateChanged(template, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
-        return QNotification._create(self, nfilter)
+        return Notification._create(self, nfilter)
 
     def create_task_created_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskCreated`.
+        """Create a new :class:`qapy.notification.Notification` with a filter of type :class:`qapy.notification.TaskCreated`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -370,10 +370,10 @@ class QApy(object):
         :param str template: (optionnal) Template for the notification
         """
         nfilter = TaskCreated(template, destination, filterkey, filtervalue)
-        return QNotification._create(self, nfilter)
+        return Notification._create(self, nfilter)
 
     def create_task_ended_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qapy.notification.QNotification` with a filter of type :class:`qapy.notification.TaskEnded`.
+        """Create a new :class:`qapy.notification.Notification` with a filter of type :class:`qapy.notification.TaskEnded`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -381,26 +381,26 @@ class QApy(object):
         :param str template: (optionnal) Template for the notification
         """
         nfilter = TaskEnded(template, destination, filterkey, filtervalue)
-        return QNotification._create(self, nfilter)
+        return Notification._create(self, nfilter)
 
     def notifications(self):
         """Get the list of notifications for the user
 
-        :rtype: List of :class:~qapy.task.QNotification`.
+        :rtype: List of :class:~qapy.task.Notification`.
         :returns: List of all notifications belonging to the user
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.QApyException: API general error, see message for details
         """
         response = self._get(get_url('notification'))
         raise_on_error(response)
-        notifications = [QNotification(data, self) for data in response.json()]
+        notifications = [Notification(data, self) for data in response.json()]
         return notifications
 
     def retrieve_notification(self, uuid):
-        """Retrieve a :class:~qapy.notification.QNotification` from it's uuid
+        """Retrieve a :class:~qapy.notification.Notification` from it's uuid
 
         :param str uuid: Id of the notification
-        :rtype: :class:`~qapi.notification.QNotification`
+        :rtype: :class:`~qapi.notification.Notification`
         :returns: Existing notification defined by the given uuid
 
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -409,14 +409,14 @@ class QApy(object):
         url = get_url('notification update', uuid=uuid)
         response = self._get(url)
         raise_on_error(response)
-        return QNotification(response.json(), self)
+        return Notification(response.json(), self)
 
 
 ###################
 # utility Classes #
 ###################
 
-class QUserInfo(object):
+class UserInfo(object):
     """Information about a qapy user."""
     def __init__(self, info):
         self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
@@ -471,7 +471,7 @@ class QUserInfo(object):
         Total computation time."""
 
 
-class QProfile(object):
+class Profile(object):
     """Information about a profile."""
     def __init__(self, info):
         self.name = info['name']
@@ -486,7 +486,7 @@ class QProfile(object):
         and their default values."""
 
     def __repr__(self):
-        return 'QProfile(name=%s, constants=%r}' % (self.name, self.constants)
+        return 'Profile(name=%s, constants=%r}' % (self.name, self.constants)
 
 
 ##############

@@ -8,14 +8,14 @@ import qapy
 from os import walk
 from os.path import join
 
-from qapy.disk import QUploadMode
+from qapy.disk import UploadMode
 
 
 if __name__ == "__main__":
     q = qapy.QApy('example/qarnot.conf')
     with q.create_task("example task", "python", 3) as task:
         task.resources.add_file("example/script_verbose.py",
-                                mode=QUploadMode.background)
+                                mode=UploadMode.background)
         task.constants['PYTHON_SCRIPT'] = "script_verbose.py"
         task.submit()
         task.snapshot(10)

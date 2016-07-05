@@ -3,7 +3,7 @@
 from qapy import get_url, raise_on_error
 
 
-class QNotification(object):
+class Notification(object):
     """A Qarnot Notification
     """
     def __init__(self, json_notification, connection):
@@ -49,7 +49,7 @@ class QNotification(object):
 
     @classmethod
     def _create(cls, connection, _filter):
-        """Create a new QNotification
+        """Create a new Notification
         """
         data = {
             "mask": type(_filter).__name__,
@@ -61,10 +61,10 @@ class QNotification(object):
         rid = response.json()['uuid']
         response = connection._get(get_url('notification update', uuid=rid))
         raise_on_error(response)
-        return QNotification(response.json(), connection)
+        return Notification(response.json(), connection)
 
     def delete(self):
-        """Delete the notification represented by this :class:`QNotification`.
+        """Delete the notification represented by this :class:`Notification`.
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials

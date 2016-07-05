@@ -19,19 +19,19 @@ RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyExecuting', 'DownloadingResults']
 
 
-class QTask(object):
+class Task(object):
     """Represents a Qarnot job.
 
     .. note::
-       A :class:`QTask` must be created with
+       A :class:`Task` must be created with
        :meth:`qapy.connection.QApy.create_task`
        or retrieved with :meth:`qapy.connection.QApy.tasks`.
     """
     def __init__(self, connection, name, profile, framecount_or_range, force):
-        """Create a new :class:`QTask`.
+        """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
-        :type connection: :class:`Qconnection`
+        :type connection: :class:`QApy`
         :param name: given name of the task
         :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
@@ -94,11 +94,11 @@ class QTask(object):
     def _retrieve(cls, connection, uuid):
         """Retrieve a submitted task given its uuid.
 
-        :param qapy.connection.QConnection connection:
+        :param qapy.connection.QApy connection:
           the cluster to retrieve the task from
         :param str uuid: the uuid of the task to retrieve
 
-        :rtype: QTask
+        :rtype: Task
         :returns: The retrieved task.
 
         :raises qapy.QApyException: API general error, see message for details
@@ -109,7 +109,7 @@ class QTask(object):
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
         raise_on_error(resp)
-        return QTask.from_json(connection, resp.json(), False)
+        return Task.from_json(connection, resp.json(), False)
 
     def run(self, output_dir, job_timeout=None, live_progress=False, results_progress=None):
         """Submit a task, wait for the results and download them.
@@ -355,11 +355,11 @@ class QTask(object):
 
     @classmethod
     def from_json(cls, connection, json_task, force):
-        """Create a QTask object from a json task.
+        """Create a Task object from a json task.
 
-        :param qapy.connection.QConnection connection: the cluster connection
+        :param qapy.connection.QApy connection: the cluster connection
         :param dict json_task: Dictionary representing the task
-        :returns: The created :class:`~qapy.task.QTask`.
+        :returns: The created :class:`~qapy.task.Task`.
         """
         if 'frameCount' in json_task:
             framecount_or_range = json_task['frameCount']
@@ -535,7 +535,7 @@ class QTask(object):
 
     @property
     def resources(self):
-        """:type: list(:class:`~qapy.disk.QDisk`)
+        """:type: list(:class:`~qapy.disk.Disk`)
 
         Represents resource files."""
         if self._auto_update:
@@ -543,8 +543,8 @@ class QTask(object):
 
         if not self._resource_disks:
             for duuid in self._resource_disks_uuids:
-                d = disk.QDisk._retrieve(self._connection,
-                                         duuid)
+                d = disk.Disk._retrieve(self._connection,
+                                        duuid)
                 self._resource_disks.append(d)
 
         return self._resource_disks
@@ -557,12 +557,12 @@ class QTask(object):
 
     @property
     def results(self):
-        """:type: :class:`~qapy.disk.QDisk`
+        """:type: :class:`~qapy.disk.Disk`
 
         Represents results files."""
         if self._result_disk is None:
-            self._result_disk = disk.QDisk._retrieve(self._connection,
-                                                     self._result_disk_uuid)
+            self._result_disk = disk.Disk._retrieve(self._connection,
+                                                    self._result_disk_uuid)
 
         if self._auto_update:
             self.update()
@@ -870,7 +870,7 @@ class QTask(object):
             self.update()
 
         if self._status:
-            return QTaskStatus(self._status)
+            return TaskStatus(self._status)
         return self._status
 
     @property
@@ -982,7 +982,7 @@ class QTask(object):
 
 
 # Status
-class QTaskStatus(object):
+class TaskStatus(object):
     """Task status
     """
     def __init__(self, entries):

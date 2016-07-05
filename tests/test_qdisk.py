@@ -2,7 +2,7 @@ import pytest
 import os
 import hashlib
 
-from qapy.disk import QDisk, QUploadMode, MaxDiskException, \
+from qapy.disk import Disk, UploadMode, MaxDiskException, \
     MissingDiskException
 from conftest import create_disks, MAX_NB_DISKS, TMP_DIR
 import conftest
@@ -17,7 +17,7 @@ class TestSuite:
         connection = conftest.connection(True)
         src_file_path = os.path.join(TMP_DIR, 'file_to_upload')
         dst_file_path = os.path.join(TMP_DIR, 'file_to_download')
-        disk = QDisk._create(connection, 'test_disk')
+        disk = Disk._create(connection, 'test_disk')
         hasher = hashlib.md5()
         with open(src_file_path, 'wb') as f:
             for i in range (int(file_size / 1024)):
@@ -26,7 +26,7 @@ class TestSuite:
                 f.write(buf)
         hash_before = hasher.hexdigest()
         disk.add_file(src_file_path, remote='filename',
-                      mode=QUploadMode.blocking, **kwargs)
+                      mode=UploadMode.blocking, **kwargs)
         os.remove(src_file_path)
         disk.get_file('filename', dst_file_path)
         hasher = hashlib.md5()
@@ -52,13 +52,13 @@ class TestSuite:
 
     def test_retrieve_and_delete(self, connection):
         disk_1 = create_disks(connection, 1)[0][0]
-        disk_2 = QDisk._retrieve(connection, disk_1.uuid)
+        disk_2 = Disk._retrieve(connection, disk_1.uuid)
         assert disk_1.uuid == disk_2.uuid
         assert disk_1.description == disk_2.description
         disk_2.delete()
         with pytest.raises(MissingDiskException):
-            QDisk._retrieve(connection, disk_1.uuid)
+            Disk._retrieve(connection, disk_1.uuid)
 
     def test_creation(self, connection):
-        disk = QDisk._create(connection, 'disk_description')
+        disk = Disk._create(connection, 'disk_description')
         assert disk.description == 'disk_description'

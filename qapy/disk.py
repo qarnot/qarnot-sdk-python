@@ -17,15 +17,15 @@ except:
     pass
 
 
-class QDisk(object):
+class Disk(object):
     """Represents a resource/result disk on the cluster.
 
     This class is the interface to manage resources or results from a
-    :class:`qapy.task.QTask`.
+    :class:`qapy.task.Task`.
 
     .. note::
        Paths given as 'remote' arguments,
-       (or as path arguments for :func:`QDisk.directory`)
+       (or as path arguments for :func:`Disk.directory`)
        **must** be valid unix-like paths.
     """
 
@@ -57,7 +57,7 @@ class QDisk(object):
         #  the remote destination on disk, and value a running thread.
         self._filecache = {}  # A dictionary containing key:value where key is
         #  the remote destination on disk, and value an opened Python File.
-        self._add_mode = QUploadMode.blocking
+        self._add_mode = UploadMode.blocking
 
     @classmethod
     def _create(cls, connection, description, force=False, lock=False,
@@ -74,8 +74,8 @@ class QDisk(object):
           by a subsequent :meth:`qapy.connection.QApy.create_task` with
           *force* set to True.
 
-        :rtype: :class:`QDisk`
-        :returns: The created :class:`QDisk`.
+        :rtype: :class:`Disk`
+        :returns: The created :class:`Disk`.
 
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
@@ -103,7 +103,7 @@ class QDisk(object):
             to get the disk from
         :param str disk_uuid: the UUID of the disk to retrieve
 
-        :rtype: :class:`QDisk`
+        :rtype: :class:`Disk`
         :returns: The retrieved disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -141,7 +141,7 @@ class QDisk(object):
         self._used_space_bytes = jsondisk["usedSpaceBytes"]
 
     def delete(self):
-        """Delete the disk represented by this :class:`QDisk`.
+        """Delete the disk represented by this :class:`Disk`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -193,7 +193,7 @@ class QDisk(object):
     def list_files(self):
         """List files on the whole disk.
 
-        :rtype: List of :class:`QFileInfo`.
+        :rtype: List of :class:`FileInfo`.
         :returns: List of the files on the disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -208,7 +208,7 @@ class QDisk(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
-        return [QFileInfo(**f) for f in response.json()]
+        return [FileInfo(**f) for f in response.json()]
 
     def directory(self, directory=''):
         """List files in a directory of the disk. Doesn't go through
@@ -217,8 +217,8 @@ class QDisk(object):
         :param str directory: path of the directory to inspect.
           Must be unix-like.
 
-        :rtype: List of :class:`QFileInfo`.
-        :returns: Files in the given directory on the :class:`QDisk`.
+        :rtype: List of :class:`FileInfo`.
+        :returns: Files in the given directory on the :class:`Disk`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -236,7 +236,7 @@ class QDisk(object):
             if response.json()['message'] == 'no such disk':
                 raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
-        return [QFileInfo(**f) for f in response.json()]
+        return [FileInfo(**f) for f in response.json()]
 
     def sync_directory(self, directory, verbose=False):
         """Synchronize a local directory with the remote disks.
@@ -312,7 +312,7 @@ class QDisk(object):
             dtutc = datetime.datetime.utcfromtimestamp(mtime)
             dtutc = dtutc.replace(microsecond=0)
             size = os.stat(filepath).st_size
-            qfi = QFileInfo(dtutc, name, size, "file", generate_file_sha1(filepath))
+            qfi = FileInfo(dtutc, name, size, "file", generate_file_sha1(filepath))
             qfi.filepath = filepath
             return qfi
 
@@ -428,8 +428,8 @@ class QDisk(object):
           (defaults to *local_or_file*)
         :param mode: mode with which to add the file
           (defaults to :attr:`~QUploadMode.blocking` if not set by
-          :attr:`QDisk.add_mode`)
-        :type mode: :class:`QUploadMode`
+          :attr:`Disk.add_mode`)
+        :type mode: :class:`UploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -446,7 +446,7 @@ class QDisk(object):
             file_ = local_or_file
 
         dest = remote or os.path.basename(file_.name)
-        if isinstance(dest, QFileInfo):
+        if isinstance(dest, FileInfo):
             dest = dest.name
 
         # Ensure 2 threads do not write on the same file
@@ -460,9 +460,9 @@ class QDisk(object):
             self._filecache[dest].close()
             del self._filecache[dest]
 
-        if mode is QUploadMode.blocking:
+        if mode is UploadMode.blocking:
             return self._add_file(file_, dest, **kwargs)
-        elif mode is QUploadMode.lazy:
+        elif mode is UploadMode.lazy:
             self._filecache[dest] = file_
         else:
             thread = threading.Thread(None, self._add_file, dest, (file_, dest), **kwargs)
@@ -526,8 +526,8 @@ class QDisk(object):
         :param str remote: path of the directory on remote node
           (defaults to *local*)
         :param mode: the mode with which to add the directory
-          (defaults to :attr:`~QDisk.add_mode`)
-        :type mode: :class:`QUploadMode`
+          (defaults to :attr:`~Disk.add_mode`)
+        :type mode: :class:`UploadMode`
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
@@ -552,7 +552,7 @@ class QDisk(object):
         .. note::
            This function is a generator, and thus can be used in a for loop
 
-        :param str|QFileInfo remote: the name of the remote file or a QFileInfo
+        :param str|FileInfo remote: the name of the remote file or a QFileInfo
         :param int chunk_size: Size of chunks to be yield
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
@@ -566,7 +566,7 @@ class QDisk(object):
         def _cb(count, total, remote):
             progressbar.update(count)
 
-        if isinstance(remote, QFileInfo):
+        if isinstance(remote, FileInfo):
             remote = remote.name
 
         # Ensure file is done uploading
@@ -649,7 +649,7 @@ class QDisk(object):
         .. note::
            You can also use **disk[file]**
 
-        :param str|QFileInfo remote: the name of the remote file or a QFileInfo
+        :param str|FileInfo remote: the name of the remote file or a QFileInfo
         :param str local: local name of the retrieved file
           (defaults to *remote*)
         :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
@@ -670,7 +670,7 @@ class QDisk(object):
             if directory != '' and not os.path.exists(directory):
                 os.makedirs(directory)
 
-        if isinstance(remote, QFileInfo):
+        if isinstance(remote, FileInfo):
             remote = remote.name
 
         if local is None:
@@ -716,7 +716,7 @@ class QDisk(object):
           (:exc:`KeyError` with disk['file'] syntax)
 
         """
-        dest = remote.name if isinstance(remote, QFileInfo) else remote
+        dest = remote.name if isinstance(remote, FileInfo) else remote
 
         # Ensure 2 threads do not write on the same file
         pending = self._filethreads.get(dest)
@@ -764,7 +764,7 @@ class QDisk(object):
 
     @property
     def add_mode(self):
-        """:type: :class:`QUploadMode`
+        """:type: :class:`UploadMode`
 
         Default mode for adding files.
         """
@@ -862,7 +862,7 @@ class QDisk(object):
 
     def __contains__(self, item):
         """D.__contains__(k) -> True if D has a key k, else False"""
-        if isinstance(item, QFileInfo):
+        if isinstance(item, FileInfo):
             item = item.name
         return item in [f.name for f in self.list_files()]
 
@@ -882,14 +882,14 @@ class QDisk(object):
 
 
 # Utility Classes
-class QFileInfo(object):
+class FileInfo(object):
     """Information about a file."""
     def __init__(self, lastChange, name, size, fileFlags, sha1Sum):
 
         self.lastchange = None
         """:type: :class:`datetime`
 
-        UTC Last change time of the file on the :class:`QDisk`."""
+        UTC Last change time of the file on the :class:`Disk`."""
 
         if isinstance(lastChange, datetime.datetime):
             self.lastchange = lastChange
@@ -900,11 +900,11 @@ class QFileInfo(object):
         self.name = name
         """:type: :class:`str`
 
-        Path of the file on the :class:`QDisk`."""
+        Path of the file on the :class:`Disk`."""
         self.size = size
         """:type: :class:`int`
 
-        Size of the file on the :class:`QDisk` (in Bytes)."""
+        Size of the file on the :class:`Disk` (in Bytes)."""
         self.directory = fileFlags == 'directory'
         """:type: :class:`bool`
 
@@ -922,7 +922,7 @@ class QFileInfo(object):
         self.filepath = None  # Only for sync
 
     def __repr__(self):
-        template = 'QFileInfo(lastchange={0}, name={1}, size={2}, '\
+        template = 'FileInfo(lastchange={0}, name={1}, size={2}, '\
                    'directory={3}, sha1sum={4})'
         return template.format(self.lastchange, self.name, self.size,
                                self.directory, self.sha1sum)
@@ -940,15 +940,15 @@ class QFileInfo(object):
                 hash(self.sha1sum))
 
 
-class QUploadMode(object):
-    """How to add files on a :class:`QDisk`."""
+class UploadMode(object):
+    """How to add files on a :class:`Disk`."""
     blocking = 0
-    """Call to :func:`~QDisk.add_file` :func:`~QDisk.add_directory`
+    """Call to :func:`~Disk.add_file` :func:`~Disk.add_directory`
     or blocks until file is done uploading."""
     background = 1
     """Launch a background thread for uploading."""
     lazy = 2
-    """Actual uploading is made by the :func:`~QDisk.flush` method call."""
+    """Actual uploading is made by the :func:`~Disk.flush` method call."""
 
 
 # Exceptions
