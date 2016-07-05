@@ -5,6 +5,14 @@ from qapy import get_url, raise_on_error
 
 class Notification(object):
     """A Qarnot Notification
+
+    .. note::
+       A :class:`Notification` must be created with
+       :meth:`qapy.connection.QApy.create_task_state_changed_notification`,
+       :meth:`qapy.connection.QApy.create_task_created_notification`,
+       :meth:`qapy.connection.QApy.create_task_ended_notification`
+       or retrieved with :meth:`qapy.connection.QApy.retrieve_notification`.
+
     """
     def __init__(self, json_notification, connection):
         """Initialize a notification from a dictionary

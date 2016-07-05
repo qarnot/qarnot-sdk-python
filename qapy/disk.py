@@ -24,6 +24,11 @@ class Disk(object):
     :class:`qapy.task.Task`.
 
     .. note::
+       A :class:`Disk` must be created with
+       :meth:`qapy.connection.QApy.create_disk`
+       or retrieved with :meth:`qapy.connection.QApy.disks` or `qapy.connection.QApy.retrieve_disk`.
+
+    .. note::
        Paths given as 'remote' arguments,
        (or as path arguments for :func:`Disk.directory`)
        **must** be valid unix-like paths.

@@ -25,7 +25,7 @@ class Task(object):
     .. note::
        A :class:`Task` must be created with
        :meth:`qapy.connection.QApy.create_task`
-       or retrieved with :meth:`qapy.connection.QApy.tasks`.
+       or retrieved with :meth:`qapy.connection.QApy.tasks` or :meth:`qapy.connection.QApy.retrieve_task`.
     """
     def __init__(self, connection, name, profile, framecount_or_range, force):
         """Create a new :class:`Task`.
