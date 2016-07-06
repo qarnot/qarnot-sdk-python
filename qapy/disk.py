@@ -49,9 +49,6 @@ class Disk(object):
         :param bool force: it will delete an old unlocked disk
           if maximum number of disks is reached for resources and results
 
-        :rtype: :class:`Disk`
-        :returns: The created :class:`Disk`.
-
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
@@ -98,7 +95,7 @@ class Disk(object):
             to get the disk from
         :param str disk_uuid: the UUID of the disk to retrieve
 
-        :rtype: :class:`Disk`
+        :rtype: :class:`qapy.disk.Disk`
         :returns: The retrieved disk.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
