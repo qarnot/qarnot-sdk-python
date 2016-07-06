@@ -308,7 +308,7 @@ class QApy(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
-        return Disk.from_json(response.json(), self)
+        return Disk.from_json(self, response.json())
 
     def create_disk(self, description, lock=False,
                     global_disk=False, force=False):

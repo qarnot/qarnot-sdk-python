@@ -111,7 +111,7 @@ class Disk(object):
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
-        return cls.from_json(response.json(), connection)
+        return cls.from_json(connection, response.json())
 
     @classmethod
     def from_json(cls, connection, json_disk):
