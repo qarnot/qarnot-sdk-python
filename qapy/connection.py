@@ -235,7 +235,7 @@ class QApy(object):
         url_name = 'global disk folder' if global_ else 'disk folder'
         response = self._get(get_url(url_name))
         raise_on_error(response)
-        disks = [Disk(data, self) for data in response.json()]
+        disks = [Disk.from_json(self, data) for data in response.json()]
         return disks
 
     def disks(self):
@@ -308,10 +308,10 @@ class QApy(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
-        return Disk(response.json(), self)
+        return Disk.from_json(response.json(), self)
 
-    def create_disk(self, description, force=False, lock=False,
-                    global_disk=False):
+    def create_disk(self, description, lock=False,
+                    global_disk=False, force=False):
         """Create a new :class:`~qapy.disk.Disk`.
 
         :param str description: a short description of the disk
@@ -326,7 +326,9 @@ class QApy(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
-        return Disk._create(self, description, force, lock, global_disk)
+        disk = Disk(self, description, lock, global_disk, force)
+        disk.create()
+        return disk
 
     def create_task(self, name, profile, framecount_or_range, force=False):
         """Create a new :class:`~qapy.task.Task`.

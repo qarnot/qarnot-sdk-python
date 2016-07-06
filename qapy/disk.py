@@ -35,49 +35,19 @@ class Disk(object):
     """
 
     # Creation
-    def __init__(self, jsondisk, connection):
-        """Initialize a disk from a dictionary.
-
-        :param dict jsondisk: Dictionary representing the disk,
-          must contain following keys:
-
-            * uuid: string, the disk's UUID
-
-            * description: string, a short description of the disk
-
-        :param :class:`qapy.connection.QApy` connection:
-          the cluster on which the disk is
-        """
-        self._uuid = jsondisk["uuid"]
-        self._description = jsondisk["description"]
-        self._file_count = jsondisk["fileCount"]
-        self._used_space_bytes = jsondisk["usedSpaceBytes"]
-        self._locked = jsondisk["locked"]
-        if "global" in jsondisk:
-            self._global = jsondisk["global"]
-        else:
-            self._global = {}
-        self._connection = connection
-        self._filethreads = {}  # A dictionary containing key:value where key is
-        #  the remote destination on disk, and value a running thread.
-        self._filecache = {}  # A dictionary containing key:value where key is
-        #  the remote destination on disk, and value an opened Python File.
-        self._add_mode = UploadMode.blocking
-
-    @classmethod
-    def _create(cls, connection, description, force=False, lock=False,
-                global_disk=False):
+    def __init__(self, connection, description, lock=False,
+                 global_disk=False, force=False):
         """
         Create a disk on a cluster.
 
         :param :class:`qapy.connection.QApy` connection:
           represents the cluster on which to create the disk
         :param str description: a short description of the disk
-        :param bool force: it will delete an old unlocked disk
-          if maximum number of disks is reached for resources and results
         :param bool lock: prevents the disk to be removed
           by a subsequent :meth:`qapy.connection.QApy.create_task` with
           *force* set to True.
+        :param bool force: it will delete an old unlocked disk
+          if maximum number of disks is reached for resources and results
 
         :rtype: :class:`Disk`
         :returns: The created :class:`Disk`.
@@ -85,20 +55,40 @@ class Disk(object):
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
+        self._uuid = None
+        self._description = description
+        self._file_count = 0
+        self._used_space_bytes = 0
+        self._locked = lock
+        self._global = global_disk
+        self._force = force
+
+        self._connection = connection
+        self._filethreads = {}  # A dictionary containing key:value where key is
+        #  the remote destination on disk, and value a running thread.
+        self._filecache = {}  # A dictionary containing key:value where key is
+        #  the remote destination on disk, and value an opened Python File.
+        self._add_mode = UploadMode.blocking
+
+    def create(self):
+        """Create the Disk on the REST API.
+        .. note::
+        This method should not be used unless if the object was created with the constructor.
+        """
         data = {
-            "description": description,
-            "locked": lock,
-            "global": global_disk
+            "description": self._description,
+            "locked": self._locked,
+            "global": self._global
             }
-        url = get_url('disk force') if force else get_url('disk folder')
-        response = connection._post(url, json=data)
+        url = get_url('disk force') if self._force else get_url('disk folder')
+        response = self._connection._post(url, json=data)
         if response.status_code == 403:
             raise MaxDiskException(response.json()['message'])
         else:
             raise_on_error(response)
 
-        disk_uuid = response.json()
-        return cls._retrieve(connection, disk_uuid['uuid'])
+        self._uuid = response.json()['uuid']
+        self.update()
 
     @classmethod
     def _retrieve(cls, connection, disk_uuid):
@@ -121,7 +111,21 @@ class Disk(object):
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
-        return cls(response.json(), connection)
+        return cls.from_json(response.json(), connection)
+
+    @classmethod
+    def from_json(cls, connection, json_disk):
+        """Create a Disk object from a json disk
+
+        :param qapy.connection.QApy connection: the cluster connection
+        :param dict json_task: Dictionary representing the disk
+        """
+        disk = cls(connection,
+                   json_disk['description'],
+                   json_disk['locked'],
+                   json_disk['global'])
+        disk._update(json_disk)
+        return disk
 
     # Disk Management
     def update(self):
@@ -136,14 +140,16 @@ class Disk(object):
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
-        jsondisk = response.json()
-        self._uuid = jsondisk["uuid"]
-        self._description = jsondisk["description"]
-        self._file_count = jsondisk["fileCount"]
-        self._used_space_bytes = jsondisk["usedSpaceBytes"]
-        self._locked = jsondisk["locked"]
-        self._file_count = jsondisk["fileCount"]
-        self._used_space_bytes = jsondisk["usedSpaceBytes"]
+        self._update(response.json())
+
+    def _update(self, json_disk):
+        self._uuid = json_disk["uuid"]
+        self._description = json_disk["description"]
+        self._file_count = json_disk["fileCount"]
+        self._used_space_bytes = json_disk["usedSpaceBytes"]
+        self._locked = json_disk["locked"]
+        self._file_count = json_disk["fileCount"]
+        self._used_space_bytes = json_disk["usedSpaceBytes"]
 
     def delete(self):
         """Delete the disk represented by this :class:`Disk`.
@@ -600,7 +606,6 @@ class Disk(object):
             raise_on_error(response)
 
             total_length = float(response.headers.get('content-length'))
-            print(str(progress))
             if progress is not None:
                 if progress is True:
                     progress = _cb
