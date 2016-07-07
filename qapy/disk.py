@@ -6,6 +6,7 @@ from qapy import get_url, raise_on_error
 import posixpath
 import os
 import os.path
+import time
 import hashlib
 import datetime
 import threading
@@ -67,6 +68,10 @@ class Disk(object):
         #  the remote destination on disk, and value an opened Python File.
         self._add_mode = UploadMode.blocking
 
+        self._auto_update = True
+        self._update_cache_time = 5
+        self._last_cache = time.time()
+
     def create(self):
         """Create the Disk on the REST API.
         .. note::
@@ -125,21 +130,35 @@ class Disk(object):
         return disk
 
     # Disk Management
-    def update(self):
-        """Update disk instance from remote API
+    def update(self, flushcache=False):
+        """
+        Update the disk object from the REST Api.
+        The flushcache parameter can be used to force the update, otherwise a cached version of the object
+        will be served when accessing properties of the object.
+        Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
+        Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
         :raises qapy.disk.MissingDiskException: the disk is not on the server
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         """
+        if self._uuid is None:
+            return
+
+        now = time.time()
+        if (now - self._last_cache) < self._update_cache_time and not flushcache:
+            return
+
         response = self._connection._get(get_url('disk info', name=self._uuid))
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
         self._update(response.json())
+        self._last_cache = time.time()
 
     def _update(self, json_disk):
+        """ Update local disk object from json"""
         self._uuid = json_disk["uuid"]
         self._description = json_disk["description"]
         self._file_count = json_disk["fileCount"]
@@ -210,7 +229,6 @@ class Disk(object):
         """
 
         self.flush()
-
         response = self._connection._get(
             get_url('tree disk', name=self._uuid))
         if response.status_code == 404:
@@ -412,7 +430,9 @@ class Disk(object):
         ]
         url = get_url('link disk', name=self._uuid)
         response = self._connection._post(url, json=data)
+
         raise_on_error(response)
+        self.update(True)
 
     def _is_executable(self, file):
         try:
@@ -518,6 +538,7 @@ class Disk(object):
         if 'executable' not in kwargs:
             kwargs['executable'] = self._is_executable(file_)
         self.update_file_settings(dest, **kwargs)
+        self.update(True)
 
     def add_directory(self, local, remote="", mode=None):
         """ Add a directory to the disk. Does not follow symlinks.
@@ -744,6 +765,7 @@ class Disk(object):
             if response.json()['message'] == "No such disk":
                 raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
+        self.update(True)
 
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
@@ -761,6 +783,7 @@ class Disk(object):
         if resp.status_code == 404:
             raise MissingDiskException(resp.json()['message'])
         raise_on_error(resp)
+        self.update(True)
 
     @property
     def uuid(self):
@@ -788,6 +811,8 @@ class Disk(object):
 
         The disk's description.
         """
+        if self._auto_update:
+            self.update()
         return self._description
 
     @description.setter
@@ -802,6 +827,8 @@ class Disk(object):
         The disk's global availability. If True, the disk is available for any
         user on the cluster, else it is only available for the owner.
         """
+        if self._auto_update:
+            self.update()
         return self._global
 
     @globally_available.setter
@@ -815,6 +842,8 @@ class Disk(object):
 
         The number of files on the disk.
         """
+        if self._auto_update:
+            self.update()
         return self._file_count
 
     @property
@@ -823,6 +852,8 @@ class Disk(object):
 
         The total space used on the disk in bytes.
         """
+        if self._auto_update:
+            self.update()
         return self._used_space_bytes
 
     @property
@@ -833,6 +864,8 @@ class Disk(object):
         by a subsequent :meth:`qapy.connection.QApy.create_task` with *force*
         set to True.
         """
+        if self._auto_update:
+            self.update()
         return self._locked
 
     @locked.setter
