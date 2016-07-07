@@ -307,9 +307,6 @@ class Task(object):
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :rtype: :class:`str`
-        :returns: State of the task (see :attr:`state`)
-
         :raises qapy.QApyException: API general error, see message for details
         :raises qapy.connection.UnauthorizedException: invalid credentials
         :raises qapy.task.MissingTaskException: task does not represent a
