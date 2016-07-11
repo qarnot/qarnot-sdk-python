@@ -592,8 +592,9 @@ class Disk(object):
 
         progressbar = None
 
-        def _cb(count, total, remote):
-            progressbar.update(count)
+        def _cb(c, total, remote):
+            c = max(0, min(c, 100))
+            progressbar.update(c)
 
         if isinstance(remote, FileInfo):
             remote = remote.name

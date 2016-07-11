@@ -434,6 +434,7 @@ class Task(object):
                     if n >= nap:
                         break
                     progress = self.status.execution_progress if self.status is not None else 0
+                    progress = max(0, min(progress, 100))
                     progressbar.update(progress)
             else:
                 time.sleep(nap)
