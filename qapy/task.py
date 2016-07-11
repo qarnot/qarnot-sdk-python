@@ -335,6 +335,8 @@ class Task(object):
         self._framecount = json_task.get('frameCount')
         self._advanced_range = json_task.get('advancedRanges')
         self._resource_disks_uuids = json_task['resourceDisks']
+        if len(self._resource_disks_uuids) != len(self._resource_disks):
+            del self._resource_disks[:]
         self._result_disk_uuid = json_task['resultDisk']
         if 'executionCluster' in json_task:
             self._execution_cluster = json_task['executionCluster']
@@ -550,7 +552,6 @@ class Task(object):
     def resources(self, value):
         """This is a setter."""
         self._resource_disks = value
-        self._resource_disks_uuids = [d.uuid for d in value]
 
     @property
     def results(self):
@@ -925,7 +926,6 @@ class Task(object):
 
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
-        self.resources  # init resource_disk if not done
         const_list = [
             {'key': key, 'value': value}
             for key, value in self.constants.items()
@@ -935,6 +935,7 @@ class Task(object):
             for key, value in self.constraints.items()
         ]
 
+        self._resource_disks_uuids = [x.uuid for x in self._resource_disks]
         json_task = {
             'name': self._name,
             'profile': self._profile,
