@@ -3,20 +3,20 @@
 __all__ = ["task", "connection", "disk", "notification"]
 
 
-class QApyException(Exception):
-    """General QApy exception"""
+class QarnotException(Exception):
+    """General Connection exception"""
     def __init__(self, msg):
-        super(QApyException, self).__init__("Error : {0}".format(msg))
+        super(QarnotException, self).__init__("Error : {0}".format(msg))
 
 
 def raise_on_error(response):
     if response.status_code == 503:
-        raise QApyException("Service Unavailable")
+        raise QarnotException("Service Unavailable")
     if response.status_code != 200:
         try:
-            raise QApyException(response.json()['message'])
+            raise QarnotException(response.json()['message'])
         except ValueError:
-            raise QApyException(response.text)
+            raise QarnotException(response.text)
 
 
 def get_url(key, **kwargs):
@@ -45,8 +45,7 @@ def get_url(key, **kwargs):
     }
     return urls[key].format(**kwargs)
 
-import qarnot.connection  # noqa
-QApy = qarnot.connection.QApy
+from qarnot.connection import Connection  # noqa
 
 from subprocess import Popen, PIPE  # noqa
 

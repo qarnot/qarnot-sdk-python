@@ -8,10 +8,10 @@ class Notification(object):
 
     .. note::
        A :class:`Notification` must be created with
-       :meth:`qarnot.connection.QApy.create_task_state_changed_notification`,
-       :meth:`qarnot.connection.QApy.create_task_created_notification`,
-       :meth:`qarnot.connection.QApy.create_task_ended_notification`
-       or retrieved with :meth:`qarnot.connection.QApy.retrieve_notification`.
+       :meth:`qarnot.connection.Connection.create_task_state_changed_notification`,
+       :meth:`qarnot.connection.Connection.create_task_created_notification`,
+       :meth:`qarnot.connection.Connection.create_task_ended_notification`
+       or retrieved with :meth:`qarnot.connection.Connection.retrieve_notification`.
 
     """
     def __init__(self, json_notification, connection):
@@ -74,7 +74,7 @@ class Notification(object):
     def delete(self):
         """Delete the notification represented by this :class:`Notification`.
 
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
 

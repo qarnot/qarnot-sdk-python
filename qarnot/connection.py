@@ -18,7 +18,7 @@ else:
 # class #
 #########
 
-class QApy(object):
+class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
     """
     def __init__(self, conf):
@@ -224,7 +224,7 @@ class QApy(object):
         :returns: Requested information.
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
         resp = self._get(get_url('user'))
         raise_on_error(resp)
@@ -246,7 +246,7 @@ class QApy(object):
 
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
         return self._disks_get(global_=False)
 
@@ -258,7 +258,7 @@ class QApy(object):
 
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
         return self._disks_get(global_=True)
 
@@ -269,7 +269,7 @@ class QApy(object):
         :returns: Tasks stored on the cluster owned by the user.
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
@@ -283,7 +283,7 @@ class QApy(object):
         :returns: Existing task defined by the given uuid
         :raises qarnot.task.MissingTaskException: task does not exist
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=uuid))
@@ -301,7 +301,7 @@ class QApy(object):
         :raises ValueError: no such disk
         :raises qarnot.disk.MissingDiskException: disk does not exist
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=uuid))
@@ -323,7 +323,7 @@ class QApy(object):
         :rtype: :class:`qarnot.disk.Disk`
         :returns: The created :class:`~qarnot.disk.Disk`.
 
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         disk = Disk(self, description, lock, global_disk, force)
@@ -391,7 +391,7 @@ class QApy(object):
         :rtype: List of :class:~qarnot.task.Notification`.
         :returns: List of all notifications belonging to the user
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
         response = self._get(get_url('notification'))
         raise_on_error(response)
@@ -406,7 +406,7 @@ class QApy(object):
         :returns: Existing notification defined by the given uuid
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         """
         url = get_url('notification update', uuid=uuid)
         response = self._get(url)

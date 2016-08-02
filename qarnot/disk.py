@@ -26,8 +26,8 @@ class Disk(object):
 
     .. note::
        A :class:`Disk` must be created with
-       :meth:`qarnot.connection.QApy.create_disk`
-       or retrieved with :meth:`qarnot.connection.QApy.disks` or `qarnot.connection.QApy.retrieve_disk`.
+       :meth:`qarnot.connection.Connection.create_disk`
+       or retrieved with :meth:`qarnot.connection.Connection.disks` or `qarnot.connection.Connection.retrieve_disk`.
 
     .. note::
        Paths given as 'remote' arguments,
@@ -41,16 +41,16 @@ class Disk(object):
         """
         Create a disk on a cluster.
 
-        :param :class:`qarnot.connection.QApy` connection:
+        :param :class:`qarnot.connection.Connection` connection:
           represents the cluster on which to create the disk
         :param str description: a short description of the disk
         :param bool lock: prevents the disk to be removed
-          by a subsequent :meth:`qarnot.connection.QApy.create_task` with
+          by a subsequent :meth:`qarnot.connection.Connection.create_task` with
           *force* set to True.
         :param bool force: it will delete an old unlocked disk
           if maximum number of disks is reached for resources and results
 
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         self._uuid = None
@@ -96,7 +96,7 @@ class Disk(object):
     def _retrieve(cls, connection, disk_uuid):
         """Retrieve information of a disk on a cluster.
 
-        :param :class:`qarnot.connection.QApy` connection: the cluster
+        :param :class:`qarnot.connection.Connection` connection: the cluster
             to get the disk from
         :param str disk_uuid: the UUID of the disk to retrieve
 
@@ -104,7 +104,7 @@ class Disk(object):
         :returns: The retrieved disk.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         response = connection._get(get_url('disk info', name=disk_uuid))
@@ -119,7 +119,7 @@ class Disk(object):
     def from_json(cls, connection, json_disk):
         """Create a Disk object from a json disk
 
-        :param qarnot.connection.QApy connection: the cluster connection
+        :param qarnot.connection.Connection connection: the cluster connection
         :param dict json_task: Dictionary representing the disk
         """
         disk = cls(connection,
@@ -139,7 +139,7 @@ class Disk(object):
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         if self._uuid is None:
@@ -171,7 +171,7 @@ class Disk(object):
         """Delete the disk represented by this :class:`Disk`.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._delete(
@@ -193,7 +193,7 @@ class Disk(object):
          The filename of the retrieved archive.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: invalid extension format
         """
@@ -224,7 +224,7 @@ class Disk(object):
         :returns: List of the files on the disk.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
 
@@ -247,7 +247,7 @@ class Disk(object):
         :returns: Files in the given directory on the :class:`Disk`.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
 
         .. note::
@@ -393,7 +393,7 @@ class Disk(object):
         are on the disk.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
@@ -419,7 +419,7 @@ class Disk(object):
            time, not space.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         data = [
@@ -460,7 +460,7 @@ class Disk(object):
         :type mode: :class:`UploadMode`
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
@@ -504,7 +504,7 @@ class Disk(object):
         :param str dest: name of the remote file (defaults to filename)
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
 
@@ -559,7 +559,7 @@ class Disk(object):
         :type mode: :class:`UploadMode`
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: one or more file(s) could not be created
         :raises IOError: not a valid directory
@@ -585,7 +585,7 @@ class Disk(object):
         :param int chunk_size: Size of chunks to be yield
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
         """
@@ -660,7 +660,7 @@ class Disk(object):
         :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
@@ -687,7 +687,7 @@ class Disk(object):
         :returns: The name of the output file.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
           (:exc:`KeyError` with disk[file] syntax)
@@ -739,7 +739,7 @@ class Disk(object):
         :param str remote: the name of the remote file
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
           (:exc:`KeyError` with disk['file'] syntax)
@@ -771,7 +771,7 @@ class Disk(object):
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         data = {
@@ -862,7 +862,7 @@ class Disk(object):
         """:type: :class:`bool`
 
         The disk's lock state. If True, prevents the disk to be removed
-        by a subsequent :meth:`qarnot.connection.QApy.create_task` with *force*
+        by a subsequent :meth:`qarnot.connection.Connection.create_task` with *force*
         set to True.
         """
         if self._auto_update:

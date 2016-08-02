@@ -13,7 +13,7 @@ Blender render
    import os
 
    print("Loading config...")
-   api = qarnot.QApy('qarnot.conf')
+   api = qarnot.Connection('qarnot.conf')
 
    print("Creating task...")
    with api.create_task("blender render", "blender", 1) as task:
