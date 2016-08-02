@@ -1,7 +1,7 @@
 from functools import reduce
 import random
 
-from qapy.task import ExtraResourceDisks
+from qarnot.task import ExtraResourceDisks
 from conftest import create_disks, create_and_add_disks, MAX_NB_DISKS
 
 

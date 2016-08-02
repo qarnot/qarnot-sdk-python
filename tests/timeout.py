@@ -3,12 +3,12 @@
 
 from __future__ import print_function
 
-import qapy
+import qarnot
 from os import walk
 from os.path import join
 
 if __name__ == "__main__":
-    q = qapy.QApy('example/qarnot.conf')
+    q = qarnot.QApy('example/qarnot.conf')
     with q.create_task("example task", "python", 3) as task:
         task.resources.add_file("example/script_verbose.py")
         task.constants['PYTHON_SCRIPT'] = "script_verbose.py"

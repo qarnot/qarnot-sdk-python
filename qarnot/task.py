@@ -6,9 +6,9 @@ import datetime
 import warnings
 import sys
 
-from qapy import disk
-from qapy import get_url, raise_on_error
-from qapy.disk import MissingDiskException
+from qarnot import disk
+from qarnot import get_url, raise_on_error
+from qarnot.disk import MissingDiskException
 try:
     from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar
 except:
@@ -24,8 +24,8 @@ class Task(object):
 
     .. note::
        A :class:`Task` must be created with
-       :meth:`qapy.connection.QApy.create_task`
-       or retrieved with :meth:`qapy.connection.QApy.tasks` or :meth:`qapy.connection.QApy.retrieve_task`.
+       :meth:`qarnot.connection.QApy.create_task`
+       or retrieved with :meth:`qarnot.connection.QApy.tasks` or :meth:`qarnot.connection.QApy.retrieve_task`.
     """
     def __init__(self, connection, name, profile, framecount_or_range, force):
         """Create a new :class:`Task`.
@@ -70,7 +70,7 @@ class Task(object):
         Can be set until :meth:`run` is called
 
         .. note:: See available constants for a specific profile
-              with :meth:`qapy.connection.QApy.profile_info`.
+              with :meth:`qarnot.connection.QApy.profile_info`.
         """
 
         self.constraints = {}
@@ -94,16 +94,16 @@ class Task(object):
     def _retrieve(cls, connection, uuid):
         """Retrieve a submitted task given its uuid.
 
-        :param qapy.connection.QApy connection:
+        :param qarnot.connection.QApy connection:
           the cluster to retrieve the task from
         :param str uuid: the uuid of the task to retrieve
 
         :rtype: Task
         :returns: The retrieved task.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: no such task
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: no such task
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
@@ -120,9 +120,9 @@ class Task(object):
         :param bool live_progress: display a live progress
         :param bool|fun(float,float,str) results_progress: can be a callback (read,total,filename) or True to display a progress bar
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.disk.MissingDiskException:
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.disk.MissingDiskException:
           resource disk is not a valid disk
 
         .. note:: Will ensure all added file are on the resource disk
@@ -148,10 +148,10 @@ class Task(object):
         :param bool live_progress: display a live progress
         :param bool|fun(float,float,str) results_progress: can be a callback (read,total,filename) or True to display a progress bar
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not exist
-        :raises qapy.disk.MissingDiskException:
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.disk.MissingDiskException:
           resource disk is not a valid disk
 
         .. note:: Do nothing if the task has not been submitted.
@@ -165,9 +165,9 @@ class Task(object):
     def submit(self):
         """Submit task to the cluster if it is not already submitted.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.disk.MissingDiskException:
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.disk.MissingDiskException:
           resource disk is not a valid disk
 
         .. note:: Will ensure all added file are on the resource disk
@@ -198,9 +198,9 @@ class Task(object):
     def abort(self):
         """Abort this task if running. Update state to Cancelled.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent
           a valid one
 
         .. warning:: If this task is already finished, a call to :meth:`abort`
@@ -222,9 +222,9 @@ class Task(object):
     def update_resources(self):
         """Update resources for a running task. Be sure to add new resources first.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent
           a valid one
         """
 
@@ -249,12 +249,12 @@ class Task(object):
                 otherwise parameter value is used to determine if the disk is also deleted.
                 Defaults to None.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
 
-        .. note:: *force* parameter in :meth:`qapy.connection.QApy.create_task`
+        .. note:: *force* parameter in :meth:`qarnot.connection.QApy.create_task`
            may be set to True in order to delete old tasks automatically.
         """
         if self._uuid is None:
@@ -307,9 +307,9 @@ class Task(object):
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
         """
         if self._uuid is None:
@@ -356,9 +356,9 @@ class Task(object):
     def from_json(cls, connection, json_task, force):
         """Create a Task object from a json task.
 
-        :param qapy.connection.QApy connection: the cluster connection
+        :param qarnot.connection.QApy connection: the cluster connection
         :param dict json_task: Dictionary representing the task
-        :returns: The created :class:`~qapy.task.Task`.
+        :returns: The created :class:`~qarnot.task.Task`.
         """
         if 'frameCount' in json_task:
             framecount_or_range = json_task['frameCount']
@@ -375,8 +375,8 @@ class Task(object):
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         data = self._to_json()
         resp = self._connection._put(get_url('task update', uuid=self._uuid), json=data)
@@ -396,9 +396,9 @@ class Task(object):
         :rtype: :class:`bool`
         :returns: Is the task finished
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a valid
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a valid
           one
         """
 
@@ -463,9 +463,9 @@ class Task(object):
 
         :param int interval: the interval in seconds at which to take snapshots
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
 
         .. note:: To get the temporary results, call :meth:`download_results`.
@@ -488,9 +488,9 @@ class Task(object):
     def instant(self):
         """Make a snapshot of the current task.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
 
         .. note:: To get the temporary results, call :meth:`download_results`.
@@ -535,7 +535,7 @@ class Task(object):
 
     @property
     def resources(self):
-        """:type: list(:class:`~qapy.disk.Disk`)
+        """:type: list(:class:`~qarnot.disk.Disk`)
 
         Represents resource files."""
         if self._auto_update:
@@ -556,7 +556,7 @@ class Task(object):
 
     @property
     def results(self):
-        """:type: :class:`~qapy.disk.Disk`
+        """:type: :class:`~qarnot.disk.Disk`
 
         Represents results files."""
         if self._result_disk is None:
@@ -574,9 +574,9 @@ class Task(object):
         :param str output_dir: local directory for the retrieved files.
         :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
-        :raises qapy.disk.MissingDiskException: the disk is not on the server
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.disk.MissingDiskException: the disk is not on the server
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
 
@@ -598,9 +598,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The standard output.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
@@ -625,9 +625,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The new output since last call.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
         """
         if self._uuid is None:
@@ -648,9 +648,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The standard error.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
@@ -674,9 +674,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The new error messages since last call.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.task.MissingTaskException: task does not represent a
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
         """
         if self._uuid is None:

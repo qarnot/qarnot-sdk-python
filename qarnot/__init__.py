@@ -45,8 +45,8 @@ def get_url(key, **kwargs):
     }
     return urls[key].format(**kwargs)
 
-import qapy.connection  # noqa
-QApy = qapy.connection.QApy
+import qarnot.connection  # noqa
+QApy = qarnot.connection.QApy
 
 from subprocess import Popen, PIPE  # noqa
 

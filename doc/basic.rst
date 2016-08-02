@@ -5,7 +5,7 @@ Configuration
 -------------
 
 A basic usage of the Qarnot require a configuration file (eg: `qarnot.conf`).
-Here is a basic one, check :class:`~qapy.connection.QApy` for details.
+Here is a basic one, check :class:`~qarnot.connection.QApy` for details.
 
 .. code-block:: ini
    :linenos:
@@ -25,10 +25,10 @@ And here is a little sample to start a task running your `myscript.py` Python sc
 .. code-block:: python
    :linenos:
 
-   import qapy
+   import qarnot
    import tempfile
 
-    qarnot = qapy.QApy('qarnot.conf')
+    qarnot = qarnot.QApy('qarnot.conf')
     with qarnot.create_task("example task", "python", 1) as task:
         task.resources.add_file("myscript.py")
         task.constants['PYTHON_SCRIPT'] = "myscript.py"

@@ -1,6 +1,6 @@
 Connection
 ----------
-.. automodule:: qapy.connection
+.. automodule:: qarnot.connection
     :members:
     :show-inheritance:
     :special-members:

@@ -19,7 +19,7 @@ Reference Docs
    basic
    payload
    credits
-   qapy
+   qarnot
    samples
    changelog
    contributing

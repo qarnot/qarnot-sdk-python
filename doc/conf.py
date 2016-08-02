@@ -50,7 +50,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'qapy'
+project = u'qarnot'
 copyright = u'2016, Qarnot Computing'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -60,8 +60,8 @@ copyright = u'2016, Qarnot Computing'
 # The short X.Y version.
 version = ''
 # The full version, including alpha/beta/rc tags.
-import qapy
-v = qapy.__version__
+import qarnot
+v = qarnot.__version__
 v = v[:v.index('-') + 9]
 version = v
 release = v
@@ -190,7 +190,7 @@ html_static_path = ['_static']
 #html_file_suffix = None
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'qapydoc'
+htmlhelp_basename = 'qarnotdoc'
 
 
 # -- Options for LaTeX output ---------------------------------------------
@@ -210,7 +210,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'qapy.tex', u'qapy Documentation',
+  ('index', 'qarnot.tex', u'qarnot Documentation',
    u'Qarnot computing', 'manual'),
 ]
 
@@ -240,7 +240,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'qapy', u'qapy Documentation',
+    ('index', 'qarnot', u'qarnot Documentation',
      [u'Qarnot computing'], 1)
 ]
 
@@ -254,8 +254,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'qapy', u'qapy Documentation',
-   u'Qarnot computing', 'qapy', 'Qarnot computing Python SDK.',
+  ('index', 'qarnot', u'qarnot Documentation',
+   u'Qarnot computing', 'qarnot', 'Qarnot computing Python SDK.',
    'Miscellaneous'),
 ]
 
@@ -275,7 +275,7 @@ texinfo_documents = [
 # -- Options for Epub output ----------------------------------------------
 
 # Bibliographic Dublin Core info.
-epub_title = u'qapy'
+epub_title = u'qarnot'
 epub_author = u'Qarnot computing'
 epub_publisher = u'Qarnot computing'
 epub_copyright = u'2016, Qarnot computing'

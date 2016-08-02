@@ -1,8 +1,8 @@
 import pytest
 import sys
 
-import qapy
-from qapy.connection import UnauthorizedException
+import qarnot
+from qarnot.connection import UnauthorizedException
 
 if sys.version_info[0] >= 3:  # module renamed in py3
     import configparser as config  # pylint: disable=import-error
@@ -28,7 +28,7 @@ class TestSuite:
                 conf['cluster_unsafe'] = True
             else:
                 conf['cluster_unsafe'] = False
-        q = qapy.QApy(conf)
+        q = qarnot.QApy(conf)
         q.tasks()
 
     def test_bad_auths(self):
@@ -48,5 +48,5 @@ class TestSuite:
                 conf['cluster_unsafe'] = False
         conf['client_auth'] = 'non-existing-user-auth'
         with pytest.raises(UnauthorizedException):
-            q = qapy.QApy(conf)
+            q = qarnot.QApy(conf)
             q.tasks()

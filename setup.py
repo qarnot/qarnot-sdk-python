@@ -7,7 +7,7 @@ from subprocess import Popen, PIPE
 import shutil
 import sys
 
-import qapy
+import qarnot
 
 
 class PyTest(TestCommand):
@@ -43,13 +43,13 @@ class PyTest(TestCommand):
         shutil.rmtree('tests/tmp', ignore_errors=True)
         sys.exit(errno)
 
-setup(name='qapy',
-      version= qapy.__version__,
+setup(name='qarnot',
+      version= qarnot.__version__,
       description= 'Qarnot Computing SDK',
       author='Qarnot Computing',
       author_email='support@qarnot-computing.com',
       url='http://qarnotcomputing.com',
-      packages=['qapy'],
+      packages=['qarnot'],
       requires=['requests'],
       tests_require=['pytest', 'pytest-cov'],
       cmdclass = {'test': PyTest})

@@ -1,7 +1,7 @@
 Disk
 ----
 
-.. automodule:: qapy.disk
+.. automodule:: qarnot.disk
     :members:
     :show-inheritance:
     :special-members:

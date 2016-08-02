@@ -1,7 +1,7 @@
 Notification
 ------------
 
-.. automodule:: qapy.notification
+.. automodule:: qarnot.notification
     :members:
     :show-inheritance:
     :special-members:

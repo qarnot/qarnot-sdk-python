@@ -1,7 +1,7 @@
 Task
 ----
 
-.. automodule:: qapy.task
+.. automodule:: qarnot.task
     :members:
     :show-inheritance:
     :special-members:

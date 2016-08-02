@@ -1,9 +1,9 @@
 """Module describing a connection."""
 
-from qapy import get_url, raise_on_error
-from qapy.disk import Disk, MissingDiskException
-from qapy.task import Task, MissingTaskException
-from qapy.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
+from qarnot import get_url, raise_on_error
+from qarnot.disk import Disk, MissingDiskException
+from qarnot.task import Task, MissingTaskException
+from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
 import sys
 from json import dumps as json_dumps
@@ -223,8 +223,8 @@ class QApy(object):
         :rtype: :class:`UserInfo`
         :returns: Requested information.
 
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
         resp = self._get(get_url('user'))
         raise_on_error(resp)
@@ -241,49 +241,49 @@ class QApy(object):
     def disks(self):
         """Get the list of disks on this cluster for this user.
 
-        :rtype: List of :class:`~qapy.disk.Disk`.
+        :rtype: List of :class:`~qarnot.disk.Disk`.
         :returns: Disks on the cluster owned by the user.
 
 
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
         return self._disks_get(global_=False)
 
     def global_disks(self):
         """Get the list of globally available disks on this cluster.
 
-        :rtype: List of :class:`~qapy.disk.Disk`.
+        :rtype: List of :class:`~qarnot.disk.Disk`.
         :returns: Disks on the cluster available for every user.
 
 
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
         return self._disks_get(global_=True)
 
     def tasks(self):
         """Get the list of tasks stored on this cluster for this user.
 
-        :rtype: List of :class:`~qapy.task.Task`.
+        :rtype: List of :class:`~qarnot.task.Task`.
         :returns: Tasks stored on the cluster owned by the user.
 
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
         return [Task.from_json(self, task, False) for task in response.json()]
 
     def retrieve_task(self, uuid):
-        """Retrieve a :class:`qapy.task.Task` from its uuid
+        """Retrieve a :class:`qarnot.task.Task` from its uuid
 
         :param str uuid: Desired task uuid
         :rtype: :class:`~qapi.task.Task`
         :returns: Existing task defined by the given uuid
-        :raises qapy.task.MissingTaskException: task does not exist
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=uuid))
@@ -293,15 +293,15 @@ class QApy(object):
         return Task.from_json(self, response.json(), False)
 
     def retrieve_disk(self, uuid):
-        """Retrieve a :class:`~qapy.disk.Disk` from its uuid
+        """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
 
         :param str uuid: Desired disk uuid
         :rtype: :class:`~qapi.disk.Disk`
         :returns: Existing disk defined by the given uuid
         :raises ValueError: no such disk
-        :raises qapy.disk.MissingDiskException: disk does not exist
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.disk.MissingDiskException: disk does not exist
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=uuid))
@@ -312,7 +312,7 @@ class QApy(object):
 
     def create_disk(self, description, force=False, lock=False,
                     global_disk=False):
-        """Create a new :class:`~qapy.disk.Disk`.
+        """Create a new :class:`~qarnot.disk.Disk`.
 
         :param str description: a short description of the disk
         :param bool force: delete an old unlocked disk
@@ -320,18 +320,18 @@ class QApy(object):
         :param bool lock: prevents the disk to be removed
           by a subsequent :meth:`create_disk` with force set to True
 
-        :rtype: :class:`qapy.disk.Disk`
-        :returns: The created :class:`~qapy.disk.Disk`.
+        :rtype: :class:`qarnot.disk.Disk`
+        :returns: The created :class:`~qarnot.disk.Disk`.
 
-        :raises qapy.QApyException: API general error, see message for details
-        :raises qapy.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         disk = Disk(self, description, lock, global_disk, force)
         disk.create()
         return disk
 
     def create_task(self, name, profile, framecount_or_range, force=False):
-        """Create a new :class:`~qapy.task.Task`.
+        """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
@@ -342,15 +342,15 @@ class QApy(object):
            tasks is reached. Plus, it will delete an old unlocked disk
            if maximum number of disks is reached for resources and results
 
-        :rtype: :class:`~qapy.task.Task`
-        :returns: The created :class:`~qapy.task.Task`.
+        :rtype: :class:`~qarnot.task.Task`
+        :returns: The created :class:`~qarnot.task.Task`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
         return Task(self, name, profile, framecount_or_range, force)
 
     def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
-        """Create a new :class:`qapy.notification.Notification` with a filter of type :class:`qapy.notification.TaskStateChanged`.
+        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskStateChanged`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -364,7 +364,7 @@ class QApy(object):
         return Notification._create(self, nfilter)
 
     def create_task_created_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qapy.notification.Notification` with a filter of type :class:`qapy.notification.TaskCreated`.
+        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskCreated`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -375,7 +375,7 @@ class QApy(object):
         return Notification._create(self, nfilter)
 
     def create_task_ended_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qapy.notification.Notification` with a filter of type :class:`qapy.notification.TaskEnded`.
+        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskEnded`.
 
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
@@ -388,10 +388,10 @@ class QApy(object):
     def notifications(self):
         """Get the list of notifications for the user
 
-        :rtype: List of :class:~qapy.task.Notification`.
+        :rtype: List of :class:~qarnot.task.Notification`.
         :returns: List of all notifications belonging to the user
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
         response = self._get(get_url('notification'))
         raise_on_error(response)
@@ -399,14 +399,14 @@ class QApy(object):
         return notifications
 
     def retrieve_notification(self, uuid):
-        """Retrieve a :class:~qapy.notification.Notification` from it's uuid
+        """Retrieve a :class:~qarnot.notification.Notification` from it's uuid
 
         :param str uuid: Id of the notification
         :rtype: :class:`~qapi.notification.Notification`
         :returns: Existing notification defined by the given uuid
 
-        :raises qapy.connection.UnauthorizedException: invalid credentials
-        :raises qapy.QApyException: API general error, see message for details
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QApyException: API general error, see message for details
         """
         url = get_url('notification update', uuid=uuid)
         response = self._get(url)
@@ -419,7 +419,7 @@ class QApy(object):
 ###################
 
 class UserInfo(object):
-    """Information about a qapy user."""
+    """Information about a qarnot user."""
     def __init__(self, info):
         self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
 

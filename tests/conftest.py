@@ -2,7 +2,7 @@ import functools
 import os
 
 import pytest
-import qapy
+import qarnot
 
 MAX_NB_DISKS = 10
 BASE_DIR = 'tests'
@@ -19,7 +19,7 @@ def exec_x_times(nb_runs):
 
 @pytest.fixture(scope="function")
 def connection(clean=True):
-    q = qapy.QApy('qarnot.conf')
+    q = qarnot.QApy('qarnot.conf')
     if clean:
         for t in q.tasks():
             t.delete()

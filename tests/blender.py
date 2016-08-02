@@ -3,11 +3,11 @@
 
 from __future__ import print_function
 
-import qapy
+import qarnot
 import sys
 
 if __name__ == '__main__':
-    q = qapy.QApy('example/qarnot.conf')
+    q = qarnot.QApy('example/qarnot.conf')
     with q.create_task("blender test", "mwillame.blender-2.72", 4) as task:
         task.resources['main.blend'] = sys.argv[1]
         task.constants['BLEND_FILE'] = "main.blend"

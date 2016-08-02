@@ -8,12 +8,12 @@ Blender render
 .. code-block:: python
    :linenos:
 
-   import qapy
+   import qarnot
    import sys
    import os
 
    print("Loading config...")
-   api = qapy.QApy('qarnot.conf')
+   api = qarnot.QApy('qarnot.conf')
 
    print("Creating task...")
    with api.create_task("blender render", "blender", 1) as task:

@@ -2,7 +2,7 @@ import pytest
 import os
 import hashlib
 
-from qapy.disk import Disk, UploadMode, MaxDiskException, \
+from qarnot.disk import Disk, UploadMode, MaxDiskException, \
     MissingDiskException
 from conftest import create_disks, MAX_NB_DISKS, TMP_DIR
 import conftest
