@@ -310,8 +310,8 @@ class QApy(object):
         raise_on_error(response)
         return Disk.from_json(self, response.json())
 
-    def create_disk(self, description, lock=False,
-                    global_disk=False, force=False):
+    def create_disk(self, description, force=False, lock=False,
+                    global_disk=False):
         """Create a new :class:`~qapy.disk.Disk`.
 
         :param str description: a short description of the disk
