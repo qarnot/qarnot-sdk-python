@@ -29,18 +29,20 @@ And here is a little sample to start a task running your `myscript.py` Python sc
    import tempfile
 
     qarnot = qarnot.Connection('qarnot.conf')
-    with qarnot.create_task("example task", "python", 1) as task:
-        task.resources.add_file("myscript.py")
-        task.constants['PYTHON_SCRIPT'] = "myscript.py"
+    task = qarnot.create_task("example task", "python", 1)
+    disk = qarnot.create_disk("my files")
+    disk.add_file("myscript.py")
+    task.resources = [disk]
+    task.constants['PYTHON_SCRIPT'] = "myscript.py"
 
-        print "Submit task"
-        task.submit()
+    print "Submit task"
+    task.submit()
 
-        print ("Wait task results")
-        while not task.wait(10):
-            print task.fresh_stdout()
+    print ("Wait task results")
+    while not task.wait(10):
+        print task.fresh_stdout()
 
-        outdir = tempfile.mkdtemp()
-        print "Download results to " + outdir
-        task.download_results(outdir)
+    outdir = tempfile.mkdtemp()
+    print "Download results to " + outdir
+    task.download_results(outdir)
 
