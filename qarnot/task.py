@@ -111,14 +111,14 @@ class Task(object):
         raise_on_error(resp)
         return Task.from_json(connection, resp.json(), False)
 
-    def run(self, output_dir, job_timeout=None, live_progress=False, results_progress=None):
-        """Submit a task, wait for the results and download them.
+    def run(self, output_dir=None, job_timeout=None, live_progress=False, results_progress=None):
+        """Submit a task, wait for the results and download them if required.
 
-        :param str output_dir: path to a directory that will contain the results
-        :param float job_timeout: Number of second before the task :meth:`abort` if it has not
+        :param str output_dir: (optional) path to a directory that will contain the results
+        :param float job_timeout: (optional) Number of second before the task :meth:`abort` if it has not
           already finished
-        :param bool live_progress: display a live progress
-        :param bool|fun(float,float,str) results_progress: can be a callback (read,total,filename) or True to display a progress bar
+        :param bool live_progress: (optional) display a live progress
+        :param bool|fun(float,float,str) results_progress: (optional) can be a callback (read,total,filename) or True to display a progress bar
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
@@ -136,7 +136,8 @@ class Task(object):
         self.wait(timeout=job_timeout, live_progress=live_progress)
         if job_timeout is not None:
             self.abort()
-        self.download_results(output_dir, progress=results_progress)
+        if output_dir is not None:
+            self.download_results(output_dir, progress=results_progress)
 
     def resume(self, output_dir, job_timeout=None, live_progress=False, results_progress=None):
         """Resume waiting for this task if it is still in submitted mode.
