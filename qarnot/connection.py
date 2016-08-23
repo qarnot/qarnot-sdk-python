@@ -276,7 +276,7 @@ class Connection(object):
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
-        return [Task.from_json(self, task, False) for task in response.json()]
+        return [Task.from_json(self, task) for task in response.json()]
 
     def retrieve_task(self, uuid):
         """Retrieve a :class:`qarnot.task.Task` from its uuid
@@ -293,7 +293,7 @@ class Connection(object):
         if response.status_code == 404:
             raise MissingTaskException(response.json()['message'], uuid)
         raise_on_error(response)
-        return Task.from_json(self, response.json(), False)
+        return Task.from_json(self, response.json())
 
     def retrieve_disk(self, uuid):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
@@ -313,15 +313,12 @@ class Connection(object):
         raise_on_error(response)
         return Disk.from_json(self, response.json())
 
-    def create_disk(self, description, force=False, lock=False,
+    def create_disk(self, description, lock=False,
                     global_disk=False):
         """Create a new :class:`~qarnot.disk.Disk`.
 
         :param str description: a short description of the disk
-        :param bool force: delete an old unlocked disk
-          if maximum number of disks is reached
-        :param bool lock: prevents the disk to be removed
-          by a subsequent :meth:`create_disk` with force set to True
+        :param bool lock: prevents the disk to be removed accidentally
 
         :rtype: :class:`qarnot.disk.Disk`
         :returns: The created :class:`~qarnot.disk.Disk`.
@@ -329,11 +326,11 @@ class Connection(object):
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
-        disk = Disk(self, description, lock, global_disk, force)
+        disk = Disk(self, description, lock, global_disk)
         disk.create()
         return disk
 
-    def create_task(self, name, profile, framecount_or_range, force=False):
+    def create_task(self, name, profile, framecount_or_range):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
@@ -341,16 +338,12 @@ class Connection(object):
         :param framecount_or_range: number of frame or range on  which to run task
         :type framecount_or_range: int or str
 
-        :param bool force: remove an old task if the maximum number of allowed
-           tasks is reached. Plus, it will delete an old unlocked disk
-           if maximum number of disks is reached for resources and results
-
         :rtype: :class:`~qarnot.task.Task`
         :returns: The created :class:`~qarnot.task.Task`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile, framecount_or_range, force)
+        return Task(self, name, profile, framecount_or_range)
 
     def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
         """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskStateChanged`.

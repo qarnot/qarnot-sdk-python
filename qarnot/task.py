@@ -27,7 +27,7 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile, framecount_or_range, force):
+    def __init__(self, connection, name, profile, framecount_or_range):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -39,11 +39,6 @@ class Task(object):
         :param framecount_or_range: number of frame or range on which to run
         task
         :type framecount_or_range: int or str
-
-        :param bool force: remove an old task if the maximum number of allowed
-           tasks is reached. Plus, it will delete an old unlocked disk
-           if maximum number of disks is reached for resources and results
-
         """
         self._name = name
         self._profile = profile
@@ -55,7 +50,6 @@ class Task(object):
             self._advanced_range = framecount_or_range
             self._framecount = 0
 
-        self._force = force
         self._resource_disks = []
         self._result_disk = None
         self._connection = connection
@@ -109,7 +103,7 @@ class Task(object):
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], uuid)
         raise_on_error(resp)
-        return Task.from_json(connection, resp.json(), False)
+        return Task.from_json(connection, resp.json())
 
     def run(self, output_dir=None, job_timeout=None, live_progress=False, results_progress=None):
         """Submit a task, wait for the results and download them if required.
@@ -176,13 +170,12 @@ class Task(object):
 
         .. note:: To get the results, call :meth:`download_results` once the job is done.
         """
-        url = get_url('task force') if self._force else get_url('tasks')
         if self._uuid is not None:
             return self._state
         for rdisk in self.resources:
             rdisk.flush()
         payload = self._to_json()
-        resp = self._connection._post(url, json=payload)
+        resp = self._connection._post(get_url('tasks'), json=payload)
 
         if resp.status_code == 404:
             raise disk.MissingDiskException(resp.json()['message'])
@@ -254,9 +247,6 @@ class Task(object):
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
-
-        .. note:: *force* parameter in :meth:`qarnot.connection.Connection.create_task`
-           may be set to True in order to delete old tasks automatically.
         """
         if self._uuid is None:
             return
@@ -354,7 +344,7 @@ class Task(object):
         self._rescount = json_task['resultsCount']
 
     @classmethod
-    def from_json(cls, connection, json_task, force):
+    def from_json(cls, connection, json_task):
         """Create a Task object from a json task.
 
         :param qarnot.connection.Connection connection: the cluster connection
@@ -368,8 +358,7 @@ class Task(object):
         new_task = cls(connection,
                        json_task['name'],
                        json_task['profile'],
-                       framecount_or_range,
-                       force)
+                       framecount_or_range)
         new_task._update(json_task)
         return new_task
 

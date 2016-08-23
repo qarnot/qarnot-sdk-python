@@ -37,18 +37,14 @@ class Disk(object):
 
     # Creation
     def __init__(self, connection, description, lock=False,
-                 global_disk=False, force=False):
+                 global_disk=False):
         """
         Create a disk on a cluster.
 
         :param :class:`qarnot.connection.Connection` connection:
           represents the cluster on which to create the disk
         :param str description: a short description of the disk
-        :param bool lock: prevents the disk to be removed
-          by a subsequent :meth:`qarnot.connection.Connection.create_task` with
-          *force* set to True.
-        :param bool force: it will delete an old unlocked disk
-          if maximum number of disks is reached for resources and results
+        :param bool lock: prevents the disk to be removed accidentally
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
@@ -59,7 +55,6 @@ class Disk(object):
         self._used_space_bytes = 0
         self._locked = lock
         self._global = global_disk
-        self._force = force
 
         self._connection = connection
         self._filethreads = {}  # A dictionary containing key:value where key is
@@ -82,8 +77,7 @@ class Disk(object):
             "locked": self._locked,
             "global": self._global
             }
-        url = get_url('disk force') if self._force else get_url('disk folder')
-        response = self._connection._post(url, json=data)
+        response = self._connection._post(get_url('disk folder'), json=data)
         if response.status_code == 403:
             raise MaxDiskException(response.json()['message'])
         else:
