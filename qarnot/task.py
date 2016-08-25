@@ -77,7 +77,6 @@ class Task(object):
         self._snapshot_blacklist = None
         self._results_whitelist = None
         self._results_blacklist = None
-        self._execution_cluster = {}
         self._status = None
         self._creation_date = None
         self._errors = None
@@ -329,8 +328,6 @@ class Task(object):
         if len(self._resource_disks_uuids) != len(self._resource_disks):
             del self._resource_disks[:]
         self._result_disk_uuid = json_task['resultDisk']
-        if 'executionCluster' in json_task:
-            self._execution_cluster = json_task['executionCluster']
         if 'status' in json_task:
             self._status = json_task['status']
         self._creation_date = datetime.datetime.strptime(json_task['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
@@ -875,15 +872,6 @@ class Task(object):
         return self._creation_date
 
     @property
-    def execution_cluster(self):
-        """Various statistics about running task
-        """
-        if self._auto_update:
-            self.update()
-
-        return self._execution_cluster
-
-    @property
     def errors(self):
         """Error reason if any, empty string if none
         """
@@ -995,56 +983,259 @@ class Error(object):
 class TaskStatus(object):
     """Task status
     """
-    def __init__(self, entries):
-        self.download_progress = entries['downloadProgress']
+    def __init__(self, json):
+        self.download_progress = json['downloadProgress']
         """:type: :class:`float`
 
         Resources download progress to the instances."""
 
-        self.execution_progress = entries['executionProgress']
+        self.execution_progress = json['executionProgress']
         """:type: :class:`float`
 
         Task execution progress."""
 
-        self.upload_progress = entries['uploadProgress']
+        self.upload_progress = json['uploadProgress']
         """:type: :class:`float`
 
         Task results upload progress to the API."""
 
-        self.instance_count = entries['instanceCount']
+        self.instance_count = json['instanceCount']
         """:type: :class:`int`
 
         Number of running instances."""
 
-        self.download_time = entries['downloadTime']
-        """:type: :class:`int`
+        self.download_time = json['downloadTime']
+        """:type: :class:`str`
+
+        Resources download time to the instances."""
+
+        self.download_time_sec = json['downloadTimeSec']
+        """:type: :class:`float`
 
         Resources download time to the instances in seconds."""
 
-        self.execution_time = entries['executionTime']
-        """:type: :class:`int`
+        self.environment_time = json['environmentTime']
+        """:type: :class:`str`
+
+        Environment time to the instances."""
+
+        self.environment_time_sec = json['environmentTimeSec']
+        """:type: :class:`float`
+
+        Environment time to the instances in seconds."""
+
+        self.execution_time = json['executionTime']
+        """:type: :class:`str`
+
+        Task execution time."""
+
+        self.execution_time_sec = json['executionTimeSec']
+        """:type: :class:`float`
 
         Task execution time in seconds."""
 
-        self.upload_time = entries['uploadTime']
+        self.upload_time = json['uploadTime']
         """:type: :class:`int`
 
         Task results upload time to the API in seconds"""
 
-        self.succeeded_range = entries['succeededRange']
+        self.upload_time_sec = json['uploadTimeSec']
+        """:type: :class:`float`
+
+        Task results upload time to the API in seconds"""
+
+        self.succeeded_range = json['succeededRange']
         """:type: :class:`str`
 
         Successful frames range."""
 
-        self.executed_range = entries['executedRange']
+        self.executed_range = json['executedRange']
         """:type: :class:`str`
 
         Executed frames range."""
 
-        self.failed_range = entries['failedRange']
+        self.failed_range = json['failedRange']
         """:type: :class:`str`
 
         Failed frames range."""
+
+        self.running_frames_info = None
+        """:type: :class:`RunningFrameInfo`
+
+        Running frames information."""
+
+        if 'runningFramesInfo' in json and json['runningFramesInfo'] is not None:
+            self.running_frames_info = RunningFramesInfo(json['runningFramesInfo'])
+
+
+class TaskActiveForward(object):
+    def __init__(self, json):
+        self.application_port = json['applicationPort']
+        """:type: :class:`int`
+
+        Application Port."""
+
+        self.forwarder_port = json['forwarderPort']
+        """:type: :class:`int`
+
+        Forwarder Port."""
+
+        self.forwarder_host = json['forwarderHost']
+        """:type: :class:`str`
+
+        Forwarder Host."""
+
+
+class RunningFramesInfo(object):
+    def __init__(self, json):
+        self.per_running_frames_info = []
+        """:type: list(:class:`PerRunningFramesInfo`)
+
+        Per running frames information."""
+
+        if 'perRunningFramesInfo' in json and json['perRunningFramesInfo'] is not None:
+            self.per_running_frames_info = [PerRunningFramesInfo(x) for x in json['perRunningFramesInfo']]
+
+        self.timestamp = json['timestamp']
+        """:type: :class:`str`
+
+        Last information update timestamp."""
+
+        self.average_frequency_ghz = json['averageFrequencyGHz']
+        """:type: :class:`float`
+
+        Average Frequency in GHz."""
+
+        self.max_frequency_ghz = json['maxFrequencyGHz']
+        """:type: :class:`float`
+
+        Maximum Frequency in GHz."""
+
+        self.min_frequency_ghz = json['minFrequencyGHz']
+        """:type: :class:`float`
+
+        Minimum Frequency in GHz."""
+
+        self.average_max_frequency_ghz = json['averageMaxFrequencyGHz']
+        """:type: :class:`float`
+
+        Average Maximum Frequency in GHz."""
+
+        self.average_cpu_usage = json['averageCpuUsage']
+        """:type: :class:`float`
+
+        Average CPU Usage."""
+
+        self.cluster_power_indicator = json['clusterPowerIndicator']
+        """:type: :class:`float`
+
+        Cluster Power Indicator."""
+
+        self.average_memory_usage = json['averageMemoryUsage']
+        """:type: :class:`float`
+
+        Average Memory Usage."""
+
+        self.average_network_in_kbps = json['averageNetworkInKbps']
+        """:type: :class:`float`
+
+        Average Network Input in Kbps."""
+
+        self.average_network_out_kbps = json['averageNetworkOutKbps']
+        """:type: :class:`float`
+
+        Average Network Output in Kbps."""
+
+        self.total_network_in_kbps = json['totalNetworkInKbps']
+        """:type: :class:`float`
+
+        Total Network Input in Kbps."""
+
+        self.total_network_out_kbps = json['totalNetworkOutKbps']
+        """:type: :class:`float`
+
+        Total Network Output in Kbps."""
+
+
+class PerRunningFramesInfo(object):
+    def __init__(self, json):
+        self.phase = json['phase']
+        """:type: :class:`str`
+
+        Frame phase."""
+
+        self.frame = json['frame']
+        """:type: :class:`int`
+
+        Frame number."""
+
+        self.max_frequency_ghz = json['maxFrequencyGHz']
+        """:type: :class:`float`
+
+        Maximum CPU frequency in GHz."""
+
+        self.current_frequency_ghz = json['currentFrequencyGHz']
+        """:type: :class:`float`
+
+        Current CPU frequency in GHz."""
+
+        self.cpu_usage = json['cpuUsage']
+        """:type: :class:`float`
+
+        Current CPU usage."""
+
+        self.max_memory_mb = json['maxMemoryMB']
+        """:type: :class:`int`
+
+        Maximum memory size in MB."""
+
+        self.current_memory_mb = json['currentMemoryMB']
+        """:type: :class:`int`
+
+        Current memory size in MB."""
+
+        self.memory_usage = json['memoryUsage']
+        """:type: :class:`float`
+
+        Current memory usage."""
+
+        self.network_in_kbps = json['networkInKbps']
+        """:type: :class:`float`
+
+        Network Input in Kbps."""
+
+        self.network_out_kbps = json['networkOutKbps']
+        """:type: :class:`float`
+
+        Network Output in Kbps."""
+
+        self.progress = json['progress']
+        """:type: :class:`float`
+
+        Frame progress."""
+
+        self.execution_time_sec = json['executionTimeSec']
+        """:type: :class:`float`
+
+        Frame execution time in seconds."""
+
+        self.execution_time_ghz = json['executionTimeGHz']
+        """:type: :class:`float`
+
+        Frame execution time GHz"""
+
+        self.cpu_model = json['cpuModel']
+        """:type: :class:`str`
+
+        CPU model"""
+
+        self.active_forward = []
+        """type: list(:class:`TaskActiveForward`)
+
+        Active forwards list."""
+
+        if 'activeForwards' in json:
+            self.active_forward = [TaskActiveForward(x) for x in json['activeForwards']]
 
 
 ##############
