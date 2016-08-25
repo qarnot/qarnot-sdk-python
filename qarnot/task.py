@@ -80,7 +80,7 @@ class Task(object):
         self._execution_cluster = {}
         self._status = None
         self._creation_date = None
-        self._error_reason = None
+        self._errors = None
         self._resource_disks_uuids = []
         self._result_disk_uuid = None
 
@@ -334,7 +334,10 @@ class Task(object):
         if 'status' in json_task:
             self._status = json_task['status']
         self._creation_date = datetime.datetime.strptime(json_task['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
-        self._error_reason = json_task['errorReason'] if 'errorReason' in json_task else ""
+        if 'errors' in json_task:
+            self._errors = [Error(d) for d in json_task['errors']]
+        else:
+            self._errors = []
 
         self._uuid = json_task['uuid']
         self._state = json_task['state']
@@ -881,13 +884,13 @@ class Task(object):
         return self._execution_cluster
 
     @property
-    def error_reason(self):
+    def errors(self):
         """Error reason if any, empty string if none
         """
         if self._auto_update:
             self.update()
 
-        return self._error_reason
+        return self._errors
 
     @property
     def auto_update(self):
@@ -970,6 +973,24 @@ class Task(object):
         return False
 
 
+class Error(object):
+    def __init__(self, json):
+        self.code = json['code']
+        """:type: :class:`str`
+
+        Error code."""
+
+        self.message = json['message']
+        """:type: :class:`str`
+
+        Error message."""
+
+        self.debug = json['debug']
+        """:type: :class:`str`
+
+        Optional extra debug information"""
+
+
 # Status
 class TaskStatus(object):
     """Task status
@@ -1024,11 +1045,6 @@ class TaskStatus(object):
         """:type: :class:`str`
 
         Failed frames range."""
-
-        self.error = entries['error'] if 'error' in entries else ""
-        """:type: :class:`str`
-
-        Error reason if any."""
 
 
 ##############
