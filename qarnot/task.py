@@ -189,22 +189,17 @@ class Task(object):
         self.update(True)
 
     def abort(self):
-        """Abort this task if running. Update state to Cancelled.
+        """Abort this task if running.
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not represent
           a valid one
-
-        .. warning:: If this task is already finished, a call to :meth:`abort`
-          will delete it.
         """
         self.update(True)
-        if self._uuid is None or self._state in ["None", "Cancelled", "Success", "Failure", "DownloadingResults"]:
-            return
 
-        resp = self._connection._delete(
-            get_url('task update', uuid=self._uuid))
+        resp = self._connection._post(
+            get_url('task abort', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'], self._name)
@@ -232,7 +227,7 @@ class Task(object):
         self.update(True)
 
     def delete(self, purge_resources=None, purge_results=None):
-        """Delete this task on the server. Does nothing if it is already deleted.
+        """Delete this task on the server.
 
         :param bool purge_resources: if None disk will be deleted unless locked,
                 otherwise parameter value is used to determine if the disk is also deleted.
@@ -249,14 +244,21 @@ class Task(object):
         """
         if self._uuid is None:
             return
-        if self._status is not None and \
-           self._state in ['Submitted', 'PartiallyDispatched', 'FullyDispatched', 'PartiallyExecuting', 'FullyExecuting']:
-            self.abort()
+
+        rdisks = []
+        for rdisk in self.resources:
+            rdisks.append(rdisk)
+
+        resp = self._connection._delete(
+            get_url('task update', uuid=self._uuid))
+        if resp.status_code == 404:
+            raise MissingTaskException(resp.json()['message'], self._name)
+        raise_on_error(resp)
 
         if purge_resources in [None, True]:
             toremove = []
 
-            for rdisk in self.resources:
+            for rdisk in rdisks:
                 try:
                     rdisk.update()
                     if purge_resources is None:
@@ -267,7 +269,8 @@ class Task(object):
                 except disk.MissingDiskException as exception:
                     warnings.warn(exception.message)
             for tr in toremove:
-                self.resources.remove(tr)
+                rdisks.remove(tr)
+            self.resources = rdisks
 
         try:
             self.results.update()
@@ -280,13 +283,7 @@ class Task(object):
         except disk.MissingDiskException as exception:
             warnings.warn(exception.message)
 
-        resp = self._connection._delete(
-            get_url('task update', uuid=self._uuid))
-
-        if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
-        raise_on_error(resp)
-
+        self._state = "Deleted"
         self._uuid = None
 
     def update(self, flushcache=False):

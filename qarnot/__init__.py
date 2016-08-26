@@ -39,6 +39,7 @@ def get_url(key, **kwargs):
         'task instant': '/tasks/{uuid}/snapshot',  # POST -> get a snapshot
         'task stdout': '/tasks/{uuid}/stdout',  # GET -> task stdout
         'task stderr': '/tasks/{uuid}/stderr',  # GET -> task stderr
+        'task abort': '/tasks/{uuid}/abort',  # GET -> task stderr
         'user': '/info',  # GET -> user info
         'notification': '/notifications',  # GET -> notifications list; POST -> add notification
         'notification update': '/notifications/{uuid}'  # GET -> notification info; DELETE -> remove notification; PUT -> update
