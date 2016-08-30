@@ -62,7 +62,6 @@ version = ''
 # The full version, including alpha/beta/rc tags.
 import qarnot
 v = qarnot.__version__
-v = v[:v.index('-') + 9]
 version = v
 release = v
 
