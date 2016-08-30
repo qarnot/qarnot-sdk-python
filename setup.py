@@ -1,5 +1,6 @@
 #! /usr/bin/python
 
+import versioneer
 from distutils.core import setup
 from os import mkdir
 from setuptools.command.test import test as TestCommand
@@ -7,7 +8,7 @@ from subprocess import Popen, PIPE
 import shutil
 import sys
 
-import qarnot
+
 
 
 class PyTest(TestCommand):
@@ -43,13 +44,16 @@ class PyTest(TestCommand):
         shutil.rmtree('tests/tmp', ignore_errors=True)
         sys.exit(errno)
 
+cmdclass=versioneer.get_cmdclass()
+cmdclass['test'] = PyTest
+
 setup(name='qarnot',
-      version= qarnot.__version__,
+      version=versioneer.get_version(),
+      cmdclass=cmdclass,
       description= 'Qarnot Computing SDK',
       author='Qarnot Computing',
       author_email='support@qarnot-computing.com',
-      url='http://qarnotcomputing.com',
+      url='http://computing.qarnot.com',
       packages=['qarnot'],
       requires=['requests'],
-      tests_require=['pytest', 'pytest-cov'],
-      cmdclass = {'test': PyTest})
+      tests_require=['pytest', 'pytest-cov'])
