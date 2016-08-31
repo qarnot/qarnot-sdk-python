@@ -70,7 +70,7 @@ class Disk(object):
     def create(self):
         """Create the Disk on the REST API.
         .. note::
-        This method should not be used unless if the object was created with the constructor.
+           This method should not be used unless if the object was created with the constructor.
         """
         data = {
             "description": self._description,

@@ -335,7 +335,7 @@ class Connection(object):
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
-        :param framecount_or_range: number of frame or range on  which to run task
+        :param framecount_or_range: number of frames or ranges on  which to run task
         :type framecount_or_range: int or str
 
         :rtype: :class:`~qarnot.task.Task`
@@ -351,7 +351,7 @@ class Connection(object):
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
         :param str filtervalue: regex to match for the filter key
-        :param str template: (optionnal) Template for the notification
+        :param str template: (optional) Template for the notification
         :param str toregex: (optional) Regex to match the "To" value on a state change, default to ".*"
         :param str fromregex: (optional) Regex to match the "From" value on a state change, default to ".*"
         :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
@@ -365,7 +365,7 @@ class Connection(object):
         :param str destination: e-mail address
         :param str filterkey: key to watch on tasks
         :param str filtervalue: regex to match for the filter key
-        :param str template: (optionnal) Template for the notification
+        :param str template: (optional) Template for the notification
         """
         nfilter = TaskCreated(template, destination, filterkey, filtervalue)
         return Notification._create(self, nfilter)
@@ -395,9 +395,9 @@ class Connection(object):
         return notifications
 
     def retrieve_notification(self, uuid):
-        """Retrieve a :class:~qarnot.notification.Notification` from it's uuid
+        """Retrieve a :class:~qarnot.notification.Notification` from its uuid
 
-        :param str uuid: Id of the notification
+        :param str uuid: Notification id
         :rtype: :class:`~qapi.notification.Notification`
         :returns: Existing notification defined by the given uuid
 

@@ -36,7 +36,7 @@ class Task(object):
         :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
 
-        :param framecount_or_range: number of frame or range on which to run
+        :param framecount_or_range: number of frames or ranges on which to run
         task
         :type framecount_or_range: int or str
         """
@@ -108,7 +108,7 @@ class Task(object):
         """Submit a task, wait for the results and download them if required.
 
         :param str output_dir: (optional) path to a directory that will contain the results
-        :param float job_timeout: (optional) Number of second before the task :meth:`abort` if it has not
+        :param float job_timeout: (optional) Number of seconds before the task :meth:`abort` if it is not
           already finished
         :param bool live_progress: (optional) display a live progress
         :param bool|fun(float,float,str) results_progress: (optional) can be a callback (read,total,filename) or True to display a progress bar
@@ -137,7 +137,7 @@ class Task(object):
         Equivalent to :meth:`wait` + :meth:`download_results`.
 
         :param str output_dir: path to a directory that will contain the results
-        :param float job_timeout: Number of second before the task :meth:`abort` if it has not
+        :param float job_timeout: Number of seconds before the task :meth:`abort` if it is not
           already finished
         :param bool live_progress: display a live progress
         :param bool|fun(float,float,str) results_progress: can be a callback (read,total,filename) or True to display a progress bar
@@ -164,7 +164,7 @@ class Task(object):
         :raises qarnot.disk.MissingDiskException:
           resource disk is not a valid disk
 
-        .. note:: Will ensure all added file are on the resource disk
+        .. note:: Will ensure all added files are on the resource disk
            regardless of their uploading mode.
 
         .. note:: To get the results, call :meth:`download_results` once the job is done.
@@ -193,8 +193,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent
-          a valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
         """
         self.update(True)
 
@@ -212,8 +211,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent
-          a valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
         """
 
         self.update(True)
@@ -239,8 +237,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
-          valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
         """
         if self._uuid is None:
             return
@@ -477,8 +474,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
-          valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
 
         .. note:: To get the temporary results, call :meth:`download_results`.
         """
@@ -587,8 +583,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
-          valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
           :meth:`fresh_stdout` regularly.
@@ -614,8 +609,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
-          valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
         """
         if self._uuid is None:
             return ""
@@ -637,8 +631,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
-          valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
           :meth:`fresh_stderr` regularly.
@@ -663,8 +656,7 @@ class Task(object):
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
-          valid one
+        :raises qarnot.task.MissingTaskException: task does not exist
         """
         if self._uuid is None:
             return ""

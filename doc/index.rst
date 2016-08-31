@@ -7,7 +7,7 @@
 Qarnot Python SDK
 =================
 
-Q.apy is a Python library designed to interact with |QarnotLink| HPC cloud computing service. It allows users to launch, manage and monitor payloads running on distributed computing nodes deployed in digital heaters developed and deployed by Qarnot. 
+qarnot is a Python library designed to interact with |QarnotLink| cloud computing service. It allows users to launch, manage and monitor payloads running on distributed computing nodes deployed in Qarnot's digital heaters.
 
 Reference Docs
 ==============
