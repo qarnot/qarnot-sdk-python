@@ -967,6 +967,12 @@ class Error(object):
 
         Optional extra debug information"""
 
+    def __str__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+
 
 # Status
 class TaskStatus(object):
@@ -1056,6 +1062,12 @@ class TaskStatus(object):
         if 'runningFramesInfo' in json and json['runningFramesInfo'] is not None:
             self.running_frames_info = RunningFramesInfo(json['runningFramesInfo'])
 
+    def __str__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+
 
 class TaskActiveForward(object):
     def __init__(self, json):
@@ -1073,6 +1085,12 @@ class TaskActiveForward(object):
         """:type: :class:`str`
 
         Forwarder Host."""
+
+        def __str__(self):
+            if sys.version_info > (3, 0):
+                return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+            else:
+                return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
 
 
 class RunningFramesInfo(object):
@@ -1144,6 +1162,12 @@ class RunningFramesInfo(object):
         """:type: :class:`float`
 
         Total Network Output in Kbps."""
+
+    def __str__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
 
 
 class PerRunningFramesInfo(object):
@@ -1225,6 +1249,12 @@ class PerRunningFramesInfo(object):
 
         if 'activeForwards' in json:
             self.active_forward = [TaskActiveForward(x) for x in json['activeForwards']]
+
+    def __str__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
 
 
 ##############
