@@ -242,9 +242,10 @@ class Task(object):
         if self._uuid is None:
             return
 
-        rdisks = []
-        for rdisk in self.resources:
-            rdisks.append(rdisk)
+        if purge_resources in [None, True]:
+            rdisks = []
+            for rdisk in self.resources:
+                rdisks.append(rdisk)
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
