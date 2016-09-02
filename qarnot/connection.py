@@ -1,6 +1,6 @@
 """Module describing a connection."""
 
-from qarnot import get_url, raise_on_error
+from qarnot import get_url, raise_on_error, QarnotException
 from qarnot.disk import Disk, MissingDiskException
 from qarnot.task import Task, MissingTaskException
 from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
@@ -294,6 +294,32 @@ class Connection(object):
             raise MissingTaskException(response.json()['message'], uuid)
         raise_on_error(response)
         return Task.from_json(self, response.json())
+
+    def retrieve_or_create_disk(self, description):
+        """Retrieve a :class:`~qarnot.disk.Disk` from its description, or create a new one.
+
+        .. note:: Description are not unique, if multiple description match, an exception will be raised
+
+
+        :param str description: a short description of the disk
+        :rtype: :class:`~qapi.disk.Disk`
+        :returns: Existing or newly created disk defined by the given description
+        :raises ValueError: no such disk
+        :raises qarnot.disk.MissingDiskException: disk does not exist
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QarnotException: API general error, see message for details
+        """
+
+        disks = self._disks_get(global_=False)
+
+        matches = [d for d in disks if d.description == description]
+        matchcount = len(matches)
+        if matchcount == 0:
+            return self.create_disk(description)
+        elif matchcount == 1:
+            return matches[0]
+        else:
+            raise QarnotException("No unique match for given description.")
 
     def retrieve_disk(self, uuid):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
