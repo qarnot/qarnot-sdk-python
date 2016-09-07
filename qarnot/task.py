@@ -254,6 +254,7 @@ class Task(object):
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.disk.DiskLockedException: rdisk is locked
         """
         if self._uuid is None:
             return
