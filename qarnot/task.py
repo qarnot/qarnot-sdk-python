@@ -240,7 +240,7 @@ class Task(object):
 
         self.update(True)
 
-    def delete(self, purge_resources=None, purge_results=None):
+    def delete(self, purge_resources=False, purge_results=False):
         """Delete this task on the server.
 
         :param bool purge_resources: if None disk will be deleted unless locked,
@@ -258,7 +258,7 @@ class Task(object):
         if self._uuid is None:
             return
 
-        if purge_resources in [None, True]:
+        if purge_resources in [False, True]:
             rdisks = []
             for rdisk in self.resources:
                 rdisks.append(rdisk)
@@ -269,18 +269,18 @@ class Task(object):
             raise MissingTaskException(resp.json()['message'], self._name)
         raise_on_error(resp)
 
-        if purge_resources in [None, True]:
+        if purge_resources in [False, True]:
             toremove = []
 
             for rdisk in rdisks:
                 try:
                     rdisk.update()
-                    if purge_resources is None:
+                    if not purge_resources:
                         purge_resources = not rdisk.locked
                     if purge_resources:
                         rdisk.delete()
                         toremove.append(rdisk)
-                except disk.MissingDiskException as exception:
+                except (disk.MissingDiskException, disk.DiskLockedException) as exception:
                     warnings.warn(exception.message)
             for tr in toremove:
                 rdisks.remove(tr)
@@ -288,13 +288,13 @@ class Task(object):
 
         try:
             self.results.update()
-            if purge_results is None:
+            if not purge_results:
                 purge_results = not self._result_disk.locked
             if purge_results:
                 self._result_disk.delete()
                 self._result_disk = None
                 self._result_disk_uuid = None
-        except disk.MissingDiskException as exception:
+        except (disk.MissingDiskException, disk.DiskLockedException) as exception:
             warnings.warn(exception.message)
 
         self._state = "Deleted"
