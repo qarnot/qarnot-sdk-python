@@ -220,6 +220,7 @@ class Connection(object):
                 else:
                     raise
 
+    @property
     def user_info(self):
         """Get information of the current user on the cluster.
 
@@ -442,7 +443,7 @@ class Connection(object):
 
 class UserInfo(object):
     """Information about a qarnot user."""
-    @property
+
     def __init__(self, info):
         self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
 
