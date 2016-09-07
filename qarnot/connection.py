@@ -43,7 +43,7 @@ class Connection(object):
 
         :param conf: path to a qarnot configuration file or dictionary
           containing following keys:
-        * cluster_url (optional: defaults to https://rest.qarnot.com)
+        * cluster_url (optional: defaults to https://api.qarnot.com/computing)
         * cluster_unsafe   (optional)
         * cluster_timeout  (optional)
         * client_auth
@@ -70,7 +70,7 @@ class Connection(object):
             if conf.get('cluster_url'):
                 self.cluster = conf.get('cluster_url')
             else:
-                self.cluster = "https://rest.qarnot.com"
+                self.cluster = "https://api.qarnot.com/computing"
             self._http.headers.update(
                 {"Authorization": conf.get('client_auth')})
             self.auth = conf.get('client_auth')
