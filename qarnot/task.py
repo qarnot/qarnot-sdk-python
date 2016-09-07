@@ -243,18 +243,15 @@ class Task(object):
     def delete(self, purge_resources=False, purge_results=False):
         """Delete this task on the server.
 
-        :param bool purge_resources: if None disk will be deleted unless locked,
-                otherwise parameter value is used to determine if the disk is also deleted.
-                Defaults to None.
+        :param bool purge_resources: parameter value is used to determine if the disk is also deleted.
+                Defaults to False.
 
-        :param bool purge_results: if None disk will be deleted unless locked,
-                otherwise parameter value is used to determine if the disk is also deleted.
-                Defaults to None.
+        :param bool purge_results: parameter value is used to determine if the disk is also deleted.
+                Defaults to False.
 
         :raises qarnot.QarnotException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
-        :raises qarnot.disk.DiskLockedException: rdisk is locked
         """
         if self._uuid is None:
             return
@@ -270,17 +267,14 @@ class Task(object):
             raise MissingTaskException(resp.json()['message'], self._name)
         raise_on_error(resp)
 
-        if purge_resources in [False, True]:
+        if purge_resources:
             toremove = []
 
             for rdisk in rdisks:
                 try:
                     rdisk.update()
-                    if not purge_resources:
-                        purge_resources = not rdisk.locked
-                    if purge_resources:
-                        rdisk.delete()
-                        toremove.append(rdisk)
+                    rdisk.delete()
+                    toremove.append(rdisk)
                 except (disk.MissingDiskException, disk.DiskLockedException) as exception:
                     warnings.warn(exception.message)
             for tr in toremove:
@@ -289,8 +283,6 @@ class Task(object):
 
         try:
             self.results.update()
-            if not purge_results:
-                purge_results = not self._result_disk.locked
             if purge_results:
                 self._result_disk.delete()
                 self._result_disk = None
