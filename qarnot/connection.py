@@ -442,6 +442,7 @@ class Connection(object):
 
 class UserInfo(object):
     """Information about a qarnot user."""
+    @property
     def __init__(self, info):
         self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
 
@@ -481,18 +482,6 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Maximum number of frames per task."""
-        self.finished_execution_time = info['finishedExecutionTime']
-        """:type: :class:`int`
-
-        Finished computation time."""
-        self.running_execution_time = info['runningExecutionTime']
-        """:type: :class:`int`
-
-        Running computation time."""
-        self.total_execution_time = info['totalExecutionTime']
-        """:type: :class:`int`
-
-        Total computation time."""
 
 
 class Profile(object):
