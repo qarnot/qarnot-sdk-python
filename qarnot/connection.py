@@ -21,7 +21,6 @@ from qarnot.disk import Disk, MissingDiskException
 from qarnot.task import Task, MissingTaskException
 from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
-import warnings
 import sys
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
@@ -458,7 +457,6 @@ class Connection(object):
         """Get list of profiles available on the cluster.
 
         :rtype: List of :class:`Profile`
-        :returns: Requested information.
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.QarnotException: API general error, see message for details
@@ -475,6 +473,22 @@ class Connection(object):
                 continue
             profiles_list.append(Profile(response2.json()))
         return profiles_list
+
+    def get_profile(self, name):
+        """Get details of a profile from its name.
+
+        :rtype: :class:`Profile`
+
+        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.QarnotException: API general error, see message for details
+        """
+
+        url = get_url('profile details', profile=name)
+        response = self._get(url)
+        raise_on_error(response)
+        if response.status_code == 404:
+            raise QarnotException(response.json()['message'])
+        return Profile(response.json())
 
 
 ###################
