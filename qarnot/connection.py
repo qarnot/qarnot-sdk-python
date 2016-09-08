@@ -453,6 +453,7 @@ class Connection(object):
         raise_on_error(response)
         return Notification(response.json(), self)
 
+    @property
     def profiles(self):
         """Get list of profiles available on the cluster.
 
