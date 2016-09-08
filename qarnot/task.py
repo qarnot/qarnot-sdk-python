@@ -256,7 +256,7 @@ class Task(object):
         if self._uuid is None:
             return
 
-        if purge_resources in [False, True]:
+        if purge_resources:
             rdisks = []
             for rdisk in self.resources:
                 rdisks.append(rdisk)
@@ -275,7 +275,7 @@ class Task(object):
                     rdisk.update()
                     rdisk.delete()
                     toremove.append(rdisk)
-                except (disk.MissingDiskException, disk.DiskLockedException) as exception:
+                except (disk.MissingDiskException, disk.LockedDiskException) as exception:
                     warnings.warn(exception.message)
             for tr in toremove:
                 rdisks.remove(tr)
@@ -287,7 +287,7 @@ class Task(object):
                 self._result_disk.delete()
                 self._result_disk = None
                 self._result_disk_uuid = None
-        except (disk.MissingDiskException, disk.DiskLockedException) as exception:
+        except (disk.MissingDiskException, disk.LockedDiskException) as exception:
             warnings.warn(exception.message)
 
         self._state = "Deleted"

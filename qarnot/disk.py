@@ -189,7 +189,7 @@ class Disk(object):
         if response.status_code == 404:
             raise MissingDiskException(response.json()['message'])
         if response.status_code == 403:
-            raise DiskLockedException(response.json()['message'])
+            raise LockedDiskException(response.json()['message'])
         raise_on_error(response)
 
     def get_archive(self, extension='zip', local=None):
@@ -1010,10 +1010,10 @@ class MissingDiskException(Exception):
         super(MissingDiskException, self).__init__(message)
 
 
-class DiskLockedException(Exception):
+class LockedDiskException(Exception):
     """Locked disk."""
     def __init__(self, message):
-        super(DiskLockedException, self).__init__(message)
+        super(LockedDiskException, self).__init__(message)
 
 
 class MaxDiskException(Exception):
