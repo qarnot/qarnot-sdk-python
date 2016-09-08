@@ -58,7 +58,11 @@ def get_url(key, **kwargs):
         'task abort': '/tasks/{uuid}/abort',  # GET -> task stderr
         'user': '/info',  # GET -> user info
         'notification': '/notifications',  # GET -> notifications list; POST -> add notification
-        'notification update': '/notifications/{uuid}'  # GET -> notification info; DELETE -> remove notification; PUT -> update
+        'notification update': '/notifications/{uuid}',
+        # GET -> notification info; DELETE -> remove notification; PUT -> update
+        'profiles': '/profiles',  # GET -> profiles list
+        'profile details': '/profiles/{profile}'
+        # GET -> profile details
     }
     return urls[key].format(**kwargs)
 
