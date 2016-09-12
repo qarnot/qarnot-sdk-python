@@ -1,0 +1,6 @@
+recursive-include doc *
+include RELEASE-VERSION
+include requirements*
+prune doc/_build
+include versioneer.py
+include qarnot/_version.py
