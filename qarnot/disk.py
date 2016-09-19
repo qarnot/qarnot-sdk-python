@@ -18,6 +18,7 @@
 from __future__ import print_function
 
 from qarnot import get_url, raise_on_error
+from qarnot.exceptions import *
 import posixpath
 import os
 import os.path
@@ -61,7 +62,7 @@ class Disk(object):
         :param str description: a short description of the disk
         :param bool lock: prevents the disk to be removed accidentally
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         self._uuid = None
@@ -113,7 +114,7 @@ class Disk(object):
         :returns: The retrieved disk.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         response = connection._get(get_url('disk info', name=disk_uuid))
@@ -148,7 +149,7 @@ class Disk(object):
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         if self._uuid is None:
@@ -180,7 +181,7 @@ class Disk(object):
         """Delete the disk represented by this :class:`Disk`.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         response = self._connection._delete(
@@ -204,7 +205,7 @@ class Disk(object):
          The filename of the retrieved archive.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: invalid extension format
         """
@@ -235,7 +236,7 @@ class Disk(object):
         :returns: List of the files on the disk.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
 
@@ -258,7 +259,7 @@ class Disk(object):
         :returns: Files in the given directory on the :class:`Disk`.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
 
         .. note::
@@ -404,7 +405,7 @@ class Disk(object):
         are on the disk.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
@@ -430,7 +431,7 @@ class Disk(object):
            time, not space.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         data = [
@@ -471,7 +472,7 @@ class Disk(object):
         :type mode: :class:`UploadMode`
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises TypeError: trying to write on a R/O disk
         :raises IOError: user space quota reached
@@ -515,7 +516,7 @@ class Disk(object):
         :param str dest: name of the remote file (defaults to filename)
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
 
@@ -570,7 +571,7 @@ class Disk(object):
         :type mode: :class:`UploadMode`
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: one or more file(s) could not be created
         :raises IOError: not a valid directory
@@ -596,7 +597,7 @@ class Disk(object):
         :param int chunk_size: Size of chunks to be yield
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
         """
@@ -671,7 +672,7 @@ class Disk(object):
         :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
@@ -698,7 +699,7 @@ class Disk(object):
         :returns: The name of the output file.
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
           (:exc:`KeyError` with disk[file] syntax)
@@ -750,7 +751,7 @@ class Disk(object):
         :param str remote: the name of the remote file
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises ValueError: no such file
           (:exc:`KeyError` with disk['file'] syntax)
@@ -782,7 +783,7 @@ class Disk(object):
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         data = {
@@ -1001,21 +1002,3 @@ class UploadMode(object):
     """Launch a background thread for uploading."""
     lazy = 2
     """Actual uploading is made by the :func:`~Disk.flush` method call."""
-
-
-# Exceptions
-class MissingDiskException(Exception):
-    """Non existing disk."""
-    def __init__(self, message):
-        super(MissingDiskException, self).__init__(message)
-
-
-class LockedDiskException(Exception):
-    """Locked disk."""
-    def __init__(self, message):
-        super(LockedDiskException, self).__init__(message)
-
-
-class MaxDiskException(Exception):
-    """Max number of disks reached."""
-    pass

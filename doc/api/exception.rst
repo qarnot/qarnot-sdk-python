@@ -1,3 +1,3 @@
 Exception
 =========
-.. autoexception:: qarnot.QarnotException
+.. autoexception:: qarnot.QarnotGenericException
