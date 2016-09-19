@@ -16,9 +16,10 @@
 # limitations under the License.
 
 
-from qarnot import get_url, raise_on_error, QarnotException
-from qarnot.disk import Disk, MissingDiskException
-from qarnot.task import Task, MissingTaskException
+from qarnot import get_url, raise_on_error
+from qarnot.disk import Disk
+from qarnot.task import Task
+from qarnot.exceptions import *
 from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
 import sys
@@ -244,7 +245,7 @@ class Connection(object):
         :returns: Requested information.
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
         resp = self._get(get_url('user'))
         raise_on_error(resp)
@@ -266,7 +267,7 @@ class Connection(object):
 
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
         return self._disks_get(global_=False)
 
@@ -278,7 +279,7 @@ class Connection(object):
 
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
         return self._disks_get(global_=True)
 
@@ -289,7 +290,7 @@ class Connection(object):
         :returns: Tasks stored on the cluster owned by the user.
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
@@ -303,7 +304,7 @@ class Connection(object):
         :returns: Existing task defined by the given uuid
         :raises qarnot.task.MissingTaskException: task does not exist
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=uuid))
@@ -324,7 +325,7 @@ class Connection(object):
         :raises ValueError: no such disk
         :raises qarnot.disk.MissingDiskException: disk does not exist
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
 
         disks = self._disks_get(global_=False)
@@ -336,7 +337,7 @@ class Connection(object):
         elif matchcount == 1:
             return matches[0]
         else:
-            raise QarnotException("No unique match for given description.")
+            raise QarnotGenericException("No unique match for given description.")
 
     def retrieve_disk(self, uuid):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
@@ -347,7 +348,7 @@ class Connection(object):
         :raises ValueError: no such disk
         :raises qarnot.disk.MissingDiskException: disk does not exist
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=uuid))
@@ -366,7 +367,7 @@ class Connection(object):
         :rtype: :class:`qarnot.disk.Disk`
         :returns: The created :class:`~qarnot.disk.Disk`.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         disk = Disk(self, description, lock, global_disk)
@@ -430,7 +431,7 @@ class Connection(object):
         :rtype: List of :class:~qarnot.task.Notification`.
         :returns: List of all notifications belonging to the user
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
         response = self._get(get_url('notification'))
         raise_on_error(response)
@@ -445,7 +446,7 @@ class Connection(object):
         :returns: Existing notification defined by the given uuid
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
         url = get_url('notification update', uuid=uuid)
         response = self._get(url)
@@ -459,7 +460,7 @@ class Connection(object):
         :rtype: List of :class:`Profile`
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profiles')
@@ -480,14 +481,14 @@ class Connection(object):
         :rtype: :class:`Profile`
 
         :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profile details', profile=name)
         response = self._get(url)
         raise_on_error(response)
         if response.status_code == 404:
-            raise QarnotException(response.json()['message'])
+            raise QarnotGenericException(response.json()['message'])
         return Profile(response.json())
 
 
@@ -555,14 +556,3 @@ class Profile(object):
 
     def __repr__(self):
         return 'Profile(name=%s, constants=%r}' % (self.name, self.constants)
-
-
-##############
-# Exceptions #
-##############
-
-class UnauthorizedException(Exception):
-    """Authorization given is not valid."""
-    def __init__(self, auth):
-        super(UnauthorizedException, self).__init__(
-            "invalid credentials : {0}".format(auth))

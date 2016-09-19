@@ -16,23 +16,20 @@
 # limitations under the License.
 
 
+from qarnot.exceptions import QarnotGenericException
+
+
 __all__ = ["task", "connection", "disk", "notification"]
-
-
-class QarnotException(Exception):
-    """General Connection exception"""
-    def __init__(self, msg):
-        super(QarnotException, self).__init__("Error : {0}".format(msg))
 
 
 def raise_on_error(response):
     if response.status_code == 503:
-        raise QarnotException("Service Unavailable")
+        raise QarnotGenericException("Service Unavailable")
     if response.status_code != 200:
         try:
-            raise QarnotException(response.json()['message'])
+            raise QarnotGenericException(response.json()['message'])
         except ValueError:
-            raise QarnotException(response.text)
+            raise QarnotGenericException(response.text)
 
 
 def get_url(key, **kwargs):

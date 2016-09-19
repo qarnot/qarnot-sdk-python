@@ -88,7 +88,7 @@ class Notification(object):
     def delete(self):
         """Delete the notification represented by this :class:`Notification`.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
 

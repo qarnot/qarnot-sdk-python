@@ -15,7 +15,6 @@
 # limitations under the License.
 
 
-
 from os import makedirs, path
 import time
 import datetime
@@ -24,7 +23,7 @@ import sys
 
 from qarnot import disk
 from qarnot import get_url, raise_on_error
-from qarnot.disk import MissingDiskException
+from qarnot.exceptions import *
 try:
     from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar
 except:
@@ -110,7 +109,7 @@ class Task(object):
         :rtype: Task
         :returns: The retrieved task.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: no such task
         """
@@ -129,7 +128,7 @@ class Task(object):
         :param bool live_progress: (optional) display a live progress
         :param bool|fun(float,float,str) results_progress: (optional) can be a callback (read,total,filename) or True to display a progress bar
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.disk.MissingDiskException:
           resource disk is not a valid disk
@@ -158,7 +157,7 @@ class Task(object):
         :param bool live_progress: display a live progress
         :param bool|fun(float,float,str) results_progress: can be a callback (read,total,filename) or True to display a progress bar
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
         :raises qarnot.disk.MissingDiskException:
@@ -175,7 +174,7 @@ class Task(object):
     def submit(self):
         """Submit task to the cluster if it is not already submitted.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.disk.MissingDiskException:
           resource disk is not a valid disk
@@ -195,7 +194,10 @@ class Task(object):
         if resp.status_code == 404:
             raise disk.MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
-            raise MaxTaskException(resp.json()['message'])
+            if resp.json()['message'].startswith():
+                raise MaxTaskException(resp.json()['message'])
+        elif resp.status_code == 402:
+            raise NotEnoughCreditsException()
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
 
@@ -207,7 +209,7 @@ class Task(object):
     def abort(self):
         """Abort this task if running.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
         """
@@ -225,7 +227,7 @@ class Task(object):
     def update_resources(self):
         """Update resources for a running task. Be sure to add new resources first.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
         """
@@ -249,7 +251,7 @@ class Task(object):
         :param bool purge_results: parameter value is used to determine if the disk is also deleted.
                 Defaults to False.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
         """
@@ -301,7 +303,7 @@ class Task(object):
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
@@ -369,7 +371,7 @@ class Task(object):
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         """
         data = self._to_json()
@@ -390,7 +392,7 @@ class Task(object):
         :rtype: :class:`bool`
         :returns: Is the task finished
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not represent a valid
           one
@@ -457,7 +459,7 @@ class Task(object):
 
         :param int interval: the interval in seconds at which to take snapshots
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not represent a
           valid one
@@ -482,7 +484,7 @@ class Task(object):
     def instant(self):
         """Make a snapshot of the current task.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
 
@@ -568,7 +570,7 @@ class Task(object):
         :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
 
         :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
@@ -591,7 +593,7 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The standard output.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
 
@@ -617,7 +619,7 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The new output since last call.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
         """
@@ -639,7 +641,7 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The standard error.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
 
@@ -664,7 +666,7 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The new error messages since last call.
 
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.QarnotGenericException: API general error, see message for details
         :raises qarnot.connection.UnauthorizedException: invalid credentials
         :raises qarnot.task.MissingTaskException: task does not exist
         """
@@ -1265,19 +1267,3 @@ class PerRunningFramesInfo(object):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
-
-
-##############
-# Exceptions #
-##############
-
-class MissingTaskException(Exception):
-    """Non existent task."""
-    def __init__(self, message, name):
-        super(MissingTaskException, self).__init__(
-            "{0}: {1}".format(message, name))
-
-
-class MaxTaskException(Exception):
-    """Max number of tasks reached."""
-    pass
