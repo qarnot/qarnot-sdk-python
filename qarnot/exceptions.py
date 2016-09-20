@@ -29,14 +29,14 @@ __all__ = ['QarnotGenericException',
 class QarnotGenericException(Exception):
     """General Connection exception"""
     def __init__(self, msg):
-        super(QarnotGenericException, self).__init__("Error : {0}".format(msg))
+        super(QarnotGenericException, self).__init__("Error: {0}".format(msg))
 
 
 class UnauthorizedException(Exception):
     """Authorization given is not valid."""
     def __init__(self, auth):
         super(UnauthorizedException, self).__init__(
-            "invalid credentials : {0}".format(auth))
+            "invalid credentials: {0}".format(auth))
 
 
 class MissingTaskException(Exception):
