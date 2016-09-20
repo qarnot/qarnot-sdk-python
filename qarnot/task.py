@@ -281,7 +281,7 @@ class Task(object):
                     rdisk.delete()
                     toremove.append(rdisk)
                 except (disk.MissingDiskException, disk.LockedDiskException) as exception:
-                    warnings.warn(exception.message)
+                    warnings.warn(str(exception))
             for tr in toremove:
                 rdisks.remove(tr)
             self.resources = rdisks
@@ -293,7 +293,7 @@ class Task(object):
                 self._result_disk = None
                 self._result_disk_uuid = None
         except (disk.MissingDiskException, disk.LockedDiskException) as exception:
-            warnings.warn(exception.message)
+            warnings.warn(str(exception))
 
         self._state = "Deleted"
         self._uuid = None
