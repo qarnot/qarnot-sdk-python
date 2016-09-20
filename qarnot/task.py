@@ -797,7 +797,9 @@ class Task(object):
 
     @property
     def snapshot_whitelist(self):
-        """Snapshot white list
+        """:type: :class:`str`
+
+        Snapshot white list
         """
         if self._auto_update:
             self.update()
@@ -812,7 +814,9 @@ class Task(object):
 
     @property
     def snapshot_blacklist(self):
-        """Snapshot black list
+        """:type: :class:`str`
+
+        Snapshot black list
         """
         if self._auto_update:
             self.update()
@@ -827,7 +831,9 @@ class Task(object):
 
     @property
     def results_whitelist(self):
-        """Results whitelist
+        """:type: :class:`str`
+
+        Results whitelist
         """
         if self._auto_update:
             self.update()
@@ -842,7 +848,9 @@ class Task(object):
 
     @property
     def results_blacklist(self):
-        """Results blacklist
+        """:type: :class:`str`
+
+        Results blacklist
         """
         if self._auto_update:
             self.update()
@@ -857,7 +865,9 @@ class Task(object):
 
     @property
     def status(self):
-        """Status of the task
+        """:type: :class:`TaskStatus`
+
+        Status of the task
         """
         if self._auto_update:
             self.update()
@@ -1070,7 +1080,7 @@ class TaskStatus(object):
         Failed frames range."""
 
         self.running_frames_info = None
-        """:type: :class:`RunningFrameInfo`
+        """:type: :class:`RunningFramesInfo`
 
         Running frames information."""
 
@@ -1085,6 +1095,8 @@ class TaskStatus(object):
 
 
 class TaskActiveForward(object):
+    """Task Active Forward
+    """
     def __init__(self, json):
         self.application_port = json['applicationPort']
         """:type: :class:`int`
@@ -1109,6 +1121,8 @@ class TaskActiveForward(object):
 
 
 class RunningFramesInfo(object):
+    """Running Frames Information
+    """
     def __init__(self, json):
         self.per_running_frames_info = []
         """:type: list(:class:`PerRunningFramesInfo`)
@@ -1186,6 +1200,8 @@ class RunningFramesInfo(object):
 
 
 class PerRunningFramesInfo(object):
+    """Per Running Frames Information
+    """
     def __init__(self, json):
         self.phase = json['phase']
         """:type: :class:`str`
