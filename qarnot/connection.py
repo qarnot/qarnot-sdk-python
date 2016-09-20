@@ -309,7 +309,7 @@ class Connection(object):
 
         response = self._get(get_url('task update', uuid=uuid))
         if response.status_code == 404:
-            raise MissingTaskException(response.json()['message'], uuid)
+            raise MissingTaskException(response.json()['message'])
         raise_on_error(response)
         return Task.from_json(self, response.json())
 

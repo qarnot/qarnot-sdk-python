@@ -115,7 +115,7 @@ class Task(object):
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], uuid)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
         return Task.from_json(connection, resp.json())
 
@@ -194,10 +194,11 @@ class Task(object):
         if resp.status_code == 404:
             raise disk.MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
+            print (resp.json())
             if resp.json()['message'].startswith():
                 raise MaxTaskException(resp.json()['message'])
         elif resp.status_code == 402:
-            raise NotEnoughCreditsException()
+            raise NotEnoughCreditsException(resp.json()['message'])
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
 
@@ -219,7 +220,7 @@ class Task(object):
             get_url('task abort', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         self.update(True)
@@ -237,7 +238,7 @@ class Task(object):
             get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         self.update(True)
@@ -266,7 +267,7 @@ class Task(object):
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         if purge_resources:
@@ -318,7 +319,7 @@ class Task(object):
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         self._update(resp.json())
@@ -378,7 +379,7 @@ class Task(object):
         resp = self._connection._put(get_url('task update', uuid=self._uuid), json=data)
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
 
@@ -475,7 +476,7 @@ class Task(object):
         if resp.status_code == 400:
             raise ValueError(interval)
         elif resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
 
@@ -497,7 +498,7 @@ class Task(object):
                                       json=None)
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         self.update(True)
@@ -606,7 +607,7 @@ class Task(object):
             get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
 
@@ -629,7 +630,7 @@ class Task(object):
             get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         return resp.text
@@ -654,7 +655,7 @@ class Task(object):
             get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         return resp.text
@@ -676,7 +677,7 @@ class Task(object):
             get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         return resp.text

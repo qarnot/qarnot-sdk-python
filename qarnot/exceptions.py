@@ -41,9 +41,7 @@ class UnauthorizedException(Exception):
 
 class MissingTaskException(Exception):
     """Non existent task."""
-    def __init__(self, message, name):
-        super(MissingTaskException, self).__init__(
-            "{0}: {1}".format(message, name))
+    pass
 
 
 class MaxTaskException(Exception):
@@ -53,8 +51,7 @@ class MaxTaskException(Exception):
 
 class MissingDiskException(Exception):
     """Non existing disk."""
-    def __init__(self, message):
-        super(MissingDiskException, self).__init__(message)
+    pass
 
 
 class MaxDiskException(Exception):
@@ -69,5 +66,4 @@ class NotEnoughCreditsException(Exception):
 
 class LockedDiskException(Exception):
     """Locked disk."""
-    def __init__(self, message):
-        super(LockedDiskException, self).__init__(message)
+    pass
