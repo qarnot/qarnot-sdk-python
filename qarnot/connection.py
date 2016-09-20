@@ -453,7 +453,6 @@ class Connection(object):
         raise_on_error(response)
         return Notification(response.json(), self)
 
-    @property
     def profiles(self):
         """Get list of profiles available on the cluster.
 
@@ -475,7 +474,7 @@ class Connection(object):
             profiles_list.append(Profile(response2.json()))
         return profiles_list
 
-    def get_profile(self, name):
+    def retrieve_profile(self, name):
         """Get details of a profile from its name.
 
         :rtype: :class:`Profile`
