@@ -378,7 +378,7 @@ class Disk(object):
                     self.add_link(file_.name, dup.name)
             if verbose:
                 print ("remove ", file_.name)
-                self.delete_file(file_.name)
+            self.delete_file(file_.name)
 
         remote = self.list_files()
 
