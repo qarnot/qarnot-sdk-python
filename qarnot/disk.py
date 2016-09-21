@@ -377,7 +377,7 @@ class Disk(object):
                         print("Copy", file_.name, "to", dup.name)
                     self.add_link(file_.name, dup.name)
             if verbose:
-                print ("remove ", file_.name)
+                print("remove ", file_.name)
             self.delete_file(file_.name)
 
         remote = self.list_files()
@@ -651,7 +651,7 @@ class Disk(object):
                         ]
                         progressbar = ProgressBar(widgets=widgets, max_value=total_length)
                     except Exception as e:
-                        print (str(e))
+                        print(str(e))
                         progress = None
             elif progress is False:
                 progress = None

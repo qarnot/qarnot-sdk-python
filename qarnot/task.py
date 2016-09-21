@@ -194,7 +194,6 @@ class Task(object):
         if resp.status_code == 404:
             raise disk.MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
-            print (resp.json())
             if resp.json()['message'].startswith('Maximum number of disks reached'):
                 raise MaxDiskException(resp.json()['message'])
             else:
