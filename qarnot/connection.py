@@ -374,20 +374,20 @@ class Connection(object):
         disk.create()
         return disk
 
-    def create_task(self, name, profile, framecount_or_range=1):
+    def create_task(self, name, profile, instancecount_or_range=1):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
-        :param framecount_or_range: number of frames or ranges on  which to run task. Defaults to 1.
-        :type framecount_or_range: int or str
+        :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
+        :type instancecount_or_range: int or str
 
         :rtype: :class:`~qarnot.task.Task`
         :returns: The created :class:`~qarnot.task.Task`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile, framecount_or_range)
+        return Task(self, name, profile, instancecount_or_range)
 
     def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
         """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskStateChanged`.
@@ -536,7 +536,7 @@ class UserInfo(object):
         self.max_instances = info['maxInstances']
         """:type: :class:`int`
 
-        Maximum number of frames per task."""
+        Maximum number of instances."""
 
 
 class Profile(object):

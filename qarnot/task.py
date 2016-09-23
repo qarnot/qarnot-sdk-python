@@ -42,7 +42,7 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile, framecount_or_range):
+    def __init__(self, connection, name, profile, instancecount_or_range):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -51,19 +51,19 @@ class Task(object):
         :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
 
-        :param framecount_or_range: number of frames or ranges on which to run
+        :param instancecount_or_range: number of instances or ranges on which to run
         task
-        :type framecount_or_range: int or str
+        :type instancecount_or_range: int or str
         """
         self._name = name
         self._profile = profile
 
-        if isinstance(framecount_or_range, int):
-            self._framecount = framecount_or_range
+        if isinstance(instancecount_or_range, int):
+            self._instancecount = instancecount_or_range
             self._advanced_range = None
         else:
-            self._advanced_range = framecount_or_range
-            self._framecount = 0
+            self._advanced_range = instancecount_or_range
+            self._instancecount = 0
 
         self._resource_disks = []
         self._result_disk = None
@@ -330,7 +330,7 @@ class Task(object):
         """Update this task from retrieved info."""
         self._name = json_task['name']
         self._profile = json_task['profile']
-        self._framecount = json_task.get('frameCount')
+        self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
         self._resource_disks_uuids = json_task['resourceDisks']
         if len(self._resource_disks_uuids) != len(self._resource_disks):
@@ -359,14 +359,14 @@ class Task(object):
         :param dict json_task: Dictionary representing the task
         :returns: The created :class:`~qarnot.task.Task`.
         """
-        if 'frameCount' in json_task:
-            framecount_or_range = json_task['frameCount']
+        if 'instanceCount' in json_task:
+            instancecount_or_range = json_task['instanceCount']
         else:
-            framecount_or_range = json_task['advancedRanges']
+            instancecount_or_range = json_task['advancedRanges']
         new_task = cls(connection,
                        json_task['name'],
                        json_task['profile'],
-                       framecount_or_range)
+                       instancecount_or_range)
         new_task._update(json_task)
         return new_task
 
@@ -739,10 +739,10 @@ class Task(object):
             self._profile = value
 
     @property
-    def framecount(self):
+    def instancecount(self):
         """:type: :class:`int`
 
-        Number of frames needed for the task.
+        Number of instances needed for the task.
 
         Can be set until :meth:`run` is called.
 
@@ -753,34 +753,34 @@ class Task(object):
         if self._auto_update:
             self.update()
 
-        return self._framecount
+        return self._instancecount
 
-    @framecount.setter
-    def framecount(self, value):
-        """Setter for framecount."""
+    @instancecount.setter
+    def instancecount(self, value):
+        """Setter for instancecount."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
 
         if self.advanced_range is not None:
-            raise AttributeError("Can't set framecount if advanced_range is not None")
-        self._framecount = value
+            raise AttributeError("Can't set instancecount if advanced_range is not None")
+        self._instancecount = value
 
     @property
     def advanced_range(self):
         """:type: :class:`str`
 
-        Advanced frame range selection.
+        Advanced instances range selection.
 
-        Allows to select which frames will be computed.
+        Allows to select which instances will be computed.
         Should be None or match the following extended regular expression
-        """r"""**"(\\[[0-9]+-[0-9]+\\])( \\[[0-9]+-[0-9]+\\])*"**
-        *[min-max]* will generate (max - min) frames from min to max (excluded).
+        """r"""**"([0-9]+|[0-9]+-[0-9]+)(,([0-9]+|[0-9]+-[0-9]+))+"**
+        eg: 1,3-8,9,12-19
 
         Can be set until :meth:`run` is called.
 
-        :raises AttributeError: if :attr:`framecount` is not 0 when setting this property
+        :raises AttributeError: if :attr:`instancecount` is not 0 when setting this property
 
-        .. warning:: This property is mutually exclusive with :attr:`framecount`
+        .. warning:: This property is mutually exclusive with :attr:`instancecount`
         """
         if self._auto_update:
             self.update()
@@ -790,8 +790,8 @@ class Task(object):
     @advanced_range.setter
     def advanced_range(self, value):
         """Setter for advanced_range."""
-        if self.framecount != 0:
-            raise AttributeError("Can't set advanced_range if framecount is not 0")
+        if self.instancecount != 0:
+            raise AttributeError("Can't set advanced_range if instancecount is not 0")
         self._advanced_range = value
 
     @property
@@ -942,7 +942,7 @@ class Task(object):
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
         else:
-            json_task['frameCount'] = self._framecount
+            json_task['instanceCount'] = self._instancecount
 
         if self._snapshot_whitelist is not None:
             json_task['snapshotWhitelist'] = self._snapshot_whitelist
@@ -955,11 +955,11 @@ class Task(object):
         return json_task
 
     def __str__(self):
-        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'\
+        return '{0} - {1} - {2} - InstanceCount : {3} - {4} - Resources : {5} - Results : {6}'\
             .format(self.name,
                     self._uuid,
                     self._profile,
-                    self._framecount,
+                    self._instancecount,
                     self.state,
                     (self._resource_disks_uuids if self._resource_disks is not None else ""),
                     (self._result_disk.uuid if self._result_disk is not None else ""))
@@ -1066,25 +1066,25 @@ class TaskStatus(object):
         self.succeeded_range = json['succeededRange']
         """:type: :class:`str`
 
-        Successful frames range."""
+        Successful instances range."""
 
         self.executed_range = json['executedRange']
         """:type: :class:`str`
 
-        Executed frames range."""
+        Executed instances range."""
 
         self.failed_range = json['failedRange']
         """:type: :class:`str`
 
-        Failed frames range."""
+        Failed instances range."""
 
-        self.running_frames_info = None
-        """:type: :class:`RunningFramesInfo`
+        self.running_instances_info = None
+        """:type: :class:`RunningInstancesInfo`
 
-        Running frames information."""
+        Running instances information."""
 
-        if 'runningFramesInfo' in json and json['runningFramesInfo'] is not None:
-            self.running_frames_info = RunningFramesInfo(json['runningFramesInfo'])
+        if 'runningInstancesInfo' in json and json['runningInstancesInfo'] is not None:
+            self.running_instances_info = RunningInstancesInfo(json['runningInstancesInfo'])
 
     def __str__(self):
         if sys.version_info > (3, 0):
@@ -1119,17 +1119,17 @@ class TaskActiveForward(object):
                 return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
 
 
-class RunningFramesInfo(object):
-    """Running Frames Information
+class RunningInstancesInfo(object):
+    """Running Instances Information
     """
     def __init__(self, json):
-        self.per_running_frames_info = []
-        """:type: list(:class:`PerRunningFramesInfo`)
+        self.per_running_instance_info = []
+        """:type: list(:class:`PerRunningInstancesInfo`)
 
-        Per running frames information."""
+        Per running instances information."""
 
-        if 'perRunningFramesInfo' in json and json['perRunningFramesInfo'] is not None:
-            self.per_running_frames_info = [PerRunningFramesInfo(x) for x in json['perRunningFramesInfo']]
+        if 'perRunningInstanceInfo' in json and json['perRunningInstanceInfo'] is not None:
+            self.per_running_instance_info = [PerRunningInstanceInfo(x) for x in json['perRunningInstanceInfo']]
 
         self.timestamp = json['timestamp']
         """:type: :class:`str`
@@ -1198,19 +1198,19 @@ class RunningFramesInfo(object):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
 
 
-class PerRunningFramesInfo(object):
-    """Per Running Frames Information
+class PerRunningInstanceInfo(object):
+    """Per Running Instance Information
     """
     def __init__(self, json):
         self.phase = json['phase']
         """:type: :class:`str`
 
-        Frame phase."""
+        Instance phase."""
 
-        self.frame = json['frame']
+        self.instance_id = json['instanceId']
         """:type: :class:`int`
 
-        Frame number."""
+        Instance number."""
 
         self.max_frequency_ghz = json['maxFrequencyGHz']
         """:type: :class:`float`
@@ -1255,17 +1255,17 @@ class PerRunningFramesInfo(object):
         self.progress = json['progress']
         """:type: :class:`float`
 
-        Frame progress."""
+        Instance progress."""
 
         self.execution_time_sec = json['executionTimeSec']
         """:type: :class:`float`
 
-        Frame execution time in seconds."""
+        Instance execution time in seconds."""
 
         self.execution_time_ghz = json['executionTimeGHz']
         """:type: :class:`float`
 
-        Frame execution time GHz"""
+        Instance execution time GHz"""
 
         self.cpu_model = json['cpuModel']
         """:type: :class:`str`
