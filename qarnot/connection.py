@@ -374,12 +374,12 @@ class Connection(object):
         disk.create()
         return disk
 
-    def create_task(self, name, profile, framecount_or_range):
+    def create_task(self, name, profile, framecount_or_range=1):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
-        :param framecount_or_range: number of frames or ranges on  which to run task
+        :param framecount_or_range: number of frames or ranges on  which to run task. Defaults to 1.
         :type framecount_or_range: int or str
 
         :rtype: :class:`~qarnot.task.Task`
