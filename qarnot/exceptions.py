@@ -34,9 +34,7 @@ class QarnotGenericException(Exception):
 
 class UnauthorizedException(Exception):
     """Authorization given is not valid."""
-    def __init__(self, auth):
-        super(UnauthorizedException, self).__init__(
-            "invalid credentials: {0}".format(auth))
+    pass
 
 
 class MissingTaskException(Exception):

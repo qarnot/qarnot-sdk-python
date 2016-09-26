@@ -23,6 +23,7 @@ from qarnot.exceptions import *
 from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
 import sys
+import warnings
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -38,16 +39,15 @@ else:
 class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
     """
-    def __init__(self, conf):
+    def __init__(self, fileconf=None, client_token=None, cluster_url=None, cluster_unsafe=False, cluster_timeout=None):
         """Create a connection to a cluster with given config file or
-        dictionary.
+        options.
 
-        :param conf: path to a qarnot configuration file or dictionary
-          containing following keys:
+        :param fileconf/conf: path to a qarnot configuration file or configuration options:
         * cluster_url (optional: defaults to https://api.qarnot.com)
         * cluster_unsafe   (optional)
         * cluster_timeout  (optional)
-        * client_auth
+        * client_token
 
         Configuration sample:
 
@@ -62,39 +62,57 @@ class Connection(object):
            timeout=30
            [client]
            # auth string of the client
-           auth=login
+           token=login
 
         """
         self._http = requests.session()
 
-        if isinstance(conf, dict):
-            if conf.get('cluster_url'):
-                self.cluster = conf.get('cluster_url')
-            else:
-                self.cluster = "https://api.qarnot.com"
-            self._http.headers.update(
-                {"Authorization": conf.get('client_auth')})
-            self.auth = conf.get('client_auth')
-            self.timeout = conf.get('cluster_timeout')
-            if conf.get('cluster_unsafe'):
-                self._http.verify = False
-        else:
-            cfg = config.ConfigParser()
-            with open(conf) as cfgfile:
-                cfg.readfp(cfgfile)
-
-                self.cluster = cfg.get('cluster', 'url')
-                self._http.headers.update(
-                    {"Authorization": cfg.get('client', 'auth')})
-                self.auth = cfg.get('client', 'auth')
-                self.timeout = None
-                if cfg.has_option('cluster', 'timeout'):
-                    self.timeout = cfg.getint('cluster', 'timeout')
-
-                if cfg.has_option('cluster', 'unsafe') \
-                   and cfg.getboolean('cluster', 'unsafe'):
+        if fileconf is not None:
+            if isinstance(fileconf, dict):
+                warnings.warn("Dict config should be replaced by constructor explicit arguments.")
+                self.cluster = None
+                if fileconf.get('cluster_url'):
+                    self.cluster = fileconf.get('cluster_url')
+                auth = fileconf.get('client_auth')
+                self.timeout = fileconf.get('cluster_timeout')
+                if fileconf.get('cluster_unsafe'):
                     self._http.verify = False
-        self._get('/')
+            else:
+                cfg = config.ConfigParser()
+                with open(fileconf) as cfgfile:
+                    cfg.readfp(cfgfile)
+
+                    self.cluster = None
+                    if cfg.has_option('cluster', 'url'):
+                        self.cluster = cfg.get('cluster', 'url')
+
+                    if cfg.has_option('client', 'token'):
+                        auth = cfg.get('client', 'token')
+                    elif cfg.has_option('client', 'auth'):
+                        warnings.warn('auth is deprecated, use token instead.')
+                        auth = cfg.get('client', 'auth')
+                    else:
+                        auth = None
+                    self.timeout = None
+                    if cfg.has_option('cluster', 'timeout'):
+                        self.timeout = cfg.getint('cluster', 'timeout')
+                    if cfg.has_option('cluster', 'unsafe') \
+                       and cfg.getboolean('cluster', 'unsafe'):
+                        self._http.verify = False
+        else:
+            self.cluster = cluster_url
+            self.timeout = cluster_timeout
+            self._http.verify = not cluster_unsafe
+            auth = client_token
+
+        if auth is None:
+            raise QarnotGenericException("Token is mandatory.")
+        self._http.headers.update({"Authorization": auth})
+
+        if self.cluster is None:
+            self.cluster = "https://api.qarnot.com"
+        resp = self._get('/')
+        raise_on_error(resp)
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
@@ -115,9 +133,10 @@ class Connection(object):
                 ret = self._http.get(self.cluster + url, timeout=self.timeout,
                                      **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
+
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
                     pass
                 else:
@@ -148,7 +167,7 @@ class Connection(object):
                 ret = self._http.patch(self.cluster + url,
                                        timeout=self.timeout, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -181,7 +200,7 @@ class Connection(object):
                 ret = self._http.post(self.cluster + url,
                                       timeout=self.timeout, *args, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -209,7 +228,7 @@ class Connection(object):
                 ret = self._http.delete(self.cluster + url,
                                         timeout=self.timeout, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -229,7 +248,7 @@ class Connection(object):
                 ret = self._http.put(self.cluster + url,
                                      timeout=self.timeout, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
