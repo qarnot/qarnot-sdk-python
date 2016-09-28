@@ -996,7 +996,7 @@ class Error(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 # Status
@@ -1091,7 +1091,7 @@ class TaskStatus(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 class TaskActiveForward(object):
@@ -1117,7 +1117,7 @@ class TaskActiveForward(object):
             if sys.version_info > (3, 0):
                 return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
             else:
-                return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+                return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 class RunningInstancesInfo(object):
@@ -1196,7 +1196,7 @@ class RunningInstancesInfo(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 class PerRunningInstanceInfo(object):
@@ -1285,4 +1285,4 @@ class PerRunningInstanceInfo(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
