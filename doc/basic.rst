@@ -12,10 +12,10 @@ Here is a basic one, check :class:`~qarnot.connection.Connection` for details.
 
    [cluster]
    # url of the REST API
-   url=https://rest01.qarnot.net
+   url=https://api.qarnot.com
    [client]
    # auth string of the client
-   auth=token
+   token=token
 
 Script
 ------
@@ -26,23 +26,9 @@ And here is a little sample to start a task running your `myscript.py` Python sc
    :linenos:
 
    import qarnot
-   import tempfile
 
-    qarnot = qarnot.Connection('qarnot.conf')
-    task = qarnot.create_task("example task", "python", 1)
-    disk = qarnot.create_disk("my files")
-    disk.add_file("myscript.py")
-    task.resources = [disk]
-    task.constants['PYTHON_SCRIPT'] = "myscript.py"
-
-    print "Submit task"
-    task.submit()
-
-    print ("Wait task results")
-    while not task.wait(10):
-        print task.fresh_stdout()
-
-    outdir = tempfile.mkdtemp()
-    print "Download results to " + outdir
-    task.download_results(outdir)
-
+    conn = qarnot.connection.Connection('qarnot.conf')
+    task = conn.create_task('hello world', 'ubuntu')
+    task.constants['DOCKER_CMD'] = 'echo hello world from ${FRAME_ID}!'
+    task.run()
+    print(task.stdout())
