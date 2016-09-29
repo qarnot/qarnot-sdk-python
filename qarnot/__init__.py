@@ -19,7 +19,7 @@
 from qarnot.exceptions import QarnotGenericException
 
 
-__all__ = ["task", "connection", "disk", "notification"]
+__all__ = ["task", "connection", "disk"]
 
 
 def raise_on_error(response):
@@ -54,9 +54,6 @@ def get_url(key, **kwargs):
         'task stderr': '/tasks/{uuid}/stderr',  # GET -> task stderr
         'task abort': '/tasks/{uuid}/abort',  # GET -> task stderr
         'user': '/info',  # GET -> user info
-        'notification': '/notifications',  # GET -> notifications list; POST -> add notification
-        'notification update': '/notifications/{uuid}',
-        # GET -> notification info; DELETE -> remove notification; PUT -> update
         'profiles': '/profiles',  # GET -> profiles list
         'profile details': '/profiles/{profile}'
         # GET -> profile details

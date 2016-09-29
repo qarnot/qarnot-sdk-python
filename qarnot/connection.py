@@ -20,7 +20,6 @@ from qarnot import get_url, raise_on_error
 from qarnot.disk import Disk
 from qarnot.task import Task
 from qarnot.exceptions import *
-from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
 import requests
 import sys
 import warnings
@@ -407,70 +406,6 @@ class Connection(object):
         .. note:: See available profiles with :meth:`profiles`.
         """
         return Task(self, name, profile, instancecount_or_range)
-
-    def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
-        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskStateChanged`.
-
-        :param str destination: e-mail address
-        :param str filterkey: key to watch on tasks
-        :param str filtervalue: regex to match for the filter key
-        :param str template: (optional) Template for the notification
-        :param str toregex: (optional) Regex to match the "To" value on a state change, default to ".*"
-        :param str fromregex: (optional) Regex to match the "From" value on a state change, default to ".*"
-        :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
-        """
-        nfilter = TaskStateChanged(template, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
-        return Notification._create(self, nfilter)
-
-    def create_task_created_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskCreated`.
-
-        :param str destination: e-mail address
-        :param str filterkey: key to watch on tasks
-        :param str filtervalue: regex to match for the filter key
-        :param str template: (optional) Template for the notification
-        """
-        nfilter = TaskCreated(template, destination, filterkey, filtervalue)
-        return Notification._create(self, nfilter)
-
-    def create_task_ended_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskEnded`.
-
-        :param str destination: e-mail address
-        :param str filterkey: key to watch on tasks
-        :param str filtervalue: regex to match for the filter key
-        :param str template: (optionnal) Template for the notification
-        """
-        nfilter = TaskEnded(template, destination, filterkey, filtervalue)
-        return Notification._create(self, nfilter)
-
-    def notifications(self):
-        """Get the list of notifications for the user
-
-        :rtype: List of :class:~qarnot.task.Notification`.
-        :returns: List of all notifications belonging to the user
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
-        """
-        response = self._get(get_url('notification'))
-        raise_on_error(response)
-        notifications = [Notification(data, self) for data in response.json()]
-        return notifications
-
-    def retrieve_notification(self, uuid):
-        """Retrieve a :class:~qarnot.notification.Notification` from its uuid
-
-        :param str uuid: Notification id
-        :rtype: :class:`~qapi.notification.Notification`
-        :returns: Existing notification defined by the given uuid
-
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
-        """
-        url = get_url('notification update', uuid=uuid)
-        response = self._get(url)
-        raise_on_error(response)
-        return Notification(response.json(), self)
 
     def profiles(self):
         """Get list of profiles available on the cluster.

@@ -1,5 +1,5 @@
 SDK Documentation
-================
+=================
 
 .. toctree::
    :maxdepth: 1
@@ -7,5 +7,4 @@ SDK Documentation
    api/connection
    api/task
    api/disk
-   api/notification
    api/exception
