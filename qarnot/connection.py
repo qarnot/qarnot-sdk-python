@@ -57,8 +57,6 @@ class Connection(object):
            url=https://localhost
            # No SSL verification ?
            unsafe=False
-           # timeout put on every GET/POST
-           timeout=30
            [client]
            # auth string of the client
            token=login
