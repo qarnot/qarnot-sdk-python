@@ -7,4 +7,4 @@ SDK Documentation
    api/connection
    api/task
    api/disk
-   api/exception
+   api/exceptions

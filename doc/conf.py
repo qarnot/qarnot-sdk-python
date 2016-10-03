@@ -84,7 +84,15 @@ exclude_patterns = ['_build']
 #default_role = None
 
 # Warn at compile time if a reference cannot be found
-nitpicky = 'True'
+nitpicky = True
+
+nitpick_ignore = [("py:obj", "str"), ("py:obj", "bool"), ("py:obj", "float"), ("py:obj", "int"), ("py:obj", "dict"),
+("py:class", "str"), ("py:class", "bool"), ("py:class", "datetime"), ("py:class", "float"), ("py:class", "int"),
+                  ("py:class", "object"),
+                  ("py:exc", "ValueError"), ("py:exc", "KeyError"), ("py:exc", "IOError"), ("py:exc", "AttributeError"),
+                  ("py:exc", "TypeError"), ("py:obj", "str or dict"),
+                  ("py:obj", "int or str"), ("py:obj", "str or File"), ("py:obj", "str or FileInfo"),
+                  ("py:obj", "bool or function(float, float, str)"), ("py:class", "exceptions.Exception")]
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True

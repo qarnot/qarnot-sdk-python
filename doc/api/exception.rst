@@ -1,3 +1,0 @@
-Exception
-=========
-.. autoexception:: qarnot.QarnotGenericException

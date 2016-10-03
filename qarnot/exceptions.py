@@ -33,7 +33,7 @@ class QarnotGenericException(Exception):
 
 
 class UnauthorizedException(Exception):
-    """Authorization given is not valid."""
+    """Invalid token."""
     pass
 
 

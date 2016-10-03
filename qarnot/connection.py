@@ -42,11 +42,12 @@ class Connection(object):
         """Create a connection to a cluster with given config file or
         options.
 
-        :param fileconf/conf: path to a qarnot configuration file or configuration options:
-        * cluster_url (optional: defaults to https://api.qarnot.com)
-        * cluster_unsafe   (optional)
-        * cluster_timeout  (optional)
-        * client_token
+        :param fileconf: path to a qarnot configuration file or a corresponding dict
+        :type fileconf: str or dict
+        :param str client_token: API Token
+        :param str cluster_url: (optional) Cluster url.
+        :param bool cluster_unsafe: (optional) Disable certificate check
+        :param int cluster_timeout: (optional) Timeout value for every request
 
         Configuration sample:
 
@@ -120,7 +121,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
            :func:`requests.Session.get`.
@@ -149,7 +150,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
@@ -182,7 +183,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
@@ -214,7 +215,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
           :attr:`requests.Session.delete()`.
@@ -260,8 +261,8 @@ class Connection(object):
         :rtype: :class:`UserInfo`
         :returns: Requested information.
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         resp = self._get(get_url('user'))
         raise_on_error(resp)
@@ -282,8 +283,8 @@ class Connection(object):
         :returns: Disks on the cluster owned by the user.
 
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         return self._disks_get(global_=False)
 
@@ -294,8 +295,8 @@ class Connection(object):
         :returns: Disks on the cluster available for every user.
 
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         return self._disks_get(global_=True)
 
@@ -305,8 +306,8 @@ class Connection(object):
         :rtype: List of :class:`~qarnot.task.Task`.
         :returns: Tasks stored on the cluster owned by the user.
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
@@ -316,11 +317,11 @@ class Connection(object):
         """Retrieve a :class:`qarnot.task.Task` from its uuid
 
         :param str uuid: Desired task uuid
-        :rtype: :class:`~qapi.task.Task`
+        :rtype: :class:`~qarnot.task.Task`
         :returns: Existing task defined by the given uuid
-        :raises qarnot.task.MissingTaskException: task does not exist
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=uuid))
@@ -336,12 +337,13 @@ class Connection(object):
 
 
         :param str description: a short description of the disk
-        :rtype: :class:`~qapi.disk.Disk`
+        :rtype: :class:`~qarnot.disk.Disk`
         :returns: Existing or newly created disk defined by the given description
         :raises ValueError: no such disk
-        :raises qarnot.disk.MissingDiskException: disk does not exist
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.MaxDiskException: disk quota reached
+        :raises qarnot.exceptions.MissingDiskException: disk does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         disks = self._disks_get(global_=False)
@@ -359,12 +361,12 @@ class Connection(object):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
 
         :param str uuid: Desired disk uuid
-        :rtype: :class:`~qapi.disk.Disk`
+        :rtype: :class:`~qarnot.disk.Disk`
         :returns: Existing disk defined by the given uuid
         :raises ValueError: no such disk
-        :raises qarnot.disk.MissingDiskException: disk does not exist
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.MissingDiskException: disk does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=uuid))
@@ -383,8 +385,9 @@ class Connection(object):
         :rtype: :class:`qarnot.disk.Disk`
         :returns: The created :class:`~qarnot.disk.Disk`.
 
-        :raises qarnot.QarnotGenericException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MaxDiskException: disk quota reached
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         """
         disk = Disk(self, description, lock, global_disk)
         disk.create()
@@ -397,7 +400,6 @@ class Connection(object):
         :param str profile: which profile to use with this task
         :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
         :type instancecount_or_range: int or str
-
         :rtype: :class:`~qarnot.task.Task`
         :returns: The created :class:`~qarnot.task.Task`.
 
@@ -410,8 +412,8 @@ class Connection(object):
 
         :rtype: List of :class:`Profile`
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profiles')
@@ -431,8 +433,8 @@ class Connection(object):
 
         :rtype: :class:`Profile`
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profile details', profile=name)
