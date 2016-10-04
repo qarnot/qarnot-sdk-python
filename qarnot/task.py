@@ -569,6 +569,11 @@ class Task(object):
 
         return self._result_disk
 
+    @results.setter
+    def results(self, value):
+        """ This is a setter."""
+        self._result_disk = value
+
     def download_results(self, output_dir, progress=None):
         """Download results in given *output_dir*.
 
@@ -942,6 +947,9 @@ class Task(object):
             'constants': const_list,
             'constraints': constr_list
         }
+
+        if self._result_disk is not None:
+            json_task['resultDisk'] = self._result_disk.uuid
 
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
