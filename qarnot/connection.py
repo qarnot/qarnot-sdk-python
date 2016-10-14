@@ -16,12 +16,13 @@
 # limitations under the License.
 
 
-from qarnot import get_url, raise_on_error, QarnotException
-from qarnot.disk import Disk, MissingDiskException
-from qarnot.task import Task, MissingTaskException
-from qarnot.notification import Notification, TaskCreated, TaskEnded, TaskStateChanged
+from qarnot import get_url, raise_on_error
+from qarnot.disk import Disk
+from qarnot.task import Task
+from qarnot.exceptions import *
 import requests
 import sys
+import warnings
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -37,16 +38,16 @@ else:
 class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
     """
-    def __init__(self, conf):
+    def __init__(self, fileconf=None, client_token=None, cluster_url=None, cluster_unsafe=False, cluster_timeout=None):
         """Create a connection to a cluster with given config file or
-        dictionary.
+        options.
 
-        :param conf: path to a qarnot configuration file or dictionary
-          containing following keys:
-        * cluster_url (optional: defaults to https://api.qarnot.com)
-        * cluster_unsafe   (optional)
-        * cluster_timeout  (optional)
-        * client_auth
+        :param fileconf: path to a qarnot configuration file or a corresponding dict
+        :type fileconf: str or dict
+        :param str client_token: API Token
+        :param str cluster_url: (optional) Cluster url.
+        :param bool cluster_unsafe: (optional) Disable certificate check
+        :param int cluster_timeout: (optional) Timeout value for every request
 
         Configuration sample:
 
@@ -57,43 +58,59 @@ class Connection(object):
            url=https://localhost
            # No SSL verification ?
            unsafe=False
-           # timeout put on every GET/POST
-           timeout=30
            [client]
            # auth string of the client
-           auth=login
+           token=login
 
         """
         self._http = requests.session()
 
-        if isinstance(conf, dict):
-            if conf.get('cluster_url'):
-                self.cluster = conf.get('cluster_url')
-            else:
-                self.cluster = "https://api.qarnot.com"
-            self._http.headers.update(
-                {"Authorization": conf.get('client_auth')})
-            self.auth = conf.get('client_auth')
-            self.timeout = conf.get('cluster_timeout')
-            if conf.get('cluster_unsafe'):
-                self._http.verify = False
-        else:
-            cfg = config.ConfigParser()
-            with open(conf) as cfgfile:
-                cfg.readfp(cfgfile)
-
-                self.cluster = cfg.get('cluster', 'url')
-                self._http.headers.update(
-                    {"Authorization": cfg.get('client', 'auth')})
-                self.auth = cfg.get('client', 'auth')
-                self.timeout = None
-                if cfg.has_option('cluster', 'timeout'):
-                    self.timeout = cfg.getint('cluster', 'timeout')
-
-                if cfg.has_option('cluster', 'unsafe') \
-                   and cfg.getboolean('cluster', 'unsafe'):
+        if fileconf is not None:
+            if isinstance(fileconf, dict):
+                warnings.warn("Dict config should be replaced by constructor explicit arguments.")
+                self.cluster = None
+                if fileconf.get('cluster_url'):
+                    self.cluster = fileconf.get('cluster_url')
+                auth = fileconf.get('client_auth')
+                self.timeout = fileconf.get('cluster_timeout')
+                if fileconf.get('cluster_unsafe'):
                     self._http.verify = False
-        self._get('/')
+            else:
+                cfg = config.ConfigParser()
+                with open(fileconf) as cfgfile:
+                    cfg.readfp(cfgfile)
+
+                    self.cluster = None
+                    if cfg.has_option('cluster', 'url'):
+                        self.cluster = cfg.get('cluster', 'url')
+
+                    if cfg.has_option('client', 'token'):
+                        auth = cfg.get('client', 'token')
+                    elif cfg.has_option('client', 'auth'):
+                        warnings.warn('auth is deprecated, use token instead.')
+                        auth = cfg.get('client', 'auth')
+                    else:
+                        auth = None
+                    self.timeout = None
+                    if cfg.has_option('cluster', 'timeout'):
+                        self.timeout = cfg.getint('cluster', 'timeout')
+                    if cfg.has_option('cluster', 'unsafe') \
+                       and cfg.getboolean('cluster', 'unsafe'):
+                        self._http.verify = False
+        else:
+            self.cluster = cluster_url
+            self.timeout = cluster_timeout
+            self._http.verify = not cluster_unsafe
+            auth = client_token
+
+        if auth is None:
+            raise QarnotGenericException("Token is mandatory.")
+        self._http.headers.update({"Authorization": auth})
+
+        if self.cluster is None:
+            self.cluster = "https://api.qarnot.com"
+        resp = self._get('/')
+        raise_on_error(resp)
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
@@ -104,7 +121,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
            :func:`requests.Session.get`.
@@ -114,9 +131,10 @@ class Connection(object):
                 ret = self._http.get(self.cluster + url, timeout=self.timeout,
                                      **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
+
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
                     pass
                 else:
@@ -132,7 +150,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
@@ -147,7 +165,7 @@ class Connection(object):
                 ret = self._http.patch(self.cluster + url,
                                        timeout=self.timeout, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -165,7 +183,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Session.post()`.
@@ -180,7 +198,7 @@ class Connection(object):
                 ret = self._http.post(self.cluster + url,
                                       timeout=self.timeout, *args, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -197,7 +215,7 @@ class Connection(object):
         :rtype: :class:`requests.Response`
         :returns: The response to the given request.
 
-        :raises UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
           :attr:`requests.Session.delete()`.
@@ -208,7 +226,7 @@ class Connection(object):
                 ret = self._http.delete(self.cluster + url,
                                         timeout=self.timeout, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -228,7 +246,7 @@ class Connection(object):
                 ret = self._http.put(self.cluster + url,
                                      timeout=self.timeout, **kwargs)
                 if ret.status_code == 401:
-                    raise UnauthorizedException(self.auth)
+                    raise UnauthorizedException()
                 return ret
             except ConnectionError as exception:
                 if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
@@ -243,20 +261,13 @@ class Connection(object):
         :rtype: :class:`UserInfo`
         :returns: Requested information.
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         resp = self._get(get_url('user'))
         raise_on_error(resp)
         ret = resp.json()
         return UserInfo(ret)
-
-    def _disks_get(self, global_):
-        url_name = 'global disk folder' if global_ else 'disk folder'
-        response = self._get(get_url(url_name))
-        raise_on_error(response)
-        disks = [Disk.from_json(self, data) for data in response.json()]
-        return disks
 
     def disks(self):
         """Get the list of disks on this cluster for this user.
@@ -265,22 +276,13 @@ class Connection(object):
         :returns: Disks on the cluster owned by the user.
 
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
-        return self._disks_get(global_=False)
-
-    def global_disks(self):
-        """Get the list of globally available disks on this cluster.
-
-        :rtype: List of :class:`~qarnot.disk.Disk`.
-        :returns: Disks on the cluster available for every user.
-
-
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
-        """
-        return self._disks_get(global_=True)
+        response = self._get(get_url('disk folder'))
+        raise_on_error(response)
+        disks = [Disk.from_json(self, data) for data in response.json()]
+        return disks
 
     def tasks(self):
         """Get the list of tasks stored on this cluster for this user.
@@ -288,8 +290,8 @@ class Connection(object):
         :rtype: List of :class:`~qarnot.task.Task`.
         :returns: Tasks stored on the cluster owned by the user.
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         response = self._get(get_url('tasks'))
         raise_on_error(response)
@@ -299,16 +301,16 @@ class Connection(object):
         """Retrieve a :class:`qarnot.task.Task` from its uuid
 
         :param str uuid: Desired task uuid
-        :rtype: :class:`~qapi.task.Task`
+        :rtype: :class:`~qarnot.task.Task`
         :returns: Existing task defined by the given uuid
-        :raises qarnot.task.MissingTaskException: task does not exist
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         response = self._get(get_url('task update', uuid=uuid))
         if response.status_code == 404:
-            raise MissingTaskException(response.json()['message'], uuid)
+            raise MissingTaskException(response.json()['message'])
         raise_on_error(response)
         return Task.from_json(self, response.json())
 
@@ -319,15 +321,16 @@ class Connection(object):
 
 
         :param str description: a short description of the disk
-        :rtype: :class:`~qapi.disk.Disk`
+        :rtype: :class:`~qarnot.disk.Disk`
         :returns: Existing or newly created disk defined by the given description
         :raises ValueError: no such disk
-        :raises qarnot.disk.MissingDiskException: disk does not exist
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.MaxDiskException: disk quota reached
+        :raises qarnot.exceptions.MissingDiskException: disk does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
-        disks = self._disks_get(global_=False)
+        disks = self.disks()
 
         matches = [d for d in disks if d.description == description]
         matchcount = len(matches)
@@ -336,18 +339,18 @@ class Connection(object):
         elif matchcount == 1:
             return matches[0]
         else:
-            raise QarnotException("No unique match for given description.")
+            raise QarnotGenericException("No unique match for given description.")
 
     def retrieve_disk(self, uuid):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
 
         :param str uuid: Desired disk uuid
-        :rtype: :class:`~qapi.disk.Disk`
+        :rtype: :class:`~qarnot.disk.Disk`
         :returns: Existing disk defined by the given uuid
         :raises ValueError: no such disk
-        :raises qarnot.disk.MissingDiskException: disk does not exist
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.MissingDiskException: disk does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         response = self._get(get_url('disk info', name=uuid))
@@ -356,110 +359,45 @@ class Connection(object):
         raise_on_error(response)
         return Disk.from_json(self, response.json())
 
-    def create_disk(self, description, lock=False,
-                    global_disk=False):
+    def create_disk(self, description, lock=False, tags=None):
         """Create a new :class:`~qarnot.disk.Disk`.
 
         :param str description: a short description of the disk
         :param bool lock: prevents the disk to be removed accidentally
+        :param list(str) tags: custom tags
 
         :rtype: :class:`qarnot.disk.Disk`
         :returns: The created :class:`~qarnot.disk.Disk`.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MaxDiskException: disk quota reached
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         """
-        disk = Disk(self, description, lock, global_disk)
+        disk = Disk(self, description, lock=lock, tags=tags)
         disk.create()
         return disk
 
-    def create_task(self, name, profile, framecount_or_range):
+    def create_task(self, name, profile, instancecount_or_range=1):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
         :param str profile: which profile to use with this task
-        :param framecount_or_range: number of frames or ranges on  which to run task
-        :type framecount_or_range: int or str
-
+        :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
+        :type instancecount_or_range: int or str
         :rtype: :class:`~qarnot.task.Task`
         :returns: The created :class:`~qarnot.task.Task`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile, framecount_or_range)
+        return Task(self, name, profile, instancecount_or_range)
 
-    def create_task_state_changed_notification(self, destination, filterkey, filtervalue, template=None, toregex=None, fromregex=None, stateregex=None):
-        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskStateChanged`.
-
-        :param str destination: e-mail address
-        :param str filterkey: key to watch on tasks
-        :param str filtervalue: regex to match for the filter key
-        :param str template: (optional) Template for the notification
-        :param str toregex: (optional) Regex to match the "To" value on a state change, default to ".*"
-        :param str fromregex: (optional) Regex to match the "From" value on a state change, default to ".*"
-        :param str stateregex: (optional) Regex to match the "From" or "To" value on a state change, default to ".*"
-        """
-        nfilter = TaskStateChanged(template, destination, filterkey, filtervalue, toregex, fromregex, stateregex)
-        return Notification._create(self, nfilter)
-
-    def create_task_created_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskCreated`.
-
-        :param str destination: e-mail address
-        :param str filterkey: key to watch on tasks
-        :param str filtervalue: regex to match for the filter key
-        :param str template: (optional) Template for the notification
-        """
-        nfilter = TaskCreated(template, destination, filterkey, filtervalue)
-        return Notification._create(self, nfilter)
-
-    def create_task_ended_notification(self, destination, filterkey, filtervalue, template=None):
-        """Create a new :class:`qarnot.notification.Notification` with a filter of type :class:`qarnot.notification.TaskEnded`.
-
-        :param str destination: e-mail address
-        :param str filterkey: key to watch on tasks
-        :param str filtervalue: regex to match for the filter key
-        :param str template: (optionnal) Template for the notification
-        """
-        nfilter = TaskEnded(template, destination, filterkey, filtervalue)
-        return Notification._create(self, nfilter)
-
-    def notifications(self):
-        """Get the list of notifications for the user
-
-        :rtype: List of :class:~qarnot.task.Notification`.
-        :returns: List of all notifications belonging to the user
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
-        """
-        response = self._get(get_url('notification'))
-        raise_on_error(response)
-        notifications = [Notification(data, self) for data in response.json()]
-        return notifications
-
-    def retrieve_notification(self, uuid):
-        """Retrieve a :class:~qarnot.notification.Notification` from its uuid
-
-        :param str uuid: Notification id
-        :rtype: :class:`~qapi.notification.Notification`
-        :returns: Existing notification defined by the given uuid
-
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
-        """
-        url = get_url('notification update', uuid=uuid)
-        response = self._get(url)
-        raise_on_error(response)
-        return Notification(response.json(), self)
-
-    @property
     def profiles(self):
         """Get list of profiles available on the cluster.
 
         :rtype: List of :class:`Profile`
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profiles')
@@ -474,20 +412,20 @@ class Connection(object):
             profiles_list.append(Profile(response2.json()))
         return profiles_list
 
-    def get_profile(self, name):
+    def retrieve_profile(self, name):
         """Get details of a profile from its name.
 
         :rtype: :class:`Profile`
 
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.QarnotException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profile details', profile=name)
         response = self._get(url)
         raise_on_error(response)
         if response.status_code == 404:
-            raise QarnotException(response.json()['message'])
+            raise QarnotGenericException(response.json()['message'])
         return Profile(response.json())
 
 
@@ -536,7 +474,7 @@ class UserInfo(object):
         self.max_instances = info['maxInstances']
         """:type: :class:`int`
 
-        Maximum number of frames per task."""
+        Maximum number of instances."""
 
 
 class Profile(object):
@@ -555,14 +493,3 @@ class Profile(object):
 
     def __repr__(self):
         return 'Profile(name=%s, constants=%r}' % (self.name, self.constants)
-
-
-##############
-# Exceptions #
-##############
-
-class UnauthorizedException(Exception):
-    """Authorization given is not valid."""
-    def __init__(self, auth):
-        super(UnauthorizedException, self).__init__(
-            "invalid credentials : {0}".format(auth))

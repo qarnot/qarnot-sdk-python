@@ -16,23 +16,20 @@
 # limitations under the License.
 
 
-__all__ = ["task", "connection", "disk", "notification"]
+from qarnot.exceptions import QarnotGenericException
 
 
-class QarnotException(Exception):
-    """General Connection exception"""
-    def __init__(self, msg):
-        super(QarnotException, self).__init__("Error : {0}".format(msg))
+__all__ = ["task", "connection", "disk"]
 
 
 def raise_on_error(response):
     if response.status_code == 503:
-        raise QarnotException("Service Unavailable")
+        raise QarnotGenericException("Service Unavailable")
     if response.status_code != 200:
         try:
-            raise QarnotException(response.json()['message'])
+            raise QarnotGenericException(response.json()['message'])
         except ValueError:
-            raise QarnotException(response.text)
+            raise QarnotGenericException(response.text)
 
 
 def get_url(key, **kwargs):
@@ -40,12 +37,12 @@ def get_url(key, **kwargs):
     """
     urls = {
         'disk folder': '/disks',  # GET -> list; POST -> add
-        'global disk folder': '/disks/global',  # GET -> list
         'disk force': '/disks/force',  # POST -> force add
         'disk info': '/disks/{name}',  # DELETE -> remove; PUT -> update
         'get disk': '/disks/archive/{name}.{ext}',  # GET-> disk archive
         'tree disk': '/disks/tree/{name}',  # GET -> ls on the disk
         'link disk': '/disks/link/{name}',  # POST -> create links
+        'move disk': '/disks/move/{name}',  # POST -> create links
         'ls disk': '/disks/list/{name}/{path}',  # GET -> ls on the dir {path}
         'update file': '/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file; PUT -> update file settings
         'tasks': '/tasks',  # GET -> running tasks; POST -> submit task
@@ -57,9 +54,6 @@ def get_url(key, **kwargs):
         'task stderr': '/tasks/{uuid}/stderr',  # GET -> task stderr
         'task abort': '/tasks/{uuid}/abort',  # GET -> task stderr
         'user': '/info',  # GET -> user info
-        'notification': '/notifications',  # GET -> notifications list; POST -> add notification
-        'notification update': '/notifications/{uuid}',
-        # GET -> notification info; DELETE -> remove notification; PUT -> update
         'profiles': '/profiles',  # GET -> profiles list
         'profile details': '/profiles/{profile}'
         # GET -> profile details

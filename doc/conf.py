@@ -84,7 +84,15 @@ exclude_patterns = ['_build']
 #default_role = None
 
 # Warn at compile time if a reference cannot be found
-nitpicky = 'True'
+nitpicky = True
+
+nitpick_ignore = [("py:obj", "str"), ("py:obj", "bool"), ("py:obj", "float"), ("py:obj", "int"), ("py:obj", "dict"),
+("py:class", "str"), ("py:class", "bool"), ("py:class", "datetime"), ("py:class", "float"), ("py:class", "int"),
+                  ("py:class", "object"),
+                  ("py:exc", "ValueError"), ("py:exc", "KeyError"), ("py:exc", "IOError"), ("py:exc", "AttributeError"),
+                  ("py:exc", "TypeError"), ("py:obj", "str or dict"), ("py:obj", "list(str)"),
+                  ("py:obj", "int or str"), ("py:obj", "str or File"), ("py:obj", "str or FileInfo"),
+                  ("py:obj", "bool or function(float, float, str)"), ("py:class", "exceptions.Exception")]
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
@@ -130,7 +138,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-#html_logo = None
+html_logo = "qarnot.png"
 
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
@@ -140,7 +148,7 @@ html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+# html_static_path = ['_static']
 
 # Add any extra paths that contain custom files (such as robots.txt or
 # .htaccess) here, relative to this directory. These files are copied

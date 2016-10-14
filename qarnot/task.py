@@ -15,7 +15,6 @@
 # limitations under the License.
 
 
-
 from os import makedirs, path
 import time
 import datetime
@@ -24,7 +23,7 @@ import sys
 
 from qarnot import disk
 from qarnot import get_url, raise_on_error
-from qarnot.disk import MissingDiskException
+from qarnot.exceptions import *
 try:
     from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar
 except:
@@ -43,34 +42,34 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile, framecount_or_range):
+    def __init__(self, connection, name, profile, instancecount_or_range):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
-        :type connection: :class:`Connection`
+        :type connection: :class:`qarnot.connection.Connection`
         :param name: given name of the task
         :type name: :class:`str`
         :param str profile: which profile (payload) to use with this task
 
-        :param framecount_or_range: number of frames or ranges on which to run
-        task
-        :type framecount_or_range: int or str
+        :param instancecount_or_range: number of instances or ranges on which to run task
+        :type instancecount_or_range: int or str
         """
         self._name = name
         self._profile = profile
 
-        if isinstance(framecount_or_range, int):
-            self._framecount = framecount_or_range
+        if isinstance(instancecount_or_range, int):
+            self._instancecount = instancecount_or_range
             self._advanced_range = None
         else:
-            self._advanced_range = framecount_or_range
-            self._framecount = 0
+            self._advanced_range = instancecount_or_range
+            self._instancecount = 0
 
         self._resource_disks = []
         self._result_disk = None
         self._connection = connection
         self.constants = {}
         self._auto_update = True
+        self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
 
         self._last_cache = time.time()
@@ -94,6 +93,7 @@ class Task(object):
         self._results_whitelist = None
         self._results_blacklist = None
         self._status = None
+        self._tags = []
         self._creation_date = None
         self._errors = None
         self._resource_disks_uuids = []
@@ -110,13 +110,13 @@ class Task(object):
         :rtype: Task
         :returns: The retrieved task.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: no such task
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: no such task
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], uuid)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
         return Task.from_json(connection, resp.json())
 
@@ -127,11 +127,13 @@ class Task(object):
         :param float job_timeout: (optional) Number of seconds before the task :meth:`abort` if it is not
           already finished
         :param bool live_progress: (optional) display a live progress
-        :param bool|fun(float,float,str) results_progress: (optional) can be a callback (read,total,filename) or True to display a progress bar
-
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.disk.MissingDiskException:
+        :param results_progress: (optional) can be a callback (read,total,filename) or True to display a progress bar
+        :type results_progress: bool or function(float, float, str)
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.MaxTaskException: Task quota reached
+        :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingDiskException:
           resource disk is not a valid disk
 
         .. note:: Will ensure all added file are on the resource disk
@@ -156,12 +158,12 @@ class Task(object):
         :param float job_timeout: Number of seconds before the task :meth:`abort` if it is not
           already finished
         :param bool live_progress: display a live progress
-        :param bool|fun(float,float,str) results_progress: can be a callback (read,total,filename) or True to display a progress bar
-
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
-        :raises qarnot.disk.MissingDiskException:
+        :param results_progress: can be a callback (read,total,filename) or True to display a progress bar
+        :type results_progress: bool or function(float, float, str)
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.MissingDiskException:
           resource disk is not a valid disk
 
         .. note:: Do nothing if the task has not been submitted.
@@ -175,9 +177,11 @@ class Task(object):
     def submit(self):
         """Submit task to the cluster if it is not already submitted.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.disk.MissingDiskException:
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.MaxTaskException: Task quota reached
+        :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingDiskException:
           resource disk is not a valid disk
 
         .. note:: Will ensure all added files are on the resource disk
@@ -195,7 +199,12 @@ class Task(object):
         if resp.status_code == 404:
             raise disk.MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
-            raise MaxTaskException(resp.json()['message'])
+            if resp.json()['message'].startswith('Maximum number of disks reached'):
+                raise MaxDiskException(resp.json()['message'])
+            else:
+                raise MaxTaskException(resp.json()['message'])
+        elif resp.status_code == 402:
+            raise NotEnoughCreditsException(resp.json()['message'])
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
 
@@ -207,9 +216,9 @@ class Task(object):
     def abort(self):
         """Abort this task if running.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
         self.update(True)
 
@@ -217,7 +226,7 @@ class Task(object):
             get_url('task abort', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         self.update(True)
@@ -225,9 +234,9 @@ class Task(object):
     def update_resources(self):
         """Update resources for a running task. Be sure to add new resources first.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
 
         self.update(True)
@@ -235,7 +244,7 @@ class Task(object):
             get_url('task update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         self.update(True)
@@ -249,9 +258,9 @@ class Task(object):
         :param bool purge_results: parameter value is used to determine if the disk is also deleted.
                 Defaults to False.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
         if self._uuid is None:
             return
@@ -260,11 +269,13 @@ class Task(object):
             rdisks = []
             for rdisk in self.resources:
                 rdisks.append(rdisk)
+        if purge_results:
+            self.results.update()
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         if purge_resources:
@@ -276,19 +287,18 @@ class Task(object):
                     rdisk.delete()
                     toremove.append(rdisk)
                 except (disk.MissingDiskException, disk.LockedDiskException) as exception:
-                    warnings.warn(exception.message)
+                    warnings.warn(str(exception))
             for tr in toremove:
                 rdisks.remove(tr)
             self.resources = rdisks
 
-        try:
-            self.results.update()
-            if purge_results:
+        if purge_results:
+            try:
                 self._result_disk.delete()
                 self._result_disk = None
                 self._result_disk_uuid = None
-        except (disk.MissingDiskException, disk.LockedDiskException) as exception:
-            warnings.warn(exception.message)
+            except (disk.MissingDiskException, disk.LockedDiskException) as exception:
+                warnings.warn(str(exception))
 
         self._state = "Deleted"
         self._uuid = None
@@ -301,9 +311,9 @@ class Task(object):
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not represent a
           valid one
         """
         if self._uuid is None:
@@ -316,7 +326,7 @@ class Task(object):
         resp = self._connection._get(
             get_url('task update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         self._update(resp.json())
@@ -326,7 +336,7 @@ class Task(object):
         """Update this task from retrieved info."""
         self._name = json_task['name']
         self._profile = json_task['profile']
-        self._framecount = json_task.get('frameCount')
+        self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
         self._resource_disks_uuids = json_task['resourceDisks']
         if len(self._resource_disks_uuids) != len(self._resource_disks):
@@ -342,7 +352,7 @@ class Task(object):
 
         self._uuid = json_task['uuid']
         self._state = json_task['state']
-
+        self._tags = json_task.get('tags', None)
         if self._rescount < json_task['resultsCount']:
             self._dirty = True
         self._rescount = json_task['resultsCount']
@@ -355,28 +365,30 @@ class Task(object):
         :param dict json_task: Dictionary representing the task
         :returns: The created :class:`~qarnot.task.Task`.
         """
-        if 'frameCount' in json_task:
-            framecount_or_range = json_task['frameCount']
+        if 'instanceCount' in json_task:
+            instancecount_or_range = json_task['instanceCount']
         else:
-            framecount_or_range = json_task['advancedRanges']
+            instancecount_or_range = json_task['advancedRanges']
         new_task = cls(connection,
                        json_task['name'],
                        json_task['profile'],
-                       framecount_or_range)
+                       instancecount_or_range)
         new_task._update(json_task)
         return new_task
 
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+
+        .. note:: When updating disks' properties, auto update will be disabled until commit is called.
         """
         data = self._to_json()
         resp = self._connection._put(get_url('task update', uuid=self._uuid), json=data)
-
+        self._auto_update = self._last_auto_update_state
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
 
@@ -390,9 +402,9 @@ class Task(object):
         :rtype: :class:`bool`
         :returns: Is the task finished
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a valid
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not represent a valid
           one
         """
 
@@ -457,9 +469,9 @@ class Task(object):
 
         :param int interval: the interval in seconds at which to take snapshots
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not represent a
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not represent a
           valid one
 
         .. note:: To get the temporary results, call :meth:`download_results`.
@@ -473,7 +485,7 @@ class Task(object):
         if resp.status_code == 400:
             raise ValueError(interval)
         elif resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
 
@@ -482,9 +494,9 @@ class Task(object):
     def instant(self):
         """Make a snapshot of the current task.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
 
         .. note:: To get the temporary results, call :meth:`download_results`.
         """
@@ -495,7 +507,7 @@ class Task(object):
                                       json=None)
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
         self.update(True)
@@ -561,15 +573,20 @@ class Task(object):
 
         return self._result_disk
 
+    @results.setter
+    def results(self, value):
+        """ This is a setter."""
+        self._result_disk = value
+
     def download_results(self, output_dir, progress=None):
         """Download results in given *output_dir*.
 
         :param str output_dir: local directory for the retrieved files.
-        :param bool|fun(float,float,str) progress: can be a callback (read,total,filename)  or True to display a progress bar
-
-        :raises qarnot.disk.MissingDiskException: the disk is not on the server
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
+        :param progress: can be a callback (read,total,filename)  or True to display a progress bar
+        :type progress: bool or function(float, float, str)
+        :raises qarnot.exceptions.MissingDiskException: the disk is not on the server
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
 
@@ -591,9 +608,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The standard output.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
           :meth:`fresh_stdout` regularly.
@@ -604,7 +621,7 @@ class Task(object):
             get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
 
@@ -617,9 +634,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The new output since last call.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
         if self._uuid is None:
             return ""
@@ -627,7 +644,7 @@ class Task(object):
             get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         return resp.text
@@ -639,9 +656,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The standard error.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
           :meth:`fresh_stderr` regularly.
@@ -652,7 +669,7 @@ class Task(object):
             get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         return resp.text
@@ -664,9 +681,9 @@ class Task(object):
         :rtype: :class:`str`
         :returns: The new error messages since last call.
 
-        :raises qarnot.QarnotException: API general error, see message for details
-        :raises qarnot.connection.UnauthorizedException: invalid credentials
-        :raises qarnot.task.MissingTaskException: task does not exist
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
         if self._uuid is None:
             return ""
@@ -674,7 +691,7 @@ class Task(object):
             get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingTaskException(resp.json()['message'], self._name)
+            raise MissingTaskException(resp.json()['message'])
 
         raise_on_error(resp)
         return resp.text
@@ -687,9 +704,6 @@ class Task(object):
 
         Automatically set when a task is submitted.
         """
-        if self._auto_update:
-            self.update()
-
         return self._uuid
 
     @property
@@ -700,9 +714,6 @@ class Task(object):
 
         Can be set until :meth:`run` is called
         """
-        if self._auto_update:
-            self.update()
-
         return self._name
 
     @name.setter
@@ -714,6 +725,22 @@ class Task(object):
             self._name = value
 
     @property
+    def tags(self):
+        """:type: :class:list(`str`)
+
+        Custom tags.
+        """
+        if self._auto_update:
+            self.update()
+
+        return self._tags
+
+    @tags.setter
+    def tags(self, value):
+        self._tags = value
+        self._auto_update = False
+
+    @property
     def profile(self):
         """:type: :class:`str`
 
@@ -721,9 +748,6 @@ class Task(object):
 
         Can be set until :meth:`run` is called.
         """
-        if self._auto_update:
-            self.update()
-
         return self._profile
 
     @profile.setter
@@ -735,10 +759,10 @@ class Task(object):
             self._profile = value
 
     @property
-    def framecount(self):
+    def instancecount(self):
         """:type: :class:`int`
 
-        Number of frames needed for the task.
+        Number of instances needed for the task.
 
         Can be set until :meth:`run` is called.
 
@@ -746,98 +770,99 @@ class Task(object):
 
         .. warning:: This property is mutually exclusive with :attr:`advanced_range`
         """
-        if self._auto_update:
-            self.update()
+        return self._instancecount
 
-        return self._framecount
-
-    @framecount.setter
-    def framecount(self, value):
-        """Setter for framecount."""
+    @instancecount.setter
+    def instancecount(self, value):
+        """Setter for instancecount."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
 
         if self.advanced_range is not None:
-            raise AttributeError("Can't set framecount if advanced_range is not None")
-        self._framecount = value
+            raise AttributeError("Can't set instancecount if advanced_range is not None")
+        self._instancecount = value
 
     @property
     def advanced_range(self):
         """:type: :class:`str`
 
-        Advanced frame range selection.
+        Advanced instances range selection.
 
-        Allows to select which frames will be computed.
+        Allows to select which instances will be computed.
         Should be None or match the following extended regular expression
-        """r"""**"(\\[[0-9]+-[0-9]+\\])( \\[[0-9]+-[0-9]+\\])*"**
-        *[min-max]* will generate (max - min) frames from min to max (excluded).
+        """r"""**"([0-9]+|[0-9]+-[0-9]+)(,([0-9]+|[0-9]+-[0-9]+))+"**
+        eg: 1,3-8,9,12-19
 
         Can be set until :meth:`run` is called.
 
-        :raises AttributeError: if :attr:`framecount` is not 0 when setting this property
+        :raises AttributeError: if :attr:`instancecount` is not 0 when setting this property
 
-        .. warning:: This property is mutually exclusive with :attr:`framecount`
+        .. warning:: This property is mutually exclusive with :attr:`instancecount`
         """
-        if self._auto_update:
-            self.update()
-
         return self._advanced_range
 
     @advanced_range.setter
     def advanced_range(self, value):
         """Setter for advanced_range."""
-        if self.framecount != 0:
-            raise AttributeError("Can't set advanced_range if framecount is not 0")
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        if self.instancecount != 0:
+            raise AttributeError("Can't set advanced_range if instancecount is not 0")
         self._advanced_range = value
 
     @property
     def snapshot_whitelist(self):
-        """Snapshot white list
-        """
-        if self._auto_update:
-            self.update()
+        """:type: :class:`str`
 
+        Snapshot white list
+        """
         return self._snapshot_whitelist
 
     @snapshot_whitelist.setter
     def snapshot_whitelist(self, value):
         """Setter for snapshot whitelist, this can only be set before tasks submission
         """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
         self._snapshot_whitelist = value
 
     @property
     def snapshot_blacklist(self):
-        """Snapshot black list
-        """
-        if self._auto_update:
-            self.update()
+        """:type: :class:`str`
 
+        Snapshot black list
+        """
         return self._snapshot_blacklist
 
     @snapshot_blacklist.setter
     def snapshot_blacklist(self, value):
         """Setter for snapshot blacklist, this can only be set before tasks submission
         """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
         self._snapshot_blacklist = value
 
     @property
     def results_whitelist(self):
-        """Results whitelist
-        """
-        if self._auto_update:
-            self.update()
+        """:type: :class:`str`
 
+        Results whitelist
+        """
         return self._results_whitelist
 
     @results_whitelist.setter
     def results_whitelist(self, value):
         """Setter for results whitelist, this can only be set before tasks submission
         """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
         self._results_whitelist = value
 
     @property
     def results_blacklist(self):
-        """Results blacklist
+        """:type: :class:`str`
+
+        Results blacklist
         """
         if self._auto_update:
             self.update()
@@ -848,11 +873,15 @@ class Task(object):
     def results_blacklist(self, value):
         """Setter for results blacklist, this can only be set before tasks submission
         """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
         self._results_blacklist = value
 
     @property
     def status(self):
-        """Status of the task
+        """:type: :class:`TaskStatus`
+
+        Status of the task
         """
         if self._auto_update:
             self.update()
@@ -865,9 +894,6 @@ class Task(object):
     def creation_date(self):
         """Creation date of the task (UTC Time)
         """
-        if self._auto_update:
-            self.update()
-
         return self._creation_date
 
     @property
@@ -892,6 +918,7 @@ class Task(object):
         """Setter for auto_update feature
         """
         self._auto_update = value
+        self._last_auto_update_state = self._auto_update
 
     @property
     def update_cache_time(self):
@@ -925,10 +952,15 @@ class Task(object):
             'constraints': constr_list
         }
 
+        if self._result_disk is not None:
+            json_task['resultDisk'] = self._result_disk.uuid
+
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
         else:
-            json_task['frameCount'] = self._framecount
+            json_task['instanceCount'] = self._instancecount
+
+        json_task["tags"] = self._tags
 
         if self._snapshot_whitelist is not None:
             json_task['snapshotWhitelist'] = self._snapshot_whitelist
@@ -941,11 +973,11 @@ class Task(object):
         return json_task
 
     def __str__(self):
-        return '{0} - {1} - {2} - FrameCount : {3} - {4} - Resources : {5} - Results : {6}'\
+        return '{0} - {1} - {2} - InstanceCount : {3} - {4} - Resources : {5} - Results : {6}'\
             .format(self.name,
                     self._uuid,
                     self._profile,
-                    self._framecount,
+                    self._instancecount,
                     self.state,
                     (self._resource_disks_uuids if self._resource_disks is not None else ""),
                     (self._result_disk.uuid if self._result_disk is not None else ""))
@@ -981,7 +1013,7 @@ class Error(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 # Status
@@ -1052,34 +1084,36 @@ class TaskStatus(object):
         self.succeeded_range = json['succeededRange']
         """:type: :class:`str`
 
-        Successful frames range."""
+        Successful instances range."""
 
         self.executed_range = json['executedRange']
         """:type: :class:`str`
 
-        Executed frames range."""
+        Executed instances range."""
 
         self.failed_range = json['failedRange']
         """:type: :class:`str`
 
-        Failed frames range."""
+        Failed instances range."""
 
-        self.running_frames_info = None
-        """:type: :class:`RunningFrameInfo`
+        self.running_instances_info = None
+        """:type: :class:`RunningInstancesInfo`
 
-        Running frames information."""
+        Running instances information."""
 
-        if 'runningFramesInfo' in json and json['runningFramesInfo'] is not None:
-            self.running_frames_info = RunningFramesInfo(json['runningFramesInfo'])
+        if 'runningInstancesInfo' in json and json['runningInstancesInfo'] is not None:
+            self.running_instances_info = RunningInstancesInfo(json['runningInstancesInfo'])
 
     def __str__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 class TaskActiveForward(object):
+    """Task Active Forward
+    """
     def __init__(self, json):
         self.application_port = json['applicationPort']
         """:type: :class:`int`
@@ -1100,18 +1134,20 @@ class TaskActiveForward(object):
             if sys.version_info > (3, 0):
                 return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
             else:
-                return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+                return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
-class RunningFramesInfo(object):
+class RunningInstancesInfo(object):
+    """Running Instances Information
+    """
     def __init__(self, json):
-        self.per_running_frames_info = []
-        """:type: list(:class:`PerRunningFramesInfo`)
+        self.per_running_instance_info = []
+        """:type: list(:class:`PerRunningInstanceInfo`)
 
-        Per running frames information."""
+        Per running instances information."""
 
-        if 'perRunningFramesInfo' in json and json['perRunningFramesInfo'] is not None:
-            self.per_running_frames_info = [PerRunningFramesInfo(x) for x in json['perRunningFramesInfo']]
+        if 'perRunningInstanceInfo' in json and json['perRunningInstanceInfo'] is not None:
+            self.per_running_instance_info = [PerRunningInstanceInfo(x) for x in json['perRunningInstanceInfo']]
 
         self.timestamp = json['timestamp']
         """:type: :class:`str`
@@ -1177,20 +1213,22 @@ class RunningFramesInfo(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
-class PerRunningFramesInfo(object):
+class PerRunningInstanceInfo(object):
+    """Per Running Instance Information
+    """
     def __init__(self, json):
         self.phase = json['phase']
         """:type: :class:`str`
 
-        Frame phase."""
+        Instance phase."""
 
-        self.frame = json['frame']
+        self.instance_id = json['instanceId']
         """:type: :class:`int`
 
-        Frame number."""
+        Instance number."""
 
         self.max_frequency_ghz = json['maxFrequencyGHz']
         """:type: :class:`float`
@@ -1235,17 +1273,17 @@ class PerRunningFramesInfo(object):
         self.progress = json['progress']
         """:type: :class:`float`
 
-        Frame progress."""
+        Instance progress."""
 
         self.execution_time_sec = json['executionTimeSec']
         """:type: :class:`float`
 
-        Frame execution time in seconds."""
+        Instance execution time in seconds."""
 
         self.execution_time_ghz = json['executionTimeGHz']
         """:type: :class:`float`
 
-        Frame execution time GHz"""
+        Instance execution time GHz"""
 
         self.cpu_model = json['cpuModel']
         """:type: :class:`str`
@@ -1264,20 +1302,4 @@ class PerRunningFramesInfo(object):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())
-
-
-##############
-# Exceptions #
-##############
-
-class MissingTaskException(Exception):
-    """Non existent task."""
-    def __init__(self, message, name):
-        super(MissingTaskException, self).__init__(
-            "{0}: {1}".format(message, name))
-
-
-class MaxTaskException(Exception):
-    """Max number of tasks reached."""
-    pass
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member

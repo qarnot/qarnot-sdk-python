@@ -9,6 +9,8 @@ Qarnot Python SDK
 
 qarnot is a Python library designed to interact with |QarnotLink| cloud computing service. It allows users to launch, manage and monitor payloads running on distributed computing nodes deployed in Qarnot's digital heaters.
 
+You can find samples and detailed information on http://computing.qarnot.com.
+
 Reference Docs
 ==============
 
@@ -16,7 +18,9 @@ Reference Docs
    :maxdepth: 1
 
    installation
+   basic
    qarnot
+
 
 Indices and tables
 ==================
