@@ -379,7 +379,7 @@ class Disk(object):
                     self.add_link(file_.name, dup.name)
             if verbose:
                 print("remove ", file_.name)
-            self.delete_file(file_.name)
+            self.delete_file(file_.name, force=True)
 
         remote = self.list_files()
 
@@ -774,13 +774,14 @@ class Disk(object):
                     raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
-    def delete_file(self, remote):
+    def delete_file(self, remote, force=False):
         """Delete a file from the disk.
 
         .. note::
            You can also use **del disk[file]**
 
         :param str remote: the name of the remote file
+        :param bool force: ignore missing files
 
         :raises qarnot.exceptions.MissingDiskException: the disk is not on the server
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -809,7 +810,10 @@ class Disk(object):
         if response.status_code == 404:
             if response.json()['message'] == "No such disk":
                 raise MissingDiskException(response.json()['message'])
-        raise_on_error(response)
+        if force and response.status_code == 404:
+            pass
+        else:
+            raise_on_error(response)
         self.update(True)
 
     def commit(self):
