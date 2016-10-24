@@ -301,18 +301,26 @@ class Disk(object):
             directory = directory + '/'
 
         filesdict = {}
-        for root, _, files in os.walk(directory):
+        for root, dirs, files in os.walk(directory):
             for file_ in files:
                 filepath = os.path.join(root, file_)
                 name = filepath[len(directory) - 1:]
                 filesdict[name] = filepath
+            for dir_ in dirs:
+                filepath = os.path.join(root, dir_)
+                name = filepath[len(directory) - 1:]
+                if not name.endswith('/'):
+                    name += '/'
+                filesdict[name] = filepath
+
         self.sync_files(filesdict, verbose)
 
-    def sync_files(self, files, verbose=False):
+    def sync_files(self, files, verbose=False, ignore_directories=False):
         """Synchronize files  with the remote disks.
 
         :param dict files: Dictionary of synchronized files
         :param bool verbose: Print information about synchronization operations
+        :param bool ignore_directories: Ignore directories when looking for changes
 
         Dictionary key is the remote file path while value is the local file
         path.
@@ -350,8 +358,11 @@ class Disk(object):
             mtime = os.path.getmtime(filepath)
             dtutc = datetime.datetime.utcfromtimestamp(mtime)
             dtutc = dtutc.replace(microsecond=0)
-            size = os.stat(filepath).st_size
-            qfi = FileInfo(dtutc, name, size, "file", generate_file_sha1(filepath))
+
+            type = 'directory' if os.path.isdir(filepath) else 'file'
+            sha1 = generate_file_sha1(filepath) if type is 'file' else 'N/A'
+            size = os.stat(filepath).st_size if type is 'file' else 0
+            qfi = FileInfo(dtutc, name, size, type, sha1)
             qfi.filepath = filepath
             return qfi
 
@@ -360,9 +371,12 @@ class Disk(object):
             qfi = create_qfi(name, filepath)
             localfiles.append(qfi)
 
-        local = set(localfiles)
-        remote = set(self.list_files())
-
+        if ignore_directories:
+            local = set([x for x in localfiles if not x.directory])
+            remote = set([x for x in self.list_files() if not x.directory])
+        else:
+            local = set(localfiles)
+            remote = set(self.list_files())
         adds = local - remote
         removes = remote - local
 
@@ -371,7 +385,7 @@ class Disk(object):
             sadds, lambda x: x.sha1sum)]
 
         for file_ in removes:
-            renames = [x for x in adds if x.sha1sum == file_.sha1sum]
+            renames = [x for x in adds if x.sha1sum == file_.sha1sum and not x.directory and not file_.directory]
             if len(renames) > 0:
                 for dup in renames:
                     if verbose:
@@ -385,7 +399,7 @@ class Disk(object):
 
         for entry in groupedadds:
             try:
-                rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum)
+                rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum and not x.directory and not file_.directory)
                 if rem.name == entry[0].name:
                     continue
                 if verbose:
@@ -397,9 +411,14 @@ class Disk(object):
                 self.add_file(entry[0].filepath, entry[0].name)
             if len(entry) > 1:  # duplicate files
                 for link in entry[1:]:
-                    if verbose:
-                        print("Link:", entry[0].name, "<-", link.name)
-                    self.add_link(entry[0].name, link.name)
+                    if not link.directory:
+                        if verbose:
+                            print("Link:", entry[0].name, "<-", link.name)
+                        self.add_link(entry[0].name, link.name)
+                    else:
+                        if verbose:
+                            print("Add dir" + link.filepath + " " + str(link.name))
+                        self.add_file(link.filepath, link.name)
 
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
@@ -510,7 +529,18 @@ class Disk(object):
         mode = mode or self._add_mode
 
         if isinstance(local_or_file, str):
-            file_ = open(local_or_file, 'rb')
+            if os.path.isdir(local_or_file):
+                dest = remote or os.path.basename(local_or_file)
+                url = get_url('update file', name=self._uuid, path=os.path.dirname(dest))
+                response = self._connection._post(
+                    url,
+                    )
+                if response.status_code == 404:
+                    raise MissingDiskException(response.json()['message'])
+                raise_on_error(response)
+                return
+            else:
+                file_ = open(local_or_file, 'rb')
         else:
             file_ = local_or_file
 
