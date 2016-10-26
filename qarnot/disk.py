@@ -775,6 +775,8 @@ class Disk(object):
                 os.makedirs(directory)
 
         if isinstance(remote, FileInfo):
+            if remote.directory:
+                return
             remote = remote.name
 
         if local is None:
@@ -785,6 +787,8 @@ class Disk(object):
 
         make_dirs(local)
 
+        if os.path.isdir(local):
+            return
         with open(local, 'wb') as f_local:
             for chunk in self.get_file_iterator(remote, progress=progress):
                 f_local.write(chunk)
