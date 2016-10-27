@@ -2,7 +2,7 @@
 
 import versioneer
 from distutils.core import setup
-from os import mkdir
+from os import mkdir, path
 from setuptools.command.test import test as TestCommand
 from subprocess import Popen, PIPE
 import shutil
@@ -44,15 +44,17 @@ class PyTest(TestCommand):
         shutil.rmtree('tests/tmp', ignore_errors=True)
         sys.exit(errno)
 
-cmdclass=versioneer.get_cmdclass()
-cmdclass['test'] = PyTest
+with open(path.join(path.dirname(__file__), 'README.rst')) as long_d_f:
+    long_description = long_d_f.read()
 
 setup(name='qarnot',
       version=versioneer.get_version(),
-      cmdclass=cmdclass,
+      cmdclass=versioneer.get_cmdclass(),
       description= 'Qarnot Computing SDK',
+      long_description= long_description,
       author='Qarnot Computing',
       author_email='support@qarnot-computing.com',
       url='http://computing.qarnot.com',
       packages=['qarnot'],
-      requires=['requests'])
+      requires=['requests'],
+      license='apache')
