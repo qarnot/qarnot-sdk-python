@@ -1,6 +1,5 @@
 Qarnot computing Python SDK
-==========================
-
+===========================
 This package allows you to use Qarnot cloud computing service.
 
 You can launch, manage and monitor payloads running on distributed computing nodes deployed in Qarnot’s `digital heaters <http://www.qarnot.com/qrad>`_.
