@@ -23,6 +23,7 @@ from qarnot.exceptions import *
 import requests
 import sys
 import warnings
+import os
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -39,8 +40,9 @@ class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
     """
     def __init__(self, fileconf=None, client_token=None, cluster_url=None, cluster_unsafe=False, cluster_timeout=None):
-        """Create a connection to a cluster with given config file or
-        options.
+        """Create a connection to a cluster with given config file, options or environment variables.
+        Available environment variable are
+        `QARNOT_CLUSTER_URL`, `QARNOT_CLUSTER_UNSAFE`, `QARNOT_CLUSTER_TIMEOUT` and `QARNOT_CLIENT_TOKEN`.
 
         :param fileconf: path to a qarnot configuration file or a corresponding dict
         :type fileconf: str or dict
@@ -102,6 +104,18 @@ class Connection(object):
             self.timeout = cluster_timeout
             self._http.verify = not cluster_unsafe
             auth = client_token
+
+        if self.cluster is None:
+            self.cluster = os.getenv("QARNOT_CLUSTER_URL")
+
+        if auth is None:
+            auth = os.getenv("QARNOT_CLIENT_TOKEN")
+
+        if os.getenv("QARNOT_CLUSTER_UNSAFE") is not None:
+            self._http.verify = not os.getenv("QARNOT_CLUSTER_UNSAFE") in ["true", "True", "1"]
+
+        if os.getenv("QARNOT_CLUSTER_TIMEOUT") is not None:
+            self.timeout = int(os.getenv("QARNOT_CLUSTER_TIMEOUT"))
 
         if auth is None:
             raise QarnotGenericException("Token is mandatory.")
