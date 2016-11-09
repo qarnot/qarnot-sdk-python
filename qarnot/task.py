@@ -267,10 +267,18 @@ class Task(object):
 
         if purge_resources:
             rdisks = []
-            for rdisk in self.resources:
-                rdisks.append(rdisk)
+            for duuid in self._resource_disks_uuids:
+                try:
+                    d = disk.Disk._retrieve(self._connection, duuid)
+                    rdisks.append(d)
+                except disk.MissingDiskException as exception:
+                    pass
+
         if purge_results:
-            self.results.update()
+            try:
+                self.results.update()
+            except disk.MissingDiskException as exception:
+                purge_results = False
 
         resp = self._connection._delete(
             get_url('task update', uuid=self._uuid))
@@ -280,7 +288,6 @@ class Task(object):
 
         if purge_resources:
             toremove = []
-
             for rdisk in rdisks:
                 try:
                     rdisk.update()
