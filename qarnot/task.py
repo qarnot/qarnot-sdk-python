@@ -1079,14 +1079,24 @@ class TaskStatus(object):
         Task execution time in seconds."""
 
         self.upload_time = json['uploadTime']
-        """:type: :class:`int`
+        """:type: :class:`str`
 
-        Task results upload time to the API in seconds"""
+        Task results upload time to the API."""
 
         self.upload_time_sec = json['uploadTimeSec']
         """:type: :class:`float`
 
-        Task results upload time to the API in seconds"""
+        Task results upload time to the API in seconds."""
+
+        self.wall_time = json["wallTime"]
+        """:type: :class:`str`
+
+        Wall time of the task."""
+
+        self.wall_time_sec = json["wallTimeSec"]
+        """:type: :class:`float`
+
+        Wall time of the task in seconds."""
 
         self.succeeded_range = json['succeededRange']
         """:type: :class:`str`
