@@ -877,12 +877,18 @@ class Disk(object):
     def uuid(self):
         """:type: :class:`str`
 
+        :getter: Returns this disk's uuid
+
         The disk's UUID."""
         return self._uuid
 
     @property
     def tags(self):
         """:type: :class:list(`str`)
+
+        :getter: Returns this disk's tags
+        :setter: Sets this disk's tags
+
 
         Custom tags.
         """
@@ -900,6 +906,10 @@ class Disk(object):
     def add_mode(self):
         """:type: :class:`UploadMode`
 
+        :getter: Returns this disk's add mode
+        :setter: Sets this disk's add mode
+
+
         Default mode for adding files.
         """
         return self._add_mode
@@ -912,6 +922,9 @@ class Disk(object):
     @property
     def description(self):
         """:type: :class:`str`
+
+        :getter: Returns this disk's description
+        :setter: Sets this disk's description
 
         The disk's description.
         """
@@ -929,6 +942,8 @@ class Disk(object):
     def file_count(self):
         """:type: :class:`int`
 
+        :getter: Returns this disk's file count
+
         The number of files on the disk.
         """
         if self._auto_update:
@@ -939,6 +954,8 @@ class Disk(object):
     def used_space_bytes(self):
         """:type: :class:`int`
 
+        :getter: Returns this disk's used space in bytes
+
         The total space used on the disk in bytes.
         """
         if self._auto_update:
@@ -948,6 +965,10 @@ class Disk(object):
     @property
     def locked(self):
         """:type: :class:`bool`
+
+        :getter: Returns this disk's locked state
+        :setter: Sets this disk's locked state
+
 
         The disk's lock state. If True, prevents the disk to be removed
         by a subsequent :meth:`qarnot.connection.Connection.create_task` with *force*
@@ -965,9 +986,15 @@ class Disk(object):
 
     @property
     def auto_update(self):
-        """Auto update state, default to True
-           When auto update is disabled properties will always return cached value
-           for the object and a call to :meth:`update` will be required to get latest values from the REST Api.
+        """:type: :class:`bool`
+
+        :getter: Returns this disk's auto update state
+        :setter: Sets this disk's auto update state
+
+
+        Auto update state, default to True
+        When auto update is disabled properties will always return cached value
+        for the object and a call to :meth:`update` will be required to get latest values from the REST Api.
         """
         return self._auto_update
 

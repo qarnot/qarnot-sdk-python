@@ -522,6 +522,7 @@ class Task(object):
     @property
     def state(self):
         """:type: :class:`str`
+        :getter: return this task's state
 
         State of the task.
 
@@ -548,8 +549,11 @@ class Task(object):
     @property
     def resources(self):
         """:type: list(:class:`~qarnot.disk.Disk`)
+        :getter: Returns this task's resources disks
+        :setter: Sets this task's resources disks
 
-        Represents resource files."""
+        Represents resource files.
+        """
         if self._auto_update:
             self.update()
 
@@ -569,6 +573,8 @@ class Task(object):
     @property
     def results(self):
         """:type: :class:`~qarnot.disk.Disk`
+        :getter: Returns this task's results disk
+        :setter: Sets this task's results disk
 
         Represents results files."""
         if self._result_disk is None:
@@ -706,6 +712,7 @@ class Task(object):
     @property
     def uuid(self):
         """:type: :class:`str`
+        :getter: Returns this task's uuid
 
         The task's uuid.
 
@@ -716,10 +723,12 @@ class Task(object):
     @property
     def name(self):
         """:type: :class:`str`
+        :getter: Returns this task's name
+        :setter: Sets this task's name
 
         The task's name.
 
-        Can be set until :meth:`run` is called
+        Can be set until task is submitted.
         """
         return self._name
 
@@ -734,6 +743,8 @@ class Task(object):
     @property
     def tags(self):
         """:type: :class:list(`str`)
+        :getter: Returns this task's tags
+        :setter: Sets this task's tags
 
         Custom tags.
         """
@@ -750,6 +761,8 @@ class Task(object):
     @property
     def profile(self):
         """:type: :class:`str`
+        :getter: Returns this task's profile
+        :setter: Sets this task's profile
 
         The profile to run the task with.
 
@@ -768,6 +781,8 @@ class Task(object):
     @property
     def instancecount(self):
         """:type: :class:`int`
+        :getter: Returns this task's instance count
+        :setter: Sets this task's instance count
 
         Number of instances needed for the task.
 
@@ -792,6 +807,8 @@ class Task(object):
     @property
     def advanced_range(self):
         """:type: :class:`str`
+        :getter: Returns this task's advanced range
+        :setter: Sets this task's advanced range
 
         Advanced instances range selection.
 
@@ -820,8 +837,12 @@ class Task(object):
     @property
     def snapshot_whitelist(self):
         """:type: :class:`str`
+        :getter: Returns this task's snapshot whitelist
+        :setter: Sets this task's snapshot whitelist
 
         Snapshot white list
+
+        Can be set until task is submitted.
         """
         return self._snapshot_whitelist
 
@@ -836,8 +857,12 @@ class Task(object):
     @property
     def snapshot_blacklist(self):
         """:type: :class:`str`
+        :getter: Returns this task's snapshot blacklist
+        :setter: Sets this task's snapshot blacklist
 
         Snapshot black list
+
+        Can be set until task is submitted.
         """
         return self._snapshot_blacklist
 
@@ -852,8 +877,12 @@ class Task(object):
     @property
     def results_whitelist(self):
         """:type: :class:`str`
+        :getter: Returns this task's results whitelist
+        :setter: Sets this task's results whitelist
 
         Results whitelist
+
+        Can be set until task is submitted.
         """
         return self._results_whitelist
 
@@ -868,8 +897,12 @@ class Task(object):
     @property
     def results_blacklist(self):
         """:type: :class:`str`
+        :getter: Returns this task's results blacklist
+        :setter: Sets this task's results blacklist
 
         Results blacklist
+
+        Can be set until task is submitted.
         """
         if self._auto_update:
             self.update()
@@ -887,6 +920,7 @@ class Task(object):
     @property
     def status(self):
         """:type: :class:`TaskStatus`
+        :getter: Returns this task's status
 
         Status of the task
         """
@@ -899,13 +933,20 @@ class Task(object):
 
     @property
     def creation_date(self):
-        """Creation date of the task (UTC Time)
+        """:type: :class:`str`
+
+        :getter: Returns this task's creation date
+
+        Creation date of the task (UTC Time)
         """
         return self._creation_date
 
     @property
     def errors(self):
-        """Error reason if any, empty string if none
+        """:type: list(:class:`Error`)
+        :getter: Returns this task's errors if any.
+
+        Error reason if any, empty string if none
         """
         if self._auto_update:
             self.update()
@@ -914,9 +955,14 @@ class Task(object):
 
     @property
     def auto_update(self):
-        """Auto update state, default to True
-           When auto update is disabled properties will always return cached value
-           for the object and a call to :meth:`update` will be required to get latest values from the REST Api.
+        """:type: :class:`bool`
+
+        :getter: Returns this task's auto update state
+        :setter: Sets this task's auto update state
+
+        Auto update state, default to True
+        When auto update is disabled properties will always return cached value
+        for the object and a call to :meth:`update` will be required to get latest values from the REST Api.
         """
         return self._auto_update
 
@@ -929,7 +975,12 @@ class Task(object):
 
     @property
     def update_cache_time(self):
-        """Cache expiration time, default to 5s
+        """:type: :class:`int`
+
+        :getter: Returns this task's auto update state
+        :setter: Sets this task's auto update state
+
+        Cache expiration time, default to 5s
         """
         return self._update_cache_time
 
@@ -1000,6 +1051,10 @@ class Task(object):
 
 
 class Error(object):
+    """Task error
+
+    .. note:: Read-only class
+    """
     def __init__(self, json):
         self.code = json['code']
         """:type: :class:`str`
@@ -1026,6 +1081,8 @@ class Error(object):
 # Status
 class TaskStatus(object):
     """Task status
+
+    .. note:: Read-only class
     """
     def __init__(self, json):
         self.download_progress = json['downloadProgress']
@@ -1130,6 +1187,8 @@ class TaskStatus(object):
 
 class TaskActiveForward(object):
     """Task Active Forward
+
+    .. note:: Read-only class
     """
     def __init__(self, json):
         self.application_port = json['applicationPort']
@@ -1156,6 +1215,8 @@ class TaskActiveForward(object):
 
 class RunningInstancesInfo(object):
     """Running Instances Information
+
+    .. note:: Read-only class
     """
     def __init__(self, json):
         self.per_running_instance_info = []
@@ -1235,6 +1296,8 @@ class RunningInstancesInfo(object):
 
 class PerRunningInstanceInfo(object):
     """Per Running Instance Information
+
+    .. note:: Read-only class
     """
     def __init__(self, json):
         self.phase = json['phase']
