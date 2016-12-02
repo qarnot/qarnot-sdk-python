@@ -1,5 +1,5 @@
 recursive-include doc *
-include RELEASE-VERSION
+include MANIFEST.in README.rst
 include requirements*
 prune doc/_build
 include versioneer.py

@@ -1,9 +1,15 @@
-#! /usr/bin/python
+#!/usr/bin/env python
 """Setuptools file."""
 
 from distutils.core import setup
 from os import path
 import versioneer
+
+try:
+    import setuptools
+    [setuptools]
+except ImportError:
+        pass
 
 with open(path.join(path.dirname(__file__), 'README.rst')) as long_d_f:
     LONG_DESCRIPTION = long_d_f.read()
