@@ -399,7 +399,7 @@ class Disk(object):
 
         for entry in groupedadds:
             try:
-                rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum and not x.directory and not file_.directory)
+                rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum and not x.directory and not entry[0].directory)
                 if rem.name == entry[0].name:
                     continue
                 if verbose:
