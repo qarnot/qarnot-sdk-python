@@ -840,7 +840,7 @@ class Task(object):
         :getter: Returns this task's snapshot whitelist
         :setter: Sets this task's snapshot whitelist
 
-        Snapshot white list
+        Snapshot white list (regex)
 
         Can be set until task is submitted.
         """
@@ -860,7 +860,7 @@ class Task(object):
         :getter: Returns this task's snapshot blacklist
         :setter: Sets this task's snapshot blacklist
 
-        Snapshot black list
+        Snapshot black list (regex)
 
         Can be set until task is submitted.
         """
@@ -880,7 +880,7 @@ class Task(object):
         :getter: Returns this task's results whitelist
         :setter: Sets this task's results whitelist
 
-        Results whitelist
+        Results whitelist (regex)
 
         Can be set until task is submitted.
         """
@@ -900,7 +900,7 @@ class Task(object):
         :getter: Returns this task's results blacklist
         :setter: Sets this task's results blacklist
 
-        Results blacklist
+        Results blacklist (regex)
 
         Can be set until task is submitted.
         """
