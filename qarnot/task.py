@@ -840,7 +840,7 @@ class Task(object):
         :getter: Returns this task's snapshot whitelist
         :setter: Sets this task's snapshot whitelist
 
-        Snapshot white list (regex)
+        Snapshot white list (regex) for :meth:`snapshot` and :meth:`instant`
 
         Can be set until task is submitted.
         """
@@ -860,7 +860,7 @@ class Task(object):
         :getter: Returns this task's snapshot blacklist
         :setter: Sets this task's snapshot blacklist
 
-        Snapshot black list (regex)
+        Snapshot black list (regex) for :meth:`snapshot` :meth:`instant`
 
         Can be set until task is submitted.
         """
