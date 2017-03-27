@@ -451,7 +451,10 @@ class UserInfo(object):
     """Information about a qarnot user."""
 
     def __init__(self, info):
-        self.__dict__.update(info)  # DEPRECATED, keep it for old camel case version
+        self.email = info.get('email', '')
+        """:type: :class:`str`
+
+        User email address."""
 
         self.disk_count = info['diskCount']
         """:type: :class:`int`
