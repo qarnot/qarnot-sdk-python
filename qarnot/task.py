@@ -371,6 +371,14 @@ class Task(object):
         if self._rescount < json_task['resultsCount']:
             self._dirty = True
         self._rescount = json_task['resultsCount']
+        if 'resultsBlacklist' in json_task:
+            self._results_blacklist = json_task['resultsBlacklist']
+        if 'resultsWhitelist' in json_task:
+            self._results_whitelist = json_task['resultsWhitelist']
+        if 'snapshotWhitelist' in json_task:
+            self._snapshot_whitelist = json_task['snapshotWhitelist']
+        if 'snapshotBlacklist' in json_task:
+            self._snapshot_blacklist = json_task['snapshotBlacklist']
 
     @classmethod
     def from_json(cls, connection, json_task):
