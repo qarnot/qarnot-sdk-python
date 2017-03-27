@@ -68,6 +68,13 @@ class Task(object):
         self._result_disk = None
         self._connection = connection
         self.constants = {}
+        """
+         :type: :class:`dict(str,str)`
+
+         Constants of the task.
+
+        """
+
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
@@ -356,7 +363,8 @@ class Task(object):
             self._errors = [Error(d) for d in json_task['errors']]
         else:
             self._errors = []
-
+        for constant in json_task['constants']:
+            self.constants[constant.get('key')] = constant.get('value')
         self._uuid = json_task['uuid']
         self._state = json_task['state']
         self._tags = json_task.get('tags', None)

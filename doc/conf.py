@@ -92,7 +92,8 @@ nitpick_ignore = [("py:obj", "str"), ("py:obj", "bool"), ("py:obj", "float"), ("
                   ("py:exc", "ValueError"), ("py:exc", "KeyError"), ("py:exc", "IOError"), ("py:exc", "AttributeError"),
                   ("py:exc", "TypeError"), ("py:obj", "str or dict"), ("py:obj", "list(str)"),
                   ("py:obj", "int or str"), ("py:obj", "str or File"), ("py:obj", "str or FileInfo"),
-                  ("py:obj", "bool or function(float, float, str)"), ("py:class", "exceptions.Exception")]
+                  ("py:obj", "bool or function(float, float, str)"), ("py:class", "exceptions.Exception"),
+                  ("py:class", "dict(str,str)")]
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
