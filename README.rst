@@ -1,5 +1,8 @@
 Qarnot computing Python SDK
 ===========================
+
+|pypi-badge|_
+
 This package allows you to use Qarnot cloud computing service.
 
 You can launch, manage and monitor payloads running on distributed computing nodes deployed in Qarnot’s `digital heaters <http://www.qarnot.com/qrad>`_.
@@ -36,3 +39,6 @@ To generate the SDK documentation you can use the following command
     make -C doc html
 
 The index of the doc is then generated in `doc/_build/html/index.html`
+
+.. |pypi-badge| image:: https://img.shields.io/pypi/v/qarnot.svg
+.. _pypi-badge: https://pypi.python.org/pypi/qarnot/
