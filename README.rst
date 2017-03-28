@@ -1,7 +1,7 @@
 Qarnot computing Python SDK
 ===========================
 
-|pypi-badge|_
+|pypi-badge|_ |readthedocs-badge|_
 
 This package allows you to use Qarnot cloud computing service.
 
@@ -42,3 +42,5 @@ The index of the doc is then generated in `doc/_build/html/index.html`
 
 .. |pypi-badge| image:: https://img.shields.io/pypi/v/qarnot.svg
 .. _pypi-badge: https://pypi.python.org/pypi/qarnot/
+.. |readthedocs-badge| image:: https://readthedocs.org/projects/qarnot/badge/?version=latest
+.. _readthedocs-badge: https://qarnot.readthedocs.io/en/latest/
