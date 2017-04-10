@@ -1,6 +1,6 @@
 """Module for disk object."""
 
-# Copyright 2016 Qarnot computing
+# Copyright 2017 Qarnot computing
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,7 @@
 
 from __future__ import print_function
 
-from qarnot import get_url, raise_on_error
+from qarnot import get_url, raise_on_error, storage
 from qarnot.exceptions import *
 import posixpath
 import os
@@ -29,12 +29,12 @@ import threading
 import itertools
 
 try:
-    from progressbar import AnimatedMarker, Bar, ETA, Percentage, AdaptiveETA, ProgressBar, AdaptiveTransferSpeed
+    from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar, AdaptiveTransferSpeed
 except:
     pass
 
 
-class Disk(object):
+class Disk(storage.Storage):
     """Represents a resource/result disk on the cluster.
 
     This class is the interface to manage resources or results from a
@@ -43,7 +43,8 @@ class Disk(object):
     .. note::
        A :class:`Disk` must be created with
        :meth:`qarnot.connection.Connection.create_disk`
-       or retrieved with :meth:`qarnot.connection.Connection.disks` or `qarnot.connection.Connection.retrieve_disk`.
+       or retrieved with :meth:`qarnot.connection.Connection.disks` or :meth:`qarnot.connection.Connection.retrieve_disk`,
+       or :meth:`qarnot.connection.Connection.retrieve_or_create_disk`.
 
     .. note::
        Paths given as 'remote' arguments,
@@ -90,7 +91,7 @@ class Disk(object):
         data = {
             "description": self._description,
             "locked": self._locked
-            }
+        }
         if self._tags is not None:
             data["tags"] = self._tags
         response = self._connection._post(get_url('disk folder'), json=data)
@@ -468,6 +469,10 @@ class Disk(object):
         raise_on_error(response)
         self.update(True)
 
+    def copy_file(self, source, dest):
+        return self.add_link(source, dest)
+    copy_file.__doc__ = storage.Storage.copy_file.__doc__
+
     def add_link(self, target, linkname):
         """Create link between files on the disk
 
@@ -534,7 +539,7 @@ class Disk(object):
                 url = get_url('update file', name=self._uuid, path=os.path.dirname(dest))
                 response = self._connection._post(
                     url,
-                    )
+                )
                 if response.status_code == 404:
                     raise MissingDiskException(response.json()['message'])
                 raise_on_error(response)
@@ -727,73 +732,18 @@ class Disk(object):
         if progress:
             progressbar.finish()
 
-    def get_all_files(self, output_dir, progress=None):
-        """Get all files the disk.
-
-        :param str output_dir: local directory for the retrieved files.
-        :param progress: can be a callback (read,total,filename)  or True to display a progress bar
-        :type progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.MissingDiskException: the disk is not on the server
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-
-        .. warning:: Will override *output_dir* content.
-
-        """
-
-        for file_info in self:
-            outpath = os.path.normpath(file_info.name.lstrip('/'))
-            self.get_file(file_info, os.path.join(output_dir,
-                                                  outpath), progress)
-
-    def get_file(self, remote, local=None, progress=None):
-        """Get a file from the disk.
-
-        .. note::
-           You can also use **disk[file]**
-
-        :param remote: the name of the remote file or a QFileInfo
-        :type remote: str or FileInfo
-        :param str local: local name of the retrieved file  (defaults to *remote*)
-        :param progress: can be a callback (read,total,filename)  or True to display a progress bar
-        :type progress: bool or function(float, float, str)
-        :rtype: :class:`str`
-        :returns: The name of the output file.
-
-        :raises qarnot.exceptions.MissingDiskException: the disk is not on the server
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ValueError: no such file
-          (:exc:`KeyError` with disk[file] syntax)
-        """
-
-        def make_dirs(_local):
-            """Make directory if needed"""
-            directory = os.path.dirname(_local)
-            if directory != '' and not os.path.exists(directory):
-                os.makedirs(directory)
-
-        if isinstance(remote, FileInfo):
-            if remote.directory:
-                return
-            remote = remote.name
-
-        if local is None:
-            local = os.path.basename(remote)
-
-        if os.path.isdir(local):
-            local = os.path.join(local, os.path.basename(remote))
-
-        make_dirs(local)
-
-        if os.path.isdir(local):
-            return
+    def _download_file(self, remote, local, progress=None):
         with open(local, 'wb') as f_local:
             for chunk in self.get_file_iterator(remote, progress=progress):
                 f_local.write(chunk)
         return local
 
     def update_file_settings(self, remote_path, **kwargs):
+        """Update file settings.
+
+        You can control executable flag of the file using this method
+        eg: update_file_settings('path', executable=True)
+        """
         settings = dict(**kwargs)
 
         if len(settings) < 1:
@@ -1011,46 +961,11 @@ class Disk(object):
             self.uuid + " - " + self.description
         )
 
-    # Operators
-    def __getitem__(self, filename):
-        """x.__getitem__(y) <==> x[y]"""
-        try:
-            return self.get_file(filename)
-        except ValueError:
-            raise KeyError(filename)
-
-    def __setitem__(self, remote, filename):
-        """x.__setitem__(i, y) <==> x[i]=y"""
-        if os.path.isdir(filename):
-            return self.add_directory(filename, remote)
-        return self.add_file(filename, remote)
-
-    def __delitem__(self, filename):
-        """x.__delitem__(y) <==> del x[y]"""
-        try:
-            return self.delete_file(filename)
-        except ValueError:
-            raise KeyError(filename)
-
     def __contains__(self, item):
         """D.__contains__(k) -> True if D has a key k, else False"""
         if isinstance(item, FileInfo):
             item = item.name
         return item in [f.name for f in self.list_files()]
-
-    def __iter__(self):
-        """x.__iter__() <==> iter(x)"""
-        return iter(self.list_files())
-
-    def __eq__(self, other):
-        """x.__eq__(y) <==> x == y"""
-        if isinstance(other, self.__class__):
-            return self._uuid == other._uuid
-        return False
-
-    def __ne__(self, other):
-        """x.__ne__(y) <==> x != y"""
-        return not self.__eq__(other)
 
 
 # Utility Classes
@@ -1070,6 +985,8 @@ class FileInfo(object):
                                                          "%Y-%m-%dT%H:%M:%SZ")
 
         self.name = name
+        self.key = name  # alias for name
+
         """:type: :class:`str`
 
         Path of the file on the :class:`Disk`."""

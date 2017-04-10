@@ -1,7 +1,7 @@
 """Module describing a connection."""
 
 
-# Copyright 2016 Qarnot computing
+# Copyright 2017 Qarnot computing
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,11 +19,13 @@
 from qarnot import get_url, raise_on_error
 from qarnot.disk import Disk
 from qarnot.task import Task
+from qarnot.bucket import Bucket
 from qarnot.exceptions import *
 import requests
 import sys
 import warnings
 import os
+import boto3
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -39,7 +41,7 @@ else:
 class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
     """
-    def __init__(self, fileconf=None, client_token=None, cluster_url=None, cluster_unsafe=False, cluster_timeout=None):
+    def __init__(self, fileconf=None, client_token=None, cluster_url=None, cluster_unsafe=False, cluster_timeout=None, storage_url=None, storage_unsafe=False):
         """Create a connection to a cluster with given config file, options or environment variables.
         Available environment variable are
         `QARNOT_CLUSTER_URL`, `QARNOT_CLUSTER_UNSAFE`, `QARNOT_CLUSTER_TIMEOUT` and `QARNOT_CLIENT_TOKEN`.
@@ -50,6 +52,8 @@ class Connection(object):
         :param str cluster_url: (optional) Cluster url.
         :param bool cluster_unsafe: (optional) Disable certificate check
         :param int cluster_timeout: (optional) Timeout value for every request
+        :param str storage_url: (optional) Storage service url.
+        :param bool storage_unsafe: (optional) Disable certificate check
 
         Configuration sample:
 
@@ -63,11 +67,15 @@ class Connection(object):
            [client]
            # auth string of the client
            token=login
+           [storage]
+           url=https://storage
+           unsafe=False
 
         """
         self._http = requests.session()
 
         if fileconf is not None:
+            self.storage = None
             if isinstance(fileconf, dict):
                 warnings.warn("Dict config should be replaced by constructor explicit arguments.")
                 self.cluster = None
@@ -85,7 +93,8 @@ class Connection(object):
                     self.cluster = None
                     if cfg.has_option('cluster', 'url'):
                         self.cluster = cfg.get('cluster', 'url')
-
+                    if cfg.has_option('storage', 'url'):
+                        self.storage = cfg.get('storage', 'url')
                     if cfg.has_option('client', 'token'):
                         auth = cfg.get('client', 'token')
                     elif cfg.has_option('client', 'auth'):
@@ -99,14 +108,21 @@ class Connection(object):
                     if cfg.has_option('cluster', 'unsafe') \
                        and cfg.getboolean('cluster', 'unsafe'):
                         self._http.verify = False
+                    if cfg.has_option('storage', 'unsafe') \
+                       and cfg.getboolean('cluster', 'unsafe'):
+                        storage_unsafe = False
         else:
             self.cluster = cluster_url
             self.timeout = cluster_timeout
             self._http.verify = not cluster_unsafe
+            self.storage = storage_url
             auth = client_token
 
         if self.cluster is None:
             self.cluster = os.getenv("QARNOT_CLUSTER_URL")
+
+        if self.storage is None:
+            self.storage = os.getenv("QARNOT_STORAGE_URL")
 
         if auth is None:
             auth = os.getenv("QARNOT_CLIENT_TOKEN")
@@ -123,8 +139,22 @@ class Connection(object):
 
         if self.cluster is None:
             self.cluster = "https://api.qarnot.com"
-        resp = self._get('/')
-        raise_on_error(resp)
+
+        if self.storage is None:
+            self.storage = "https://storage.qarnot.com"
+
+        user = self.user_info
+        session = boto3.session.Session()
+        self.s3client = session.client(service_name='s3',
+                                       aws_access_key_id=user.email,
+                                       aws_secret_access_key=auth,
+                                       verify=(not storage_unsafe),
+                                       endpoint_url=self.storage)
+        self.s3resource = session.resource(service_name='s3',
+                                           aws_access_key_id=user.email,
+                                           aws_secret_access_key=auth,
+                                           verify=(not storage_unsafe),
+                                           endpoint_url=self.storage)
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
@@ -283,10 +313,19 @@ class Connection(object):
         ret = resp.json()
         return UserInfo(ret)
 
+    def buckets(self):
+        """Get the list of buckets.
+
+        :rtype: list(class:`~qarnot.bucket.Bucket`).
+        :returns: List of buckets
+        """
+        buckets = [Bucket(self, x.name) for x in self.s3resource.buckets.all()]
+        return buckets
+
     def disks(self):
         """Get the list of disks on this cluster for this user.
 
-        :rtype: List of :class:`~qarnot.disk.Disk`.
+        :rtype: list(:class:`~qarnot.disk.Disk`).
         :returns: Disks on the cluster owned by the user.
 
 
@@ -328,6 +367,15 @@ class Connection(object):
         raise_on_error(response)
         return Task.from_json(self, response.json())
 
+    def retrieve_or_create_bucket(self, uuid):
+        """Retrieve a :class:`~qarnot.bucket.Bucket` from its description, or create a new one.
+
+        :param str uuid: the bucket uuid (name)
+        :rtype: :class:`~qarnot.bucket.Bucket`
+        :returns: Existing or newly created bucket defined by the given name
+        """
+        return Bucket(self, uuid)
+
     def retrieve_or_create_disk(self, description):
         """Retrieve a :class:`~qarnot.disk.Disk` from its description, or create a new one.
 
@@ -354,6 +402,17 @@ class Connection(object):
             return matches[0]
         else:
             raise QarnotGenericException("No unique match for given description.")
+
+    def retrieve_bucket(self, uuid):
+        """Retrieve a :class:`~qarnot.bucket.Bucket` from its uuid (name)
+
+        :param str uuid: Desired disk uuid (name)
+        :rtype: :class:`~qarnot.bucket.Bucket`
+        :returns: Existing bucket defined by the given uuid (name)
+        :raises: botocore.exceptions.ClientError: Bucket does not exist, or invalid credentials
+        """
+        self.s3client.head_bucket(Bucket=uuid)
+        return Bucket(self, uuid)
 
     def retrieve_disk(self, uuid):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
@@ -441,6 +500,17 @@ class Connection(object):
         if response.status_code == 404:
             raise QarnotGenericException(response.json()['message'])
         return Profile(response.json())
+
+    def create_bucket(self, name):
+        """Create a new :class:`~qarnot.bucket.Bucket`.
+
+        :param str name: bucket name
+
+        :rtype: :class:`qarnot.bucket.Bucket`
+        :returns: The created :class:`~qarnot.bucket.Bucket`.
+
+        """
+        return Bucket(self, name)
 
 
 ###################

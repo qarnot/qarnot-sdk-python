@@ -1,7 +1,7 @@
 """Rest API for submitting qarnot jobs in Python."""
 
 
-# Copyright 2016 Qarnot computing
+# Copyright 2017 Qarnot computing
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 from qarnot.exceptions import QarnotGenericException
 
 
-__all__ = ["task", "connection", "disk"]
+__all__ = ["task", "connection", "disk", "bucket"]
 
 
 def raise_on_error(response):

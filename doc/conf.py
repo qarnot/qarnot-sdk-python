@@ -51,7 +51,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'qarnot'
-copyright = u'2016, Qarnot Computing'
+copyright = u'2017, Qarnot Computing'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -93,7 +93,7 @@ nitpick_ignore = [("py:obj", "str"), ("py:obj", "bool"), ("py:obj", "float"), ("
                   ("py:exc", "TypeError"), ("py:obj", "str or dict"), ("py:obj", "list(str)"),
                   ("py:obj", "int or str"), ("py:obj", "str or File"), ("py:obj", "str or FileInfo"),
                   ("py:obj", "bool or function(float, float, str)"), ("py:class", "exceptions.Exception"),
-                  ("py:class", "dict(str,str)")]
+                  ("py:class", "dict(str,str)"), ("py:obj", "list(s3.ObjectSummary)")]
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 #add_function_parentheses = True
@@ -286,7 +286,7 @@ texinfo_documents = [
 epub_title = u'qarnot'
 epub_author = u'Qarnot computing'
 epub_publisher = u'Qarnot computing'
-epub_copyright = u'2016, Qarnot computing'
+epub_copyright = u'2017, Qarnot computing'
 
 # The basename for the epub file. It defaults to the project name.
 #epub_basename = u'apy'
