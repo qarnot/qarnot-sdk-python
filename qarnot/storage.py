@@ -50,7 +50,8 @@ class Storage(object):
     def list_files(self):
         """List files on the storage.
 
-        ... note: File object returned *must* have a `key` property.
+        ... note:
+            File object returned *must* have a `key` property.
 
         :returns: List of the files on the storage.
         """

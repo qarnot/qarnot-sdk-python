@@ -272,6 +272,14 @@ class Bucket(storage.Storage):
         self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
     add_file.__doc__ = storage.Storage.add_file.__doc__
 
+    def get_all_files(self, output_dir, progress=None):
+        return super(Bucket, self).get_all_files(output_dir, progress)
+    get_all_files.__doc__ = storage.Storage.get_all_files.__doc__
+
+    def get_file(self, remote, local=None, progress=None):
+        return super(Bucket, self).get_file(remote, local, progress)
+    get_file.__doc__ = storage.Storage.get_file.__doc__
+
     def add_directory(self, local, remote=""):
         if not os.path.isdir(local):
             raise IOError("Not a valid directory")
@@ -284,12 +292,12 @@ class Bucket(storage.Storage):
                               posixpath.join(remote_loc, filename))
     add_directory.__doc__ = storage.Storage.add_directory.__doc__
 
-    def copy_file(self, source, other):
+    def copy_file(self, source, dest):
         copy_source = {
             'Bucket': self._uuid,
             'Key': source
         }
-        return self._connection.s3client.copy(copy_source, self._uuid, other, Config=s3_multipart_config)
+        return self._connection.s3client.copy(copy_source, self._uuid, dest, Config=s3_multipart_config)
 
     copy_file.__doc__ = storage.Storage.copy_file.__doc__
 

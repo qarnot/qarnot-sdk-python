@@ -86,7 +86,8 @@ class Disk(storage.Storage):
 
     def create(self):
         """Create the Disk on the REST API.
-        .. note:: This method should not be used unless if the object was created with the constructor.
+        .. note::
+           This method should not be used unless if the object was created with the constructor.
         """
         data = {
             "description": self._description,
@@ -737,6 +738,14 @@ class Disk(storage.Storage):
             for chunk in self.get_file_iterator(remote, progress=progress):
                 f_local.write(chunk)
         return local
+
+    def get_all_files(self, output_dir, progress=None):
+        return super(Disk, self).get_all_files(output_dir, progress)
+    get_all_files.__doc__ = storage.Storage.get_all_files.__doc__
+
+    def get_file(self, remote, local=None, progress=None):
+        return super(Disk, self).get_file(remote, local, progress)
+    get_file.__doc__ = storage.Storage.get_file.__doc__
 
     def update_file_settings(self, remote_path, **kwargs):
         """Update file settings.
