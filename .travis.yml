@@ -1,0 +1,21 @@
+dist: trusty
+sudo: false
+language: python
+python:
+  - "2.7"
+  - "3.4"
+  - "3.5"
+  - "3.5-dev"
+  - "3.6"
+  - "3.6-dev"
+  - "3.7-dev"
+  - "nightly"
+install: "pip install -r requirements.txt"
+deploy:
+  provider: pypi
+  user: qarnot
+  password:
+    secure: UmRlIc+0WSHtK7ENpCaHjqQUYvt9RsDUWxjs3ABOYgDQyWSqdK2JncRrV+UUKi+w8D9qN1Pxm1yHymXKHSZ0KjRj0v87mkFGdq8HFyRKXpUp/tDtlBjKpYcICYGMTu2+ztp7uI6MWf7uotWb1oCPThhZVumLiiKjTiiIMfeYbFC6ElVdRJazZxO0U6iOqN//uei80fsAZ/D8wiUGyxV4IuwlgVM391+pVJI/0jjsoMd7zgi16DbVRC4ho8dlx2KtSSIx4ROTxOJKcRzNumI1/flM2AFqntZkBxB7lG8rz5ClBZn53+ozIKqLz+6mWVKvREyqG6N2+wzRruO0WrxAuwf1jN1MEK1VUzEvAqi3b8qio6m49h+U16zjVJ+PcaJe2ZkVfZgUtSe89gIG4ui24wUpZjreUR3MZ8IuIh3RqblyvY2xTiAEzj2xgu2JLDCSPCAgjlngS7WvnxIJv/Vke5XmprQ3wjTeDshvFeZ6adRDvI9vLw9PbkeKhiQrtxAw1FOxvFINb0jA6x5Z0NGVEJ6LWGM5W9YOIrvE2Ku5AqFH1eka35XTO3TzfQzw6BNr27y+X7LiKZyMzINvwq3OHXounwgal1HnAZEwfwMzQS6cA7qQstV/PQDDpUekzTcVGki+3rXGEw6MS0kH1tzYdQXr41UCdbrMYyL0aw1pd0g=
+  on:
+     tags: true
+script: pytest
