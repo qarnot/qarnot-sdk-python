@@ -5,12 +5,11 @@ python:
   - "2.7"
   - "3.4"
   - "3.5"
-  - "3.5-dev"
   - "3.6"
-  - "3.6-dev"
-  - "3.7-dev"
-  - "nightly"
-install: "pip install -r requirements.txt"
+install:
+  - "pip install -r requirements.txt"
+  - "pip install -r requirements-test.txt"
+  - "pip install -e ."
 deploy:
   provider: pypi
   user: qarnot

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Setuptools file."""
 
+# pylint: disable=E0611,F0401
 from distutils.core import setup
 from os import path
 import versioneer
@@ -23,7 +24,8 @@ setup(name='qarnot',
       author_email='support@qarnot-computing.com',
       url='https://computing.qarnot.com',
       packages=['qarnot'],
-      install_requires=['requests'],
+      install_requires=['requests', 'boto3'],
+      tests_require=['pytest'],
       classifiers=['Development Status :: 5 - Production/Stable',
                    'Intended Audience :: Developers',
                    'Intended Audience :: Information Technology',
