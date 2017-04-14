@@ -59,28 +59,24 @@ class Bucket(storage.Storage):
 
         self._connection.s3client.create_bucket(Bucket=name)
 
-    def delete(self, empty=False):
-        """Get an archive of this disk's content.
-
-        :param bool empty: Remove all objects from bucket. Only empty buckets can be removed.
-
+    def delete(self):
+        """ Delete the bucket represented by this :class:`Bucket`.
         """
-        if empty:
-            bucket = self._connection.s3resource.Bucket(self._uuid)
-            objectlist = list(bucket.objects.all())
-            n = 1000  # delete object count max request
+        bucket = self._connection.s3resource.Bucket(self._uuid)
+        objectlist = list(bucket.objects.all())
+        n = 1000  # delete object count max request
 
-            if sys.version_info >= (3, 0):
-                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
-            else:
-                # noinspection PyUnresolvedReferences
-                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
-            for item in listofobjectlist:
-                bucket.delete_objects(
-                    Delete={
-                        'Objects': item
-                    }
-                )
+        if sys.version_info >= (3, 0):
+            listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
+        else:
+            # noinspection PyUnresolvedReferences
+            listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
+        for item in listofobjectlist:
+            bucket.delete_objects(
+                Delete={
+                    'Objects': item
+                }
+            )
         self._connection.s3client.delete_bucket(Bucket=self._uuid)
 
     def list_files(self):
