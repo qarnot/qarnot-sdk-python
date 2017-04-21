@@ -1067,9 +1067,9 @@ class Task(object):
         if self._result_object is not None:
             self._result_type = type(self._result_object)
             if isinstance(self._result_object, bucket.Bucket):
-                json_task['resultDisk'] = self._result_object.uuid
-            elif isinstance(self._result_object, disk.Disk):
                 json_task['resultBucket'] = self._result_object.uuid
+            elif isinstance(self._result_object, disk.Disk):
+                json_task['resultDisk'] = self._result_object.uuid
 
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
