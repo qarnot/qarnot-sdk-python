@@ -101,6 +101,7 @@ class Task(object):
         self._results_whitelist = None
         self._results_blacklist = None
         self._status = None
+        self._completed_instances = []
         self._tags = []
         self._creation_date = None
         self._errors = None
@@ -397,6 +398,11 @@ class Task(object):
             self._snapshot_whitelist = json_task['snapshotWhitelist']
         if 'snapshotBlacklist' in json_task:
             self._snapshot_blacklist = json_task['snapshotBlacklist']
+
+        if 'completedInstances' in json_task:
+            self._completed_instances.clear()
+            for completed_instance in json_task['completedInstances']:
+                self._completed_instances.append(CompletedInstance(completed_instance))
 
     @classmethod
     def from_json(cls, connection, json_task):
@@ -974,6 +980,15 @@ class Task(object):
         return self._status
 
     @property
+    def completed_instances(self):
+        """:type: list(:class:`CompletedInstance`)
+        :getter: Return this task's completed instances
+        """
+        if self._auto_update:
+            self.update()
+        return self._completed_instances
+
+    @property
     def creation_date(self):
         """:type: :class:`str`
 
@@ -1435,6 +1450,59 @@ class PerRunningInstanceInfo(object):
 
         if 'activeForwards' in json:
             self.active_forward = [TaskActiveForward(x) for x in json['activeForwards']]
+
+    def __str__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
+
+
+class CompletedInstance(object):
+    """Completed Instance Information
+
+    .. note:: Read-only class
+    """
+    def __init__(self, json):
+        self.instance_id = json['instanceId']
+        """:type: :class:`int`
+
+        Instance number."""
+
+        self.state = json['state']
+        """:type: :class:`str`
+
+        Instance final state."""
+
+        self.wall_time_sec = json['wallTimeSec']
+        """:type: :class:`float`
+
+        Instance wall time in seconds."""
+
+        self.exec_time_sec = json['execTimeSec']
+        """:type: :class:`float`
+
+        Execution time in seconds."""
+
+        self.exec_time_sec_ghz = json['execTimeSecGHz']
+        """:type: :class:`float`
+
+        Execution time in seconds GHz."""
+
+        self.peak_memory_mb = json['peakMemoryMB']
+        """:type: :class:`int`
+
+        Peak memory size in MB."""
+
+        self.average_ghz = json['averageGHz']
+        """:type: :class:`float`
+
+        Instance execution time GHz"""
+
+        self.results = json['results']
+        """:type: :class:list(`str`)
+
+          Instance produced results"""
 
     def __str__(self):
         if sys.version_info > (3, 0):
