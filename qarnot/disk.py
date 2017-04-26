@@ -86,6 +86,7 @@ class Disk(storage.Storage):
 
     def create(self):
         """Create the Disk on the REST API.
+
         .. note::
            This method should not be used unless if the object was created with the constructor.
         """
