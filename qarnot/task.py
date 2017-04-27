@@ -400,9 +400,9 @@ class Task(object):
             self._snapshot_blacklist = json_task['snapshotBlacklist']
 
         if 'completedInstances' in json_task:
-            self._completed_instances.clear()
-            for completed_instance in json_task['completedInstances']:
-                self._completed_instances.append(CompletedInstance(completed_instance))
+            self._completed_instances = [CompletedInstance(x) for x in json_task['completedInstances']]
+        else:
+            self._completed_instances = []
 
     @classmethod
     def from_json(cls, connection, json_task):
