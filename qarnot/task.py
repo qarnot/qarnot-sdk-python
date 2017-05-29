@@ -21,7 +21,7 @@ import datetime
 import warnings
 import sys
 
-from qarnot import disk, bucket
+from qarnot import disk, bucket, pool
 from qarnot import get_url, raise_on_error
 from qarnot.exceptions import *
 try:
@@ -42,20 +42,26 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile, instancecount_or_range):
+    def __init__(self, connection, name, profile_or_pool, instancecount_or_range):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
         :type connection: :class:`qarnot.connection.Connection`
         :param name: given name of the task
         :type name: :class:`str`
-        :param str profile: which profile (payload) to use with this task
+        :param profile_or_pool: which profile to use with this task, or which Pool to run task
+        :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
 
         :param instancecount_or_range: number of instances or ranges on which to run task
         :type instancecount_or_range: int or str
         """
         self._name = name
-        self._profile = profile
+        if isinstance(profile_or_pool, pool.Pool):
+            self._pooluuid = profile_or_pool.uuid
+            self._profile = None
+        else:
+            self._profile = profile_or_pool
+            self._pooluuid = None
 
         if isinstance(instancecount_or_range, int):
             self._instancecount = instancecount_or_range
@@ -73,7 +79,10 @@ class Task(object):
          :type: :class:`dict(str,str)`
 
          Constants of the task.
+         Can be set until :meth:`run` or :meth:`submit` is called
 
+        .. note:: See available constants for a specific profile
+              with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
 
         self._auto_update = True
@@ -81,15 +90,6 @@ class Task(object):
         self._update_cache_time = 5
 
         self._last_cache = time.time()
-        """
-        Dictionary [CST] = val.
-
-        Can be set until :meth:`run` is called
-
-        .. note:: See available constants for a specific profile
-              with :meth:`qarnot.connection.Connection.profile_info`.
-        """
-
         self.constraints = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
@@ -354,6 +354,7 @@ class Task(object):
         """Update this task from retrieved info."""
         self._name = json_task['name']
         self._profile = json_task['profile']
+        self._pooluuid = json_task.get('pooluuid')
         self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
 
@@ -418,7 +419,7 @@ class Task(object):
             instancecount_or_range = json_task['advancedRanges']
         new_task = cls(connection,
                        json_task['name'],
-                       json_task['profile'],
+                       json_task.get('profile') or json_task.get('pooluuid'),
                        instancecount_or_range)
         new_task._update(json_task)
         return new_task
@@ -807,6 +808,30 @@ class Task(object):
         self._auto_update = False
 
     @property
+    def pool(self):
+        """:type: :class:`~qarnot.pool.Pool`
+        :getter: Returns this task's pool
+        :setter: Sets this task's pool
+
+        The pool to run the task in.
+
+        Can be set until :meth:`run` is called.
+
+        .. warning:: This property is mutually exclusive with :attr:`profile`
+        """
+        return self._connection.retrieve_pool(self._pooluuid)
+
+    @pool.setter
+    def pool(self, value):
+        """setter for pool"""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        if self._profile is not None:
+            raise AttributeError("Can't set pool if profile is not None")
+        else:
+            self._pooluuid = value.uuid
+
+    @property
     def profile(self):
         """:type: :class:`str`
         :getter: Returns this task's profile
@@ -814,7 +839,9 @@ class Task(object):
 
         The profile to run the task with.
 
-        Can be set until :meth:`run` is called.
+        Can be set until :meth:`run` or :meth:`submit` is called.
+
+         .. warning:: This property is mutually exclusive with :attr:`pool`
         """
         return self._profile
 
@@ -823,6 +850,8 @@ class Task(object):
         """setter for profile"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
+        if self._pooluuid is not None:
+            raise AttributeError("Can't set profile if pool is not None")
         else:
             self._profile = value
 
@@ -834,7 +863,7 @@ class Task(object):
 
         Number of instances needed for the task.
 
-        Can be set until :meth:`run` is called.
+        Can be set until :meth:`run` or :meth:`submit` is called.
 
         :raises AttributeError: if :attr:`advanced_range` is not None when setting this property
 
@@ -1061,6 +1090,7 @@ class Task(object):
         json_task = {
             'name': self._name,
             'profile': self._profile,
+            'pooluuid': self._pooluuid,
             'constants': const_list,
             'constraints': constr_list
         }

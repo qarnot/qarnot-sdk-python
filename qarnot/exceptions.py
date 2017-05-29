@@ -19,7 +19,9 @@
 __all__ = ['QarnotGenericException',
            'UnauthorizedException',
            'MissingTaskException',
+           'MissingPoolException',
            'MaxTaskException',
+           'MaxPoolException',
            'MissingDiskException',
            'MaxDiskException',
            'NotEnoughCreditsException',
@@ -42,8 +44,18 @@ class MissingTaskException(Exception):
     pass
 
 
+class MissingPoolException(Exception):
+    """Non existent pool."""
+    pass
+
+
 class MaxTaskException(Exception):
     """Max number of tasks reached."""
+    pass
+
+
+class MaxPoolException(Exception):
+    """Max number of pools reached."""
     pass
 
 

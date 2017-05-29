@@ -6,5 +6,6 @@ SDK Documentation
 
    api/connection
    api/task
+   api/pool
    api/storage/storageindex
    api/exceptions

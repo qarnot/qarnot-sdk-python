@@ -19,7 +19,7 @@
 from qarnot.exceptions import QarnotGenericException
 
 
-__all__ = ["task", "connection", "disk", "bucket"]
+__all__ = ["task", "connection", "disk", "bucket", "pool"]
 
 
 def raise_on_error(response):
@@ -52,7 +52,10 @@ def get_url(key, **kwargs):
         'task instant': '/tasks/{uuid}/snapshot',  # POST -> get a snapshot
         'task stdout': '/tasks/{uuid}/stdout',  # GET -> task stdout
         'task stderr': '/tasks/{uuid}/stderr',  # GET -> task stderr
-        'task abort': '/tasks/{uuid}/abort',  # GET -> task stderr
+        'task abort': '/tasks/{uuid}/abort',  # GET -> task
+        'pools': '/pools',  # GET -> pools, POST -> submit pool
+        'pool close': '/pools/{uuid}/close',  # POST -> close pool
+        'pool update': '/pools/{uuid}',  # GET -> pool, DELETE -> close & delete
         'user': '/info',  # GET -> user info
         'profiles': '/profiles',  # GET -> profiles list
         'profile details': '/profiles/{profile}'

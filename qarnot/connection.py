@@ -18,6 +18,8 @@
 
 from qarnot import get_url, raise_on_error
 from qarnot.disk import Disk
+from qarnot.exceptions import MissingPoolException
+from qarnot.pool import Pool
 from qarnot.task import Task
 from qarnot.bucket import Bucket
 from qarnot.exceptions import *
@@ -168,7 +170,7 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
-           :func:`requests.Session.get`.
+           :func:`requests.Pool.get`.
         """
         while True:
             try:
@@ -197,7 +199,7 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
-           :attr:`requests.Session.post()`.
+           :attr:`requests.Pool.post()`.
         """
         while True:
             try:
@@ -230,7 +232,7 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
-           :attr:`requests.Session.post()`.
+           :attr:`requests.Pool.post()`.
         """
         while True:
             try:
@@ -262,7 +264,7 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Additional keyword arguments are passed to the underlying
-          :attr:`requests.Session.delete()`.
+          :attr:`requests.Pool.delete()`.
         """
 
         while True:
@@ -337,6 +339,19 @@ class Connection(object):
         disks = [Disk.from_json(self, data) for data in response.json()]
         return disks
 
+    def pools(self):
+        """Get the list of pools stored on this cluster for this user.
+
+        :rtype: List of :class:`~qarnot.pool.Pool`.
+        :returns: Pools stored on the cluster owned by the user.
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+        response = self._get(get_url('pools'))
+        raise_on_error(response)
+        return [Pool.from_json(self, pool) for pool in response.json()]
+
     def tasks(self):
         """Get the list of tasks stored on this cluster for this user.
 
@@ -349,6 +364,23 @@ class Connection(object):
         response = self._get(get_url('tasks'))
         raise_on_error(response)
         return [Task.from_json(self, task) for task in response.json()]
+
+    def retrieve_pool(self, uuid):
+        """Retrieve a :class:`qarnot.pool.Pool` from its uuid
+
+        :param str uuid: Desired pool uuid
+        :rtype: :class:`~qarnot.pool.Pool`
+        :returns: Existing pool defined by the given uuid
+        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+
+        response = self._get(get_url('pool update', uuid=uuid))
+        if response.status_code == 404:
+            raise MissingPoolException(response.json()['message'])
+        raise_on_error(response)
+        return Pool.from_json(self, response.json())
 
     def retrieve_task(self, uuid):
         """Retrieve a :class:`qarnot.task.Task` from its uuid
@@ -450,11 +482,26 @@ class Connection(object):
         disk.create()
         return disk
 
-    def create_task(self, name, profile, instancecount_or_range=1):
+    def create_pool(self, name, profile, instancecount=1):
+        """Create a new :class:`~qarnot.pool.Pool`.
+
+        :param str name: given name of the pool
+        :param str profile: which profile to use with this pool
+        :param instancecount: number of instances to run for the pool
+        :type instancecount: int
+        :rtype: :class:`~qarnot.pool.Pool`
+        :returns: The created :class:`~qarnot.pool.Pool`.
+
+        .. note:: See available profiles with :meth:`profiles`.
+        """
+        return Pool(self, name, profile, instancecount)
+
+    def create_task(self, name, profile_or_pool, instancecount_or_range=1):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
-        :param str profile: which profile to use with this task
+        :param profile_or_pool: which profile to use with this task, or which Pool to run task
+        :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
         :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
         :type instancecount_or_range: int or str
         :rtype: :class:`~qarnot.task.Task`
@@ -462,7 +509,7 @@ class Connection(object):
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile, instancecount_or_range)
+        return Task(self, name, profile_or_pool, instancecount_or_range)
 
     def profiles(self):
         """Get list of profiles available on the cluster.
