@@ -529,6 +529,7 @@ class Connection(object):
             response2 = self._get(url)
             if response2.status_code == 404:
                 continue
+            raise_on_error(response2)
             profiles_list.append(Profile(response2.json()))
         return profiles_list
 
