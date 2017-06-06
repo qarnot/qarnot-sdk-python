@@ -82,7 +82,7 @@ class Bucket(storage.Storage):
     def list_files(self):
         """List files in the bucket
 
-        :rtype: list(s3.ObjectSummary)
+        :rtype: list(:class:`S3.ObjectSummary`)
         :returns: A list of ObjectSummary resources
 
         """
@@ -92,7 +92,7 @@ class Bucket(storage.Storage):
     def directory(self, directory=''):
         """List files in a directory of the disk according to prefix.
 
-        :rtype: list(s3.ObjectSummary)
+        :rtype: list(:class:`S3.ObjectSummary`)
         :returns: A list of ObjectSummary resources
         """
         bucket = self._connection.s3resource.Bucket(self._uuid)

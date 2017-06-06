@@ -76,7 +76,7 @@ class Task(object):
         self._connection = connection
         self.constants = {}
         """
-         :type: :class:`dict(str,str)`
+         :type: dict(str,str)
 
          Constants of the task.
          Can be set until :meth:`run` or :meth:`submit` is called

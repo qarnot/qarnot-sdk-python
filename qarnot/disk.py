@@ -984,7 +984,7 @@ class FileInfo(object):
     def __init__(self, lastChange, name, size, fileFlags, sha1Sum):
 
         self.lastchange = None
-        """:type: :class:`datetime`
+        """:type: :class:`datetime.datetime`
 
         UTC Last change time of the file on the :class:`Disk`."""
 

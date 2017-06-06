@@ -469,7 +469,8 @@ class Connection(object):
 
         :param str description: a short description of the disk
         :param bool lock: prevents the disk to be removed accidentally
-        :param list(str) tags: custom tags
+        :param tags: custom tags
+        :type tags: list(`str`)
 
         :rtype: :class:`qarnot.disk.Disk`
         :returns: The created :class:`~qarnot.disk.Disk`.
