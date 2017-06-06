@@ -18,7 +18,7 @@ import warnings
 
 import datetime
 
-from qarnot import raise_on_error, disk, bucket, get_url
+from qarnot import raise_on_error, disk, bucket, get_url, status
 from qarnot.exceptions import MissingPoolException, MaxDiskException, MaxPoolException, NotEnoughCreditsException
 
 
@@ -411,7 +411,17 @@ class Pool(object):
 
     @property
     def status(self):
-        return self._status  # FIXME
+        """:type: :class:`qarnot.status.Status`
+        :getter: Returns this pool's status
+
+        Status of the task
+        """
+        if self._auto_update:
+            self.update()
+
+        if self._status:
+            return status.Status(self._status)
+        return self._status
 
     @property
     def auto_update(self):

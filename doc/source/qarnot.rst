@@ -5,7 +5,6 @@ SDK Documentation
    :maxdepth: 1
 
    api/connection
-   api/task
-   api/pool
+   api/compute/computeindex
    api/storage/storageindex
    api/exceptions
