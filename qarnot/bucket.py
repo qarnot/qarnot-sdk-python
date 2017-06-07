@@ -17,7 +17,7 @@ import hashlib
 import sys
 import os
 import posixpath
-from qarnot import storage
+from .storage import Storage
 import itertools
 from boto3.s3.transfer import TransferConfig
 
@@ -35,7 +35,7 @@ s3_multipart_config = TransferConfig(
 )
 
 
-class Bucket(storage.Storage):
+class Bucket(Storage):
     """Represents a resource/result bucket.
 
     This class is the interface to manage resources or results from a
@@ -266,15 +266,15 @@ class Bucket(storage.Storage):
         dest = remote or os.path.basename(file_.name)
 
         self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
-    add_file.__doc__ = storage.Storage.add_file.__doc__
+    add_file.__doc__ = Storage.add_file.__doc__
 
     def get_all_files(self, output_dir, progress=None):
         return super(Bucket, self).get_all_files(output_dir, progress)
-    get_all_files.__doc__ = storage.Storage.get_all_files.__doc__
+    get_all_files.__doc__ = Storage.get_all_files.__doc__
 
     def get_file(self, remote, local=None, progress=None):
         return super(Bucket, self).get_file(remote, local, progress)
-    get_file.__doc__ = storage.Storage.get_file.__doc__
+    get_file.__doc__ = Storage.get_file.__doc__
 
     def add_directory(self, local, remote=""):
         if not os.path.isdir(local):
@@ -286,7 +286,7 @@ class Bucket(storage.Storage):
             for filename in files:
                 self.add_file(os.path.join(dirpath, filename),
                               posixpath.join(remote_loc, filename))
-    add_directory.__doc__ = storage.Storage.add_directory.__doc__
+    add_directory.__doc__ = Storage.add_directory.__doc__
 
     def copy_file(self, source, dest):
         copy_source = {
@@ -295,15 +295,15 @@ class Bucket(storage.Storage):
         }
         return self._connection.s3client.copy(copy_source, self._uuid, dest, Config=s3_multipart_config)
 
-    copy_file.__doc__ = storage.Storage.copy_file.__doc__
+    copy_file.__doc__ = Storage.copy_file.__doc__
 
     def flush(self):
         pass
-    flush.__doc__ = storage.Storage.flush.__doc__
+    flush.__doc__ = Storage.flush.__doc__
 
     def update(self, flush=False):
         pass
-    update.__doc__ = storage.Storage.update.__doc__
+    update.__doc__ = Storage.update.__doc__
 
     def _download_file(self, remote, local, progress=None):
         with open(local, 'wb') as data:
@@ -312,7 +312,7 @@ class Bucket(storage.Storage):
 
     def delete_file(self, remote):
         self._connection.s3client.delete_object(Bucket=self._uuid, Key=remote)
-    delete_file.__doc__ = storage.Storage.delete_file.__doc__
+    delete_file.__doc__ = Storage.delete_file.__doc__
 
     @property
     def uuid(self):

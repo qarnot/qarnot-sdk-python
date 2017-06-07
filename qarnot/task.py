@@ -21,9 +21,11 @@ import datetime
 import warnings
 import sys
 
-from qarnot import disk, bucket
-from qarnot import get_url, raise_on_error
-from qarnot.exceptions import *
+from .disk import Disk
+from .bucket import Bucket
+
+from . import get_url, raise_on_error
+from qarnot.exceptions import MissingTaskException, MaxTaskException, MissingDiskException, LockedDiskException, MaxDiskException, NotEnoughCreditsException
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar
 except:
@@ -208,7 +210,7 @@ class Task(object):
         resp = self._connection._post(get_url('tasks'), json=payload)
 
         if resp.status_code == 404:
-            raise disk.MissingDiskException(resp.json()['message'])
+            raise MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
             if resp.json()['message'].startswith('Maximum number of disks reached'):
                 raise MaxDiskException(resp.json()['message'])
@@ -280,15 +282,15 @@ class Task(object):
             rdisks = []
             for duuid in self._resource_objects_ids:
                 try:
-                    d = disk.Disk._retrieve(self._connection, duuid)
+                    d = Disk._retrieve(self._connection, duuid)
                     rdisks.append(d)
-                except disk.MissingDiskException as exception:
+                except MissingDiskException as exception:
                     pass
 
         if purge_results and self.results is not None:
             try:
                 self.results.update()
-            except disk.MissingDiskException as exception:
+            except MissingDiskException as exception:
                 purge_results = False
 
         resp = self._connection._delete(
@@ -304,7 +306,7 @@ class Task(object):
                     rdisk.update()
                     rdisk.delete()
                     toremove.append(rdisk)
-                except (disk.MissingDiskException, disk.LockedDiskException) as exception:
+                except (MissingDiskException, LockedDiskException) as exception:
                     warnings.warn(str(exception))
             for tr in toremove:
                 rdisks.remove(tr)
@@ -315,7 +317,7 @@ class Task(object):
                 self._result_object.delete()
                 self._result_object = None
                 self._result_object_id = None
-            except (disk.MissingDiskException, disk.LockedDiskException) as exception:
+            except (MissingDiskException, LockedDiskException) as exception:
                 warnings.warn(str(exception))
 
         self._state = "Deleted"
@@ -359,10 +361,10 @@ class Task(object):
 
         if 'resourceDisks' in json_task and json_task['resourceDisks'] is not None:
             self._resource_objects_ids = json_task['resourceDisks']
-            self._resource_type = disk.Disk
+            self._resource_type = Disk
         if 'resourceBuckets' in json_task and json_task['resourceBuckets'] is not None:
             self._resource_objects_ids = json_task['resourceBuckets']
-            self._resource_type = bucket.Bucket
+            self._resource_type = Bucket
 
         if len(self._resource_objects_ids) != \
                 len(self._resource_objects):
@@ -370,10 +372,10 @@ class Task(object):
 
         if 'resultDisk' in json_task and json_task['resultDisk'] is not None:
             self._result_object_id = json_task['resultDisk']
-            self._result_type = disk.Disk
+            self._result_type = Disk
         if 'resultBucket' in json_task and json_task['resultBucket'] is not None:
             self._result_object_id = json_task['resultBucket']
-            self._result_type = bucket.Bucket
+            self._result_type = Bucket
 
         if 'status' in json_task:
             self._status = json_task['status']
@@ -598,14 +600,13 @@ class Task(object):
             self.update()
 
         if not self._resource_objects:
-            if self._resource_type == disk.Disk:
+            if self._resource_type == Disk:
                 for duuid in self._resource_objects_ids:
-                    d = disk.Disk._retrieve(self._connection,
-                                            duuid)
+                    d = Disk._retrieve(self._connection, duuid)
                     self._resource_objects.append(d)
-            elif self._resource_type == bucket.Bucket:
+            elif self._resource_type == Bucket:
                 for bid in self._resource_objects_ids:
-                    d = bucket.Bucket(self._connection, bid)
+                    d = Bucket(self._connection, bid)
                     self._resource_objects.append(d)
 
         return self._resource_objects
@@ -623,11 +624,10 @@ class Task(object):
 
         Represents results files."""
         if self._result_object is None:
-            if self._result_type == disk.Disk:
-                self._result_object = disk.Disk._retrieve(self._connection,
-                                                          self._result_object_id)
-            elif self._result_type == bucket.Bucket:
-                self._result_object = bucket.Bucket(self._connection, self._result_object_id)
+            if self._result_type == Disk:
+                self._result_object = Disk._retrieve(self._connection, self._result_object_id)
+            elif self._result_type == Bucket:
+                self._result_object = Bucket(self._connection, self._result_object_id)
 
         if self._auto_update:
             self.update()
@@ -1065,25 +1065,25 @@ class Task(object):
             'constraints': constr_list
         }
 
-        alldisk = all(isinstance(x, disk.Disk) for x in self._resource_objects)
-        allbucket = all(isinstance(x, bucket.Bucket) for x in self._resource_objects)
+        alldisk = all(isinstance(x, Disk) for x in self._resource_objects)
+        allbucket = all(isinstance(x, Bucket) for x in self._resource_objects)
 
         if alldisk or allbucket:
             self._resource_objects_ids = [x.uuid for x in self._resource_objects]
         else:
             raise ValueError("Can't mix Buckets and Disks as resources")
         if allbucket:
-            self._resource_type = bucket.Bucket
+            self._resource_type = Bucket
             json_task['resourceBuckets'] = self._resource_objects_ids
         if alldisk:
-            self._resource_type = disk.Disk
+            self._resource_type = Disk
             json_task['resourceDisks'] = self._resource_objects_ids
 
         if self._result_object is not None:
             self._result_type = type(self._result_object)
-            if isinstance(self._result_object, bucket.Bucket):
+            if isinstance(self._result_object, Bucket):
                 json_task['resultBucket'] = self._result_object.uuid
-            elif isinstance(self._result_object, disk.Disk):
+            elif isinstance(self._result_object, Disk):
                 json_task['resultDisk'] = self._result_object.uuid
 
         if self._advanced_range is not None:

@@ -17,8 +17,8 @@
 
 from __future__ import print_function
 
-from qarnot import get_url, raise_on_error, storage
-from qarnot.exceptions import *
+from .exceptions import MaxDiskException, MissingDiskException, LockedDiskException
+from . import get_url, raise_on_error, storage
 import posixpath
 import os
 import os.path

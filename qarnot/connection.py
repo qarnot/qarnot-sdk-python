@@ -16,11 +16,11 @@
 # limitations under the License.
 
 
-from qarnot import get_url, raise_on_error
-from qarnot.disk import Disk
-from qarnot.task import Task
-from qarnot.bucket import Bucket
-from qarnot.exceptions import *
+from . import get_url, raise_on_error
+from .disk import Disk
+from .task import Task
+from .bucket import Bucket
+from .exceptions import QarnotGenericException, UnauthorizedException, MissingDiskException, MissingTaskException
 import requests
 import sys
 import warnings
