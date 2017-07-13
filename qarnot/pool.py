@@ -18,8 +18,12 @@ import warnings
 
 import datetime
 
-from qarnot import raise_on_error, disk, bucket, get_url, status
-from qarnot.exceptions import MissingPoolException, MaxDiskException, MaxPoolException, NotEnoughCreditsException
+from . import raise_on_error, get_url
+from .bucket import Bucket
+from .disk import Disk
+from .status import Status
+from .exceptions import MissingPoolException, MaxDiskException, MaxPoolException, NotEnoughCreditsException, \
+    MissingDiskException, LockedDiskException
 
 
 class Pool(object):
@@ -104,10 +108,10 @@ class Pool(object):
 
         if 'resourceDisks' in json_pool and json_pool['resourceDisks'] is not None:
             self._resource_objects_ids = json_pool['resourceDisks']
-            self._resource_type = disk.Disk
+            self._resource_type = Disk
         if 'resourceBuckets' in json_pool and json_pool['resourceBuckets'] is not None:
             self._resource_objects_ids = json_pool['resourceBuckets']
-            self._resource_type = bucket.Bucket
+            self._resource_type = Bucket
 
         if len(self._resource_objects_ids) != \
                 len(self._resource_objects):
@@ -142,18 +146,18 @@ class Pool(object):
             'instanceCount': self._instancecount,
             'tags': self._tags
         }
-        alldisk = all(isinstance(x, disk.Disk) for x in self._resource_objects)
-        allbucket = all(isinstance(x, bucket.Bucket) for x in self._resource_objects)
+        alldisk = all(isinstance(x, Disk) for x in self._resource_objects)
+        allbucket = all(isinstance(x, Bucket) for x in self._resource_objects)
 
         if alldisk or allbucket:
             self._resource_objects_ids = [x.uuid for x in self._resource_objects]
         else:
             raise ValueError("Can't mix Buckets and Disks as resources")
         if allbucket:
-            self._resource_type = bucket.Bucket
+            self._resource_type = Bucket
             json_pool['resourceBuckets'] = self._resource_objects_ids
         if alldisk:
-            self._resource_type = disk.Disk
+            self._resource_type = Disk
             json_pool['resourceDisks'] = self._resource_objects_ids
         return json_pool
 
@@ -178,7 +182,7 @@ class Pool(object):
         resp = self._connection._post(get_url('pools'), json=payload)
 
         if resp.status_code == 404:
-            raise disk.MissingDiskException(resp.json()['message'])
+            raise MissingDiskException(resp.json()['message'])
         elif resp.status_code == 403:
             if resp.json()['message'].startswith('Maximum number of disks reached'):
                 raise MaxDiskException(resp.json()['message'])
@@ -235,9 +239,9 @@ class Pool(object):
             rdisks = []
             for duuid in self._resource_objects_ids:
                 try:
-                    d = disk.Disk._retrieve(self._connection, duuid)
+                    d = Disk._retrieve(self._connection, duuid)
                     rdisks.append(d)
-                except disk.MissingDiskException as exception:
+                except MissingDiskException as exception:
                     pass
 
         resp = self._connection._delete(get_url('pool update', uuid=self._uuid))
@@ -252,7 +256,7 @@ class Pool(object):
                     rdisk.update()
                     rdisk.delete()
                     toremove.append(rdisk)
-                except (disk.MissingDiskException, disk.LockedDiskException) as exception:
+                except (MissingDiskException, LockedDiskException) as exception:
                     warnings.warn(str(exception))
             for tr in toremove:
                 rdisks.remove(tr)
@@ -305,14 +309,13 @@ class Pool(object):
             self.update()
 
         if not self._resource_objects:
-            if self._resource_type == disk.Disk:
+            if self._resource_type == Disk:
                 for duuid in self._resource_objects_ids:
-                    d = disk.Disk._retrieve(self._connection,
-                                            duuid)
+                    d = Disk._retrieve(self._connection, duuid)
                     self._resource_objects.append(d)
-            elif self._resource_type == bucket.Bucket:
+            elif self._resource_type == Bucket:
                 for bid in self._resource_objects_ids:
-                    d = bucket.Bucket(self._connection, bid)
+                    d = Bucket(self._connection, bid)
                     self._resource_objects.append(d)
 
         return self._resource_objects
@@ -420,7 +423,7 @@ class Pool(object):
             self.update()
 
         if self._status:
-            return status.Status(self._status)
+            return Status(self._status)
         return self._status
 
     @property

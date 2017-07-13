@@ -17,8 +17,9 @@
 
 from __future__ import print_function
 
-from qarnot import get_url, raise_on_error, storage
-from qarnot.exceptions import *
+from . import get_url, raise_on_error
+from .storage import Storage
+from .exceptions import MaxDiskException, MissingDiskException, LockedDiskException
 import posixpath
 import os
 import os.path
@@ -34,7 +35,7 @@ except:
     pass
 
 
-class Disk(storage.Storage):
+class Disk(Storage):
     """Represents a resource/result disk on the cluster.
 
     This class is the interface to manage resources or results from a
@@ -473,7 +474,7 @@ class Disk(storage.Storage):
 
     def copy_file(self, source, dest):
         return self.add_link(source, dest)
-    copy_file.__doc__ = storage.Storage.copy_file.__doc__
+    copy_file.__doc__ = Storage.copy_file.__doc__
 
     def add_link(self, target, linkname):
         """Create link between files on the disk
@@ -742,11 +743,11 @@ class Disk(storage.Storage):
 
     def get_all_files(self, output_dir, progress=None):
         return super(Disk, self).get_all_files(output_dir, progress)
-    get_all_files.__doc__ = storage.Storage.get_all_files.__doc__
+    get_all_files.__doc__ = Storage.get_all_files.__doc__
 
     def get_file(self, remote, local=None, progress=None):
         return super(Disk, self).get_file(remote, local, progress)
-    get_file.__doc__ = storage.Storage.get_file.__doc__
+    get_file.__doc__ = Storage.get_file.__doc__
 
     def update_file_settings(self, remote_path, **kwargs):
         """Update file settings.

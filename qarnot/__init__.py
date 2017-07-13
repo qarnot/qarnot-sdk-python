@@ -16,10 +16,10 @@
 # limitations under the License.
 
 
-from qarnot.exceptions import QarnotGenericException
+from .exceptions import QarnotGenericException
 
 
-__all__ = ["task", "connection", "disk", "bucket", "pool", "status"]
+__all__ = ["task", "connection", "disk", "bucket", "pool", "storage", "status"]
 
 
 def raise_on_error(response):
@@ -63,7 +63,7 @@ def get_url(key, **kwargs):
     }
     return urls[key].format(**kwargs)
 
-from qarnot.connection import Connection  # noqa
+from .connection import Connection  # noqa
 
 from ._version import get_versions  # noqa
 __version__ = get_versions()['version']

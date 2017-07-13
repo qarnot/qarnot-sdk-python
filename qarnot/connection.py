@@ -15,14 +15,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-
-from qarnot import get_url, raise_on_error
-from qarnot.disk import Disk
-from qarnot.exceptions import MissingPoolException
-from qarnot.pool import Pool
-from qarnot.task import Task
-from qarnot.bucket import Bucket
-from qarnot.exceptions import *
+from . import get_url, raise_on_error
+from .disk import Disk
+from .task import Task
+from .pool import Pool
+from .bucket import Bucket
+from .exceptions import QarnotGenericException, UnauthorizedException, MissingDiskException, MissingTaskException, MissingPoolException
 import requests
 import sys
 import warnings
