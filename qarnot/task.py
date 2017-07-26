@@ -100,6 +100,7 @@ class Task(object):
         self.constraints = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
+        self._shortname = None
         self._snapshots = False
         self._dirty = False
         self._rescount = -1
@@ -360,6 +361,7 @@ class Task(object):
     def _update(self, json_task):
         """Update this task from retrieved info."""
         self._name = json_task['name']
+        self._shortname = json_task.get('shortname')
         self._profile = json_task['profile']
         self._pooluuid = json_task.get('pooluuid')
         self._instancecount = json_task.get('instanceCount')
@@ -796,6 +798,26 @@ class Task(object):
             self._name = value
 
     @property
+    def shortname(self):
+        """:type: :class:`str`
+        :getter: Returns this task's shortname
+        :setter: Sets this task's shortname
+
+        The task's shortname, must be DNS compliant and unique, if not provided, will default to :attr:`uuid`.
+
+        Can be set until task is submitted.
+        """
+        return self._shortname
+
+    @shortname.setter
+    def shortname(self, value):
+        """Setter for shortname."""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        else:
+            self._shortname = value
+
+    @property
     def tags(self):
         """:type: :class:list(`str`)
         :getter: Returns this task's tags
@@ -1100,6 +1122,9 @@ class Task(object):
             'constants': const_list,
             'constraints': constr_list
         }
+
+        if self._shortname is not None:
+            json_task['shortname'] = self._shortname
 
         alldisk = all(isinstance(x, Disk) for x in self._resource_objects)
         allbucket = all(isinstance(x, Bucket) for x in self._resource_objects)
