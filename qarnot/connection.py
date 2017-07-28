@@ -1,3 +1,4 @@
+
 """Module describing a connection."""
 
 
@@ -25,6 +26,7 @@ import requests
 import sys
 import warnings
 import os
+import time
 import boto3
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
@@ -41,7 +43,10 @@ else:
 class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
     """
-    def __init__(self, fileconf=None, client_token=None, cluster_url=None, cluster_unsafe=False, cluster_timeout=None, storage_url=None, storage_unsafe=False):
+    def __init__(self, fileconf=None, client_token=None,
+                 cluster_url=None, cluster_unsafe=False, cluster_timeout=None,
+                 storage_url=None, storage_unsafe=False,
+                 retry_count=5, retry_wait=1.0):
         """Create a connection to a cluster with given config file, options or environment variables.
         Available environment variable are
         `QARNOT_CLUSTER_URL`, `QARNOT_CLUSTER_UNSAFE`, `QARNOT_CLUSTER_TIMEOUT` and `QARNOT_CLIENT_TOKEN`.
@@ -54,6 +59,8 @@ class Connection(object):
         :param int cluster_timeout: (optional) Timeout value for every request
         :param str storage_url: (optional) Storage service url.
         :param bool storage_unsafe: (optional) Disable certificate check
+        :param int retry_count: (optional) ConnectionError retry count. Default to 5.
+        :param float retry_wait: (optional) Retry on error wait time. Default to 1s
 
         Configuration sample:
 
@@ -73,7 +80,8 @@ class Connection(object):
 
         """
         self._http = requests.session()
-
+        self._retry_count = retry_count
+        self._retry_wait = retry_wait
         if fileconf is not None:
             self.storage = None
             if isinstance(fileconf, dict):
@@ -170,6 +178,8 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :func:`requests.Pool.get`.
         """
+
+        retry = self._retry_count
         while True:
             try:
                 ret = self._http.get(self.cluster + url, timeout=self.timeout,
@@ -177,10 +187,10 @@ class Connection(object):
                 if ret.status_code == 401:
                     raise UnauthorizedException()
                 return ret
-            except ConnectionError as exception:
-
-                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
-                    pass
+            except ConnectionError:
+                if retry > 0:
+                    retry -= 1
+                    time.sleep(self._retry_wait)
                 else:
                     raise
 
@@ -199,6 +209,8 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Pool.post()`.
         """
+
+        retry = self._retry_count
         while True:
             try:
                 if json is not None:
@@ -211,9 +223,10 @@ class Connection(object):
                 if ret.status_code == 401:
                     raise UnauthorizedException()
                 return ret
-            except ConnectionError as exception:
-                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
-                    pass
+            except ConnectionError:
+                if retry > 0:
+                    retry -= 1
+                    time.sleep(self._retry_wait)
                 else:
                     raise
 
@@ -232,6 +245,8 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Pool.post()`.
         """
+
+        retry = self._retry_count
         while True:
             try:
                 if json is not None:
@@ -244,9 +259,10 @@ class Connection(object):
                 if ret.status_code == 401:
                     raise UnauthorizedException()
                 return ret
-            except ConnectionError as exception:
-                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
-                    pass
+            except ConnectionError:
+                if retry > 0:
+                    retry -= 1
+                    time.sleep(self._retry_wait)
                 else:
                     raise
 
@@ -265,6 +281,7 @@ class Connection(object):
           :attr:`requests.Pool.delete()`.
         """
 
+        retry = self._retry_count
         while True:
             try:
                 ret = self._http.delete(self.cluster + url,
@@ -272,14 +289,17 @@ class Connection(object):
                 if ret.status_code == 401:
                     raise UnauthorizedException()
                 return ret
-            except ConnectionError as exception:
-                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
-                    pass
+            except ConnectionError:
+                if retry > 0:
+                    retry -= 1
+                    time.sleep(self._retry_wait)
                 else:
                     raise
 
     def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
+
+        retry = self._retry_count
         while True:
             try:
                 if json is not None:
@@ -292,9 +312,10 @@ class Connection(object):
                 if ret.status_code == 401:
                     raise UnauthorizedException()
                 return ret
-            except ConnectionError as exception:
-                if str(exception) == "('Connection aborted.', BadStatusLine(\"\'\'\",))":
-                    pass
+            except ConnectionError:
+                if retry > 0:
+                    retry -= 1
+                    time.sleep(self._retry_wait)
                 else:
                     raise
 
