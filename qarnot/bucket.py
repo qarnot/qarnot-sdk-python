@@ -191,8 +191,7 @@ class Bucket(Storage):
                 digests = b"".join(m.digest() for m in md5s)
 
                 new_md5 = hashlib.md5(digests)
-                new_etag = '"%s-%s"' % (new_md5.hexdigest(), len(md5s))
-                return "\"{0}\"".format(new_etag)
+                return "\"{}-{}\"".format(new_md5.hexdigest(), len(md5s))
 
         def localtocomparable(name_, filepath_):
             return Comparable(name_, aws_md5sum(filepath), filepath_)
