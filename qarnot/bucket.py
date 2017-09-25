@@ -210,11 +210,7 @@ class Bucket(Storage):
             localfiles.append(localtocomparable(name, filepath))
 
         local = set(localfiles)
-        remotefiles = []
-        for objectsummary in self.list_files():
-            remotefiles.append(objectsummarytocomparable(objectsummary))
-
-        remote = set(remotefiles)
+        remote = set(map(objectsummarytocomparable, self.list_files()))
 
         adds = local - remote
         removes = remote - local
@@ -224,21 +220,16 @@ class Bucket(Storage):
             sadds, lambda x: x.e_tag)]
 
         for file_ in removes:
-            renames = [x for x in adds if x.e_tag == file_.e_tag]
-            if len(renames) > 0:
-                for dup in renames:
-                    if verbose:
-                        print("Copy", file_.name, "to", dup.name)
-                    self.copy_file(file_.name, dup.name)
+            renames = (x for x in adds if x.e_tag == file_.e_tag and all(rem.name != x.name for rem in remote))
+            for dup in renames:
+                if verbose:
+                    print("Copy", file_.name, "to", dup.name)
+                self.copy_file(file_.name, dup.name)
             if verbose:
                 print("remove ", file_.name)
             self.delete_file(file_.name)
 
-        remotefiles = []
-        for objectsummary in self.list_files():
-            remotefiles.append(objectsummarytocomparable(objectsummary))
-
-        remote = set(remotefiles)
+        remote = set(map(objectsummarytocomparable, self.list_files()))
 
         for entry in groupedadds:
             try:

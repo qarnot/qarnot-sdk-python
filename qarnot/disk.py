@@ -393,12 +393,12 @@ class Disk(Storage):
             sadds, lambda x: x.sha1sum)]
 
         for file_ in removes:
-            renames = [x for x in adds if x.sha1sum == file_.sha1sum and not x.directory and not file_.directory]
-            if len(renames) > 0:
-                for dup in renames:
-                    if verbose:
-                        print("Copy", file_.name, "to", dup.name)
-                    self.add_link(file_.name, dup.name)
+            renames = (x for x in adds if x.sha1sum == file_.sha1sum and not x.directory and not file_.directory and
+                       all(y.name != x.name for y in remote))
+            for dup in renames:
+                if verbose:
+                    print("Copy", file_.name, "to", dup.name)
+                self.add_link(file_.name, dup.name)
             if verbose:
                 print("remove ", file_.name)
             self.delete_file(file_.name, force=True)
