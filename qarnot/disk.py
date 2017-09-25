@@ -17,7 +17,7 @@
 
 from __future__ import print_function
 
-from . import get_url, raise_on_error
+from . import get_url, raise_on_error, _util
 from .storage import Storage
 from .exceptions import MaxDiskException, MissingDiskException, LockedDiskException
 import posixpath
@@ -306,6 +306,10 @@ class Disk(Storage):
 
         filesdict = {}
         for root, dirs, files in os.walk(directory):
+            root = _util.decode(root)
+            dirs = map(_util.decode, dirs)
+            files = map(_util.decode, files)
+
             for file_ in files:
                 filepath = os.path.join(root, file_)
                 name = filepath[len(directory) - 1:]
@@ -536,7 +540,7 @@ class Disk(Storage):
         """
         mode = mode or self._add_mode
 
-        if isinstance(local_or_file, str):
+        if _util.is_string(local_or_file):
             if os.path.isdir(local_or_file):
                 dest = remote or os.path.basename(local_or_file)
                 url = get_url('update file', name=self._uuid, path=os.path.dirname(dest))
@@ -651,6 +655,9 @@ class Disk(Storage):
         if not remote.endswith('/'):
             remote += '/'
         for dirpath, _, files in os.walk(local):
+            dirpath = _util.decode(dirpath)
+            files = map(_util.decode, files)
+
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
                 self.add_file(os.path.join(dirpath, filename),

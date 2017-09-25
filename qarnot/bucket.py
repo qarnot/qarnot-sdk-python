@@ -13,11 +13,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from __future__ import print_function
+
 import hashlib
 import sys
 import os
 import posixpath
 from .storage import Storage
+from . import _util
 import itertools
 from boto3.s3.transfer import TransferConfig
 
@@ -122,7 +125,10 @@ class Bucket(Storage):
             directory += '/'
 
         filesdict = {}
-        for root, dirs, files in os.walk(directory):
+        for root, _, files in os.walk(directory):
+            root = _util.decode(root)
+            files = map(_util.decode, files)
+
             for file_ in files:
                 filepath = os.path.join(root, file_)
                 name = filepath[len(directory):]
@@ -259,7 +265,7 @@ class Bucket(Storage):
 
     def add_file(self, local_or_file, remote=None):
         tobeclosed = False
-        if isinstance(local_or_file, str):
+        if _util.is_string(local_or_file):
             file_ = open(local_or_file, 'rb')
             tobeclosed = True
         else:
@@ -285,6 +291,9 @@ class Bucket(Storage):
         if not remote.endswith('/'):
             remote += '/'
         for dirpath, _, files in os.walk(local):
+            dirpath = _util.decode(dirpath)
+            files = map(_util.decode, files)
+
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
                 self.add_file(os.path.join(dirpath, filename),
