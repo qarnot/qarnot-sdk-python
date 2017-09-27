@@ -258,13 +258,17 @@ class Bucket(Storage):
                         self.add_file(link.filepath, link.name)
 
     def add_file(self, local_or_file, remote=None):
+        tobeclosed = False
         if isinstance(local_or_file, str):
             file_ = open(local_or_file, 'rb')
+            tobeclosed = True
         else:
             file_ = local_or_file
         dest = remote or os.path.basename(file_.name)
 
         self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
+        if tobeclosed:
+            file_.close()
     add_file.__doc__ = Storage.add_file.__doc__
 
     def get_all_files(self, output_dir, progress=None):
