@@ -376,7 +376,7 @@ class Disk(Storage):
 
         localfiles = []
         for name, filepath in files.items():
-            qfi = create_qfi(name, filepath)
+            qfi = create_qfi(name.replace(os.path.sep, '/'), filepath)
             localfiles.append(qfi)
 
         if ignore_directories:

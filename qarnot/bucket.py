@@ -200,7 +200,7 @@ class Bucket(Storage):
                 return "\"{}-{}\"".format(new_md5.hexdigest(), len(md5s))
 
         def localtocomparable(name_, filepath_):
-            return Comparable(name_, aws_md5sum(filepath), filepath_)
+            return Comparable(name_.replace(os.path.sep, '/'), aws_md5sum(filepath), filepath_)
 
         def objectsummarytocomparable(object_):
             return Comparable(object_.key, object_.e_tag, None)
