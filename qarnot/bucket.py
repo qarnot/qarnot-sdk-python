@@ -101,11 +101,12 @@ class Bucket(Storage):
         bucket = self._connection.s3resource.Bucket(self._uuid)
         return bucket.objects.filter(Prefix=directory)
 
-    def sync_directory(self, directory, verbose=False):
+    def sync_directory(self, directory, verbose=False, remote=None):
         """Synchronize a local directory with the remote disks.
 
         :param str directory: The local directory to use for synchronization
         :param bool verbose: Print information about synchronization operations
+        :param str remote: path of the directory on remote node (defaults to *local*)
 
         .. warning::
            Local changes are reflected on the server, a file present on the
@@ -134,13 +135,14 @@ class Bucket(Storage):
                 name = filepath[len(directory):]
                 filesdict[name] = filepath
 
-        self.sync_files(filesdict, verbose)
+        self.sync_files(filesdict, verbose, remote)
 
-    def sync_files(self, files, verbose=False):
+    def sync_files(self, files, verbose=False, remote=None):
         """Synchronize files  with the remote disks.
 
         :param dict files: Dictionary of synchronized files
         :param bool verbose: Print information about synchronization operations
+        :param str remote: path of the directory on remote node (defaults to *local*)
 
         Dictionary key is the remote file path while value is the local file
         path.
@@ -199,28 +201,32 @@ class Bucket(Storage):
                 new_md5 = hashlib.md5(digests)
                 return "\"{}-{}\"".format(new_md5.hexdigest(), len(md5s))
 
-        def localtocomparable(name_, filepath_):
-            return Comparable(name_.replace(os.path.sep, '/'), aws_md5sum(filepath), filepath_)
+        def localtocomparable(name_, filepath_, remote):
+            if remote is not None:
+                name_ = os.path.join(remote, name_.lstrip('/'))
+            return Comparable(name_, aws_md5sum(filepath_), filepath_)
 
         def objectsummarytocomparable(object_):
             return Comparable(object_.key, object_.e_tag, None)
 
         localfiles = []
         for name, filepath in files.items():
-            localfiles.append(localtocomparable(name, filepath))
+            localfiles.append(localtocomparable(name.replace(os.path.sep, '/'), filepath, remote))
 
-        local = set(localfiles)
-        remote = set(map(objectsummarytocomparable, self.list_files()))
+        localfiles = set(localfiles)
+        remotefiles = set(map(objectsummarytocomparable, self.list_files()))
 
-        adds = local - remote
-        removes = remote - local
+        adds = localfiles - remotefiles
+        removes = remotefiles - localfiles
 
         sadds = sorted(adds, key=lambda x: x.e_tag)
         groupedadds = [list(g) for _, g in itertools.groupby(
             sadds, lambda x: x.e_tag)]
 
         for file_ in removes:
-            renames = (x for x in adds if x.e_tag == file_.e_tag and all(rem.name != x.name for rem in remote))
+            if remote is not None and not file_.name.startswith(remote):
+                continue
+            renames = (x for x in adds if x.e_tag == file_.e_tag and all(rem.name != x.name for rem in remotefiles))
             for dup in renames:
                 if verbose:
                     print("Copy", file_.name, "to", dup.name)
@@ -229,11 +235,11 @@ class Bucket(Storage):
                 print("remove ", file_.name)
             self.delete_file(file_.name)
 
-        remote = set(map(objectsummarytocomparable, self.list_files()))
+        remotefiles = set(map(objectsummarytocomparable, self.list_files()))
 
         for entry in groupedadds:
             try:
-                rem = next(x for x in remote if x.e_tag == entry[0].e_tag)
+                rem = next(x for x in remotefiles if x.e_tag == entry[0].e_tag)
                 if rem.name == entry[0].name:
                     continue
                 if verbose:

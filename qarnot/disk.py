@@ -281,7 +281,7 @@ class Disk(Storage):
         raise_on_error(response)
         return [FileInfo(**f) for f in response.json()]
 
-    def sync_directory(self, directory, verbose=False):
+    def sync_directory(self, directory, verbose=False, remote=None):
         """Synchronize a local directory with the remote disks.
 
         :param str directory: The local directory to use for synchronization
@@ -321,14 +321,15 @@ class Disk(Storage):
                     name += '/'
                 filesdict[name] = filepath
 
-        self.sync_files(filesdict, verbose)
+        self.sync_files(filesdict, verbose, remote=remote)
 
-    def sync_files(self, files, verbose=False, ignore_directories=False):
+    def sync_files(self, files, verbose=False, ignore_directories=False, remote=None):
         """Synchronize files  with the remote disks.
 
         :param dict files: Dictionary of synchronized files
         :param bool verbose: Print information about synchronization operations
         :param bool ignore_directories: Ignore directories when looking for changes
+        :param str remote: path of the directory on remote node (defaults to *local*)
 
         Dictionary key is the remote file path while value is the local file
         path.
@@ -359,8 +360,10 @@ class Disk(Storage):
                     sha1.update(buf)
             return sha1.hexdigest()
 
-        def create_qfi(name, filepath):
+        def create_qfi(name, filepath, remote):
             """Create a QFI from a file"""
+            if remote is not None:
+                name = posixpath.join(remote, name.lstrip('/'))
             if not name.startswith('/'):
                 name = '/' + name
             mtime = os.path.getmtime(filepath)
@@ -376,25 +379,28 @@ class Disk(Storage):
 
         localfiles = []
         for name, filepath in files.items():
-            qfi = create_qfi(name.replace(os.path.sep, '/'), filepath)
+            qfi = create_qfi(name.replace(os.path.sep, '/'), filepath, remote)
             localfiles.append(qfi)
 
         if ignore_directories:
-            local = set([x for x in localfiles if not x.directory])
-            remote = set([x for x in self.list_files() if not x.directory])
+            localfiles = set([x for x in localfiles if not x.directory])
+            remotefiles = set([x for x in self.list_files() if not x.directory])
         else:
-            local = set(localfiles)
-            remote = set(self.list_files())
-        adds = local - remote
-        removes = remote - local
+            localfiles = set(localfiles)
+            remotefiles = set(self.list_files())
+
+        adds = localfiles - remotefiles
+        removes = remotefiles - localfiles
 
         sadds = sorted(adds, key=lambda x: x.sha1sum)
         groupedadds = [list(g) for _, g in itertools.groupby(
             sadds, lambda x: x.sha1sum)]
 
         for file_ in removes:
+            if remote is not None and not file_.name.startswith(remote):
+                continue
             renames = (x for x in adds if x.sha1sum == file_.sha1sum and not x.directory and not file_.directory and
-                       all(y.name != x.name for y in remote))
+                       all(y.name != x.name for y in remotefiles))
             for dup in renames:
                 if verbose:
                     print("Copy", file_.name, "to", dup.name)
@@ -403,11 +409,11 @@ class Disk(Storage):
                 print("remove ", file_.name)
             self.delete_file(file_.name, force=True)
 
-        remote = self.list_files()
+        remotefiles = self.list_files()
 
         for entry in groupedadds:
             try:
-                rem = next(x for x in remote if x.sha1sum == entry[0].sha1sum and not x.directory and not entry[0].directory)
+                rem = next(x for x in remotefiles if x.sha1sum == entry[0].sha1sum and not x.directory and not entry[0].directory)
                 if rem.name == entry[0].name:
                     continue
                 if verbose:
