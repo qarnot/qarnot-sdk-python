@@ -116,6 +116,7 @@ class Connection(object):
                     if cfg.has_option('cluster', 'unsafe') \
                        and cfg.getboolean('cluster', 'unsafe'):
                         self._http.verify = False
+                        requests.packages.urllib3.disable_warnings()
                     if cfg.has_option('storage', 'unsafe') \
                        and cfg.getboolean('cluster', 'unsafe'):
                         storage_unsafe = False
