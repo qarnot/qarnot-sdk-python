@@ -58,8 +58,8 @@ def get_url(key, **kwargs):
         'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete
         'user': u'/info',  # GET -> user info
         'profiles': u'/profiles',  # GET -> profiles list
-        'profile details': u'/profiles/{profile}'
-        # GET -> profile details
+        'profile details': u'/profiles/{profile}',  # GET -> profile details
+        'settings': u'/settings',  # GET -> instance settings
     }
     return urls[key].format(**kwargs)
 

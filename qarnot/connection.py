@@ -150,7 +150,7 @@ class Connection(object):
             self.cluster = "https://api.qarnot.com"
 
         if self.storage is None:
-            self.storage = "https://storage.qarnot.com"
+            self.storage = self._get(get_url("settings")).json().get("storage") or "https://storage.qarnot.com"
 
         user = self.user_info
         session = boto3.session.Session()
