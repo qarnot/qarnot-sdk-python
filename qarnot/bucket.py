@@ -19,10 +19,13 @@ import hashlib
 import sys
 import os
 import posixpath
+import shutil
 from .storage import Storage
 from . import _util
 import itertools
 from boto3.s3.transfer import TransferConfig
+from itertools import groupby
+from operator import attrgetter
 
 # Max size in bytes before uploading in parts.
 
@@ -275,7 +278,17 @@ class Bucket(Storage):
     add_file.__doc__ = Storage.add_file.__doc__
 
     def get_all_files(self, output_dir, progress=None):
-        return super(Bucket, self).get_all_files(output_dir, progress)
+        for _, dupes in groupby(sorted(self.list_files(), key=attrgetter('e_tag')), attrgetter('e_tag')):
+            file_info = next(dupes)
+            first_file = os.path.join(output_dir, os.path.normpath(file_info.key.lstrip('/')))
+            self.get_file(file_info.get()['Body'], local=first_file)  # avoids making a useless HEAD request
+
+            for dupe in dupes:
+                local = os.path.join(output_dir, os.path.normpath(dupe.key.lstrip('/')))
+                directory = os.path.dirname(local)
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+                shutil.copy(first_file, local)
     get_all_files.__doc__ = Storage.get_all_files.__doc__
 
     def get_file(self, remote, local=None, progress=None):
@@ -316,7 +329,10 @@ class Bucket(Storage):
 
     def _download_file(self, remote, local, progress=None):
         with open(local, 'wb') as data:
-            self._connection.s3client.download_fileobj(self._uuid, remote, data)
+            if hasattr(remote, 'read'):
+                shutil.copyfileobj(remote, data)
+            else:
+                self._connection.s3client.download_fileobj(self._uuid, remote, data)
         return local
 
     def delete_file(self, remote):
