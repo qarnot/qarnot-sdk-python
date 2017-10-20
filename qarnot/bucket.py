@@ -219,19 +219,14 @@ class Bucket(Storage):
         def objectsummarytocomparable(object_):
             return Comparable(object_.key, object_.e_tag, None)
 
-        localfiles = []
+        localfiles = set()
         for name, filepath in files.items():
-            localfiles.append(localtocomparable(name.replace(os.path.sep, '/'), filepath, remote))
+            localfiles.add(localtocomparable(name.replace(os.path.sep, '/'), filepath, remote))
 
-        localfiles = set(localfiles)
         remotefiles = set(map(objectsummarytocomparable, self.list_files()))
 
         adds = localfiles - remotefiles
         removes = remotefiles - localfiles
-
-        sadds = sorted(adds, key=lambda x: x.e_tag)
-        groupedadds = [list(g) for _, g in itertools.groupby(
-            sadds, lambda x: x.e_tag)]
 
         for file_ in removes:
             if remote is not None and not file_.name.startswith(remote):
@@ -242,10 +237,13 @@ class Bucket(Storage):
                     print("Copy", file_.name, "to", dup.name)
                 self.copy_file(file_.name, dup.name)
             if verbose:
-                print("remove ", file_.name)
+                print("Remove:", file_.name)
             self.delete_file(file_.name)
 
         remotefiles = set(map(objectsummarytocomparable, self.list_files()))
+
+        sadds = sorted(adds, key=lambda x: x.e_tag)
+        groupedadds = (list(g) for _, g in itertools.groupby(sadds, lambda x: x.e_tag))
 
         for entry in groupedadds:
             try:
@@ -253,17 +251,16 @@ class Bucket(Storage):
                 if rem.name == entry[0].name:
                     continue
                 if verbose:
-                    print("Link:", rem.name, "<-", entry[0].name)
+                    print("Copy", rem.name, "to", entry[0].name)
                 self.copy_file(rem.name, entry[0].name)
             except StopIteration:
                 if verbose:
                     print("Upload:", entry[0].name)
                 self.add_file(entry[0].filepath, entry[0].name)
-            if len(entry) > 1:  # duplicate files
-                for link in entry[1:]:
-                    if verbose:
-                        print("Link:", entry[0].name, "<-", link.name)
-                    self.copy_file(entry[0].name, link.name)
+            for link in entry[1:]:  # duplicate files
+                if verbose:
+                    print("Copy", entry[0].name, "to", link.name)
+                self.copy_file(entry[0].name, link.name)
 
     @_util.copy_docs(Storage.add_file)
     def add_file(self, local_or_file, remote=None):

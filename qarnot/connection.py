@@ -117,7 +117,6 @@ class Connection(object):
                     if cfg.has_option('cluster', 'unsafe') \
                        and cfg.getboolean('cluster', 'unsafe'):
                         self._http.verify = False
-                        requests.packages.urllib3.disable_warnings()
                     if cfg.has_option('storage', 'unsafe') \
                        and cfg.getboolean('cluster', 'unsafe'):
                         storage_unsafe = False
@@ -127,6 +126,9 @@ class Connection(object):
             self._http.verify = not cluster_unsafe
             self.storage = storage_url
             auth = client_token
+
+        if not self._http.verify:
+            requests.packages.urllib3.disable_warnings()
 
         if self.cluster is None:
             self.cluster = os.getenv("QARNOT_CLUSTER_URL")

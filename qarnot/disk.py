@@ -302,7 +302,7 @@ class Disk(Storage):
               * sha1sum
         """
         if not directory.endswith('/'):
-            directory = directory + '/'
+            directory += '/'
 
         filesdict = {}
         for root, dirs, files in os.walk(directory):
@@ -377,24 +377,19 @@ class Disk(Storage):
             qfi.filepath = filepath
             return qfi
 
-        localfiles = []
+        localfiles = set()
         for name, filepath in files.items():
             qfi = create_qfi(name.replace(os.path.sep, '/'), filepath, remote)
-            localfiles.append(qfi)
+            localfiles.add(qfi)
+
+        remotefiles = set(self.list_files())
 
         if ignore_directories:
-            localfiles = set([x for x in localfiles if not x.directory])
-            remotefiles = set([x for x in self.list_files() if not x.directory])
-        else:
-            localfiles = set(localfiles)
-            remotefiles = set(self.list_files())
+            localfiles = set(x for x in localfiles if not x.directory)
+            remotefiles = set(x for x in remotefiles if not x.directory)
 
         adds = localfiles - remotefiles
         removes = remotefiles - localfiles
-
-        sadds = sorted(adds, key=lambda x: x.sha1sum)
-        groupedadds = [list(g) for _, g in itertools.groupby(
-            sadds, lambda x: x.sha1sum)]
 
         for file_ in removes:
             if remote is not None and not file_.name.startswith(remote):
@@ -406,10 +401,13 @@ class Disk(Storage):
                     print("Copy", file_.name, "to", dup.name)
                 self.add_link(file_.name, dup.name)
             if verbose:
-                print("remove ", file_.name)
+                print("Remove:", file_.name)
             self.delete_file(file_.name, force=True)
 
         remotefiles = self.list_files()
+
+        sadds = sorted(adds, key=lambda x: x.sha1sum)
+        groupedadds = (list(g) for _, g in itertools.groupby(sadds, lambda x: x.sha1sum))
 
         for entry in groupedadds:
             try:
@@ -423,16 +421,15 @@ class Disk(Storage):
                 if verbose:
                     print("Upload:", entry[0].name)
                 self.add_file(entry[0].filepath, entry[0].name)
-            if len(entry) > 1:  # duplicate files
-                for link in entry[1:]:
-                    if not link.directory:
-                        if verbose:
-                            print("Link:", entry[0].name, "<-", link.name)
-                        self.add_link(entry[0].name, link.name)
-                    else:
-                        if verbose:
-                            print("Add dir" + link.filepath + " " + str(link.name))
-                        self.add_file(link.filepath, link.name)
+            for link in entry[1:]:  # duplicate files
+                if not link.directory:
+                    if verbose:
+                        print("Link:", entry[0].name, "<-", link.name)
+                    self.add_link(entry[0].name, link.name)
+                else:
+                    if verbose:
+                        print("Add dir" + link.filepath + " " + str(link.name))
+                    self.add_file(link.filepath, link.name)
 
     def flush(self):
         """Ensure all files added through :meth:`add_file`/:meth:`add_directory`
