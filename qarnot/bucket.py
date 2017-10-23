@@ -254,14 +254,9 @@ class Bucket(Storage):
                 self.add_file(entry[0].filepath, entry[0].name)
             if len(entry) > 1:  # duplicate files
                 for link in entry[1:]:
-                    if not link.directory:
-                        if verbose:
-                            print("Link:", entry[0].name, "<-", link.name)
-                        self.copy_file(entry[0].name, link.name)
-                    else:
-                        if verbose:
-                            print("Add dir" + link.filepath + " " + str(link.name))
-                        self.add_file(link.filepath, link.name)
+                    if verbose:
+                        print("Link:", entry[0].name, "<-", link.name)
+                    self.copy_file(entry[0].name, link.name)
 
     def add_file(self, local_or_file, remote=None):
         tobeclosed = False
