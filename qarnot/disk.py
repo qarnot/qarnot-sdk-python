@@ -31,7 +31,7 @@ import itertools
 
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar, AdaptiveTransferSpeed
-except:
+except ImportError:
     pass
 
 

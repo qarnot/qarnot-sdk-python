@@ -31,7 +31,7 @@ from .exceptions import MissingTaskException, MaxTaskException, MaxDiskException
 
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar
-except:
+except ImportError:
     pass
 
 RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
