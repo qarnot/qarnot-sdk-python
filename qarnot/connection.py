@@ -60,7 +60,7 @@ class Connection(object):
         :param str storage_url: (optional) Storage service url.
         :param bool storage_unsafe: (optional) Disable certificate check
         :param int retry_count: (optional) ConnectionError retry count. Default to 5.
-        :param float retry_wait: (optional) Retry on error wait time. Default to 1s
+        :param float retry_wait: (optional) Retry on error wait time, progressive. (wait * (retry_count - retry_num). Default to 1s
 
         Configuration sample:
 
@@ -181,19 +181,25 @@ class Connection(object):
         """
 
         retry = self._retry_count
+        last_chance = False
         while True:
             try:
                 ret = self._http.get(self.cluster + url, timeout=self.timeout,
                                      **kwargs)
+                if ret.ok:
+                    return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
-                return ret
+                if last_chance:
+                    return ret
             except ConnectionError:
-                if retry > 0:
-                    retry -= 1
-                    time.sleep(self._retry_wait)
-                else:
+                if last_chance:
                     raise
+            if retry > 0:
+                retry -= 1
+                time.sleep(self._retry_wait * (self._retry_count - retry))
+            else:
+                last_chance = True
 
     def _patch(self, url, json=None, **kwargs):
         """perform a PATCH request on the cluster
@@ -212,6 +218,7 @@ class Connection(object):
         """
 
         retry = self._retry_count
+        last_chance = False
         while True:
             try:
                 if json is not None:
@@ -221,15 +228,20 @@ class Connection(object):
                     kwargs['data'] = json_dumps(json)
                 ret = self._http.patch(self.cluster + url,
                                        timeout=self.timeout, **kwargs)
+                if ret.ok:
+                    return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
-                return ret
+                if last_chance:
+                    return ret
             except ConnectionError:
-                if retry > 0:
-                    retry -= 1
-                    time.sleep(self._retry_wait)
-                else:
+                if last_chance:
                     raise
+            if retry > 0:
+                retry -= 1
+                time.sleep(self._retry_wait * (self._retry_count - retry))
+            else:
+                last_chance = True
 
     def _post(self, url, json=None, *args, **kwargs):
         """perform a POST request on the cluster
@@ -248,6 +260,7 @@ class Connection(object):
         """
 
         retry = self._retry_count
+        last_chance = False
         while True:
             try:
                 if json is not None:
@@ -257,15 +270,21 @@ class Connection(object):
                     kwargs['data'] = json_dumps(json)
                 ret = self._http.post(self.cluster + url,
                                       timeout=self.timeout, *args, **kwargs)
+                if ret.ok:
+                    return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
-                return ret
+                if last_chance:
+                    return ret
+
             except ConnectionError:
-                if retry > 0:
-                    retry -= 1
-                    time.sleep(self._retry_wait)
-                else:
+                if last_chance:
                     raise
+            if retry > 0:
+                retry -= 1
+                time.sleep(self._retry_wait * (self._retry_count - retry))
+            else:
+                last_chance = True
 
     def _delete(self, url, **kwargs):
         """Perform a DELETE request on the cluster.
@@ -283,24 +302,31 @@ class Connection(object):
         """
 
         retry = self._retry_count
+        last_chance = False
         while True:
             try:
                 ret = self._http.delete(self.cluster + url,
                                         timeout=self.timeout, **kwargs)
+                if ret.ok:
+                    return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
-                return ret
+                if last_chance:
+                    return ret
             except ConnectionError:
-                if retry > 0:
-                    retry -= 1
-                    time.sleep(self._retry_wait)
-                else:
+                if last_chance:
                     raise
+            if retry > 0:
+                retry -= 1
+                time.sleep(self._retry_wait * (self._retry_count - retry))
+            else:
+                last_chance = True
 
     def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
 
         retry = self._retry_count
+        last_chance = False
         while True:
             try:
                 if json is not None:
@@ -310,15 +336,21 @@ class Connection(object):
                     kwargs['data'] = json_dumps(json)
                 ret = self._http.put(self.cluster + url,
                                      timeout=self.timeout, **kwargs)
+                if ret.ok:
+                    return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
-                return ret
+                if last_chance:
+                    return ret
+
             except ConnectionError:
-                if retry > 0:
-                    retry -= 1
-                    time.sleep(self._retry_wait)
-                else:
+                if last_chance:
                     raise
+            if retry > 0:
+                retry -= 1
+                time.sleep(self._retry_wait * (self._retry_count - retry))
+            else:
+                last_chance = True
 
     @property
     def user_info(self):
