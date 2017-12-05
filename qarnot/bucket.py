@@ -258,6 +258,7 @@ class Bucket(Storage):
                         print("Link:", entry[0].name, "<-", link.name)
                     self.copy_file(entry[0].name, link.name)
 
+    @_util.copy_docs(Storage.add_file)
     def add_file(self, local_or_file, remote=None):
         tobeclosed = False
         if _util.is_string(local_or_file):
@@ -270,8 +271,8 @@ class Bucket(Storage):
         self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
         if tobeclosed:
             file_.close()
-    add_file.__doc__ = Storage.add_file.__doc__
 
+    @_util.copy_docs(Storage.get_all_files)
     def get_all_files(self, output_dir, progress=None):
         for _, dupes in groupby(sorted(self.list_files(), key=attrgetter('e_tag')), attrgetter('e_tag')):
             file_info = next(dupes)
@@ -284,12 +285,12 @@ class Bucket(Storage):
                 if not os.path.exists(directory):
                     os.makedirs(directory)
                 shutil.copy(first_file, local)
-    get_all_files.__doc__ = Storage.get_all_files.__doc__
 
+    @_util.copy_docs(Storage.get_file)
     def get_file(self, remote, local=None, progress=None):
         return super(Bucket, self).get_file(remote, local, progress)
-    get_file.__doc__ = Storage.get_file.__doc__
 
+    @_util.copy_docs(Storage.add_directory)
     def add_directory(self, local, remote=""):
         if not os.path.isdir(local):
             raise IOError("Not a valid directory")
@@ -303,8 +304,8 @@ class Bucket(Storage):
             for filename in files:
                 self.add_file(os.path.join(dirpath, filename),
                               posixpath.join(remote_loc, filename))
-    add_directory.__doc__ = Storage.add_directory.__doc__
 
+    @_util.copy_docs(Storage.copy_file)
     def copy_file(self, source, dest):
         copy_source = {
             'Bucket': self._uuid,
@@ -312,15 +313,13 @@ class Bucket(Storage):
         }
         return self._connection.s3client.copy_object(CopySource=copy_source, Bucket=self._uuid, Key=dest)
 
-    copy_file.__doc__ = Storage.copy_file.__doc__
-
+    @_util.copy_docs(Storage.flush)
     def flush(self):
         pass
-    flush.__doc__ = Storage.flush.__doc__
 
+    @_util.copy_docs(Storage.update)
     def update(self, flush=False):
         pass
-    update.__doc__ = Storage.update.__doc__
 
     def _download_file(self, remote, local, progress=None):
         with open(local, 'wb') as data:
@@ -330,9 +329,9 @@ class Bucket(Storage):
                 self._connection.s3client.download_fileobj(self._uuid, remote, data)
         return local
 
+    @_util.copy_docs(Storage.delete_file)
     def delete_file(self, remote):
         self._connection.s3client.delete_object(Bucket=self._uuid, Key=remote)
-    delete_file.__doc__ = Storage.delete_file.__doc__
 
     @property
     def uuid(self):

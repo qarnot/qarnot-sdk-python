@@ -19,6 +19,13 @@ if not _IS_PY2:
     unicode = str
 
 
+def copy_docs(docs_source):
+    def decorator(obj):
+        obj.__doc__ = docs_source.__doc__
+        return obj
+    return decorator
+
+
 def decode(string, encoding='utf-8'):
     """Decode string if it is a bytes instance."""
     if isinstance(string, bytes):

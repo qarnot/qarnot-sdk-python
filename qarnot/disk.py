@@ -482,9 +482,9 @@ class Disk(Storage):
         raise_on_error(response)
         self.update(True)
 
+    @_util.copy_docs(Storage.copy_file)
     def copy_file(self, source, dest):
         return self.add_link(source, dest)
-    copy_file.__doc__ = Storage.copy_file.__doc__
 
     def add_link(self, target, linkname):
         """Create link between files on the disk
@@ -754,13 +754,13 @@ class Disk(Storage):
                 f_local.write(chunk)
         return local
 
+    @_util.copy_docs(Storage.get_all_files)
     def get_all_files(self, output_dir, progress=None):
         return super(Disk, self).get_all_files(output_dir, progress)
-    get_all_files.__doc__ = Storage.get_all_files.__doc__
 
+    @_util.copy_docs(Storage.get_file)
     def get_file(self, remote, local=None, progress=None):
         return super(Disk, self).get_file(remote, local, progress)
-    get_file.__doc__ = Storage.get_file.__doc__
 
     def update_file_settings(self, remote_path, **kwargs):
         """Update file settings.
