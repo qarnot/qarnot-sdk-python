@@ -310,7 +310,7 @@ class Bucket(Storage):
             'Bucket': self._uuid,
             'Key': source
         }
-        return self._connection.s3client.copy(copy_source, self._uuid, dest, Config=s3_multipart_config)
+        return self._connection.s3client.copy_object(CopySource=copy_source, Bucket=self._uuid, Key=dest)
 
     copy_file.__doc__ = Storage.copy_file.__doc__
 
