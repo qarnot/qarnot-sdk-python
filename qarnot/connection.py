@@ -21,7 +21,8 @@ from .disk import Disk
 from .task import Task
 from .pool import Pool
 from .bucket import Bucket
-from .exceptions import QarnotGenericException, UnauthorizedException, MissingDiskException, MissingTaskException, MissingPoolException
+from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
+                         MissingDiskException, MissingTaskException, MissingPoolException)
 import requests
 import sys
 import warnings
@@ -149,8 +150,15 @@ class Connection(object):
         if self.cluster is None:
             self.cluster = "https://api.qarnot.com"
 
+        api_settings = self._get(get_url("settings")).json()
+
         if self.storage is None:
-            self.storage = self._get(get_url("settings")).json().get("storage") or "https://storage.qarnot.com"
+            self.storage = api_settings.get("storage", "https://storage.qarnot.com")
+
+            if self.storage is None:  # api_settings["storage"] is None
+                self.s3client = None
+                self.s3resource = None
+                return
 
         user = self.user_info
         session = boto3.session.Session()
@@ -373,6 +381,9 @@ class Connection(object):
         :rtype: list(class:`~qarnot.bucket.Bucket`).
         :returns: List of buckets
         """
+        if self.s3client is None:
+            raise BucketStorageUnavailableException()
+
         buckets = [Bucket(self, x.name) for x in self.s3resource.buckets.all()]
         return buckets
 
@@ -458,6 +469,9 @@ class Connection(object):
         :rtype: :class:`~qarnot.bucket.Bucket`
         :returns: Existing or newly created bucket defined by the given name
         """
+        if self.s3client is None:
+            raise BucketStorageUnavailableException()
+
         return Bucket(self, uuid)
 
     def retrieve_or_create_disk(self, description):
@@ -495,6 +509,9 @@ class Connection(object):
         :returns: Existing bucket defined by the given uuid (name)
         :raises: botocore.exceptions.ClientError: Bucket does not exist, or invalid credentials
         """
+        if self.s3client is None:
+            raise BucketStorageUnavailableException()
+
         self.s3client.head_bucket(Bucket=uuid)
         return Bucket(self, uuid)
 

@@ -20,12 +20,15 @@ import sys
 import os
 import posixpath
 import shutil
-from .storage import Storage
-from . import _util
 import itertools
+
 from boto3.s3.transfer import TransferConfig
 from itertools import groupby
 from operator import attrgetter
+
+from . import _util
+from .exceptions import BucketStorageUnavailableException
+from .storage import Storage
 
 # Max size in bytes before uploading in parts.
 
@@ -60,6 +63,9 @@ class Bucket(Storage):
     """
 
     def __init__(self, connection, name):
+        if connection.s3client is None:
+            raise BucketStorageUnavailableException()
+
         self._connection = connection
         self._uuid = name
 

@@ -18,6 +18,7 @@
 
 __all__ = ['QarnotException',
            'QarnotGenericException',
+           'BucketStorageUnavailableException',
            'UnauthorizedException',
            'MissingTaskException',
            'MissingPoolException',
@@ -38,6 +39,11 @@ class QarnotGenericException(QarnotException):
     """General Connection exception"""
     def __init__(self, msg):
         super(QarnotGenericException, self).__init__("Error: {0}".format(msg))
+
+
+class BucketStorageUnavailableException(QarnotException):
+    """API bucket storage is disabled."""
+    pass
 
 
 class UnauthorizedException(QarnotException):
