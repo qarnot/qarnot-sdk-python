@@ -36,7 +36,7 @@ except ImportError:
 
 RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyDispatched', 'PartiallyExecuting',
-                              'FullyExecuting', 'DownloadingResults']
+                              'FullyExecuting', 'DownloadingResults', 'UploadingResults']
 
 
 class Task(object):
@@ -579,6 +579,7 @@ class Task(object):
            * FullyDispatched
            * PartiallyExecuting
            * FullyExecuting
+           * UploadingResults
            * DownloadingResults
            * Cancelled
            * Success
