@@ -652,14 +652,26 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Maximum number of disks allowed (resource and result disks)."""
-        self.quota_bytes = info['quotaBytes']
+        self.max_bucket = info['maxBucket']
+        """:type: :class:`int`
+
+        Maximum number of buckets allowed (resource and result buckets)."""
+        self.quota_bytes_disk = info['quotaBytesDisk']
         """:type: :class:`int`
 
         Total storage space allowed for the user's disks (in Bytes)."""
-        self.used_quota_bytes = info['usedQuotaBytes']
+        self.quota_bytes_bucket = info['quotaBytesBucket']
+        """:type: :class:`int`
+
+        Total storage space allowed for the user's buckets (in Bytes)."""
+        self.used_quota_bytes_disk = info['usedQuotaBytesDisk']
         """:type: :class:`int`
 
         Total storage space used by the user's disks (in Bytes)."""
+        self.used_quota_bytes_bucket = info['usedQuotaBytesBucket']
+        """:type: :class:`int`
+
+        Total storage space used by the user's buckets (in Bytes)."""
         self.task_count = info['taskCount']
         """:type: :class:`int`
 
@@ -680,6 +692,14 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Maximum number of instances."""
+
+    @property
+    def quota_bytes(self):
+        return self.quota_bytes_disk
+
+    @property
+    def used_quota_bytes(self):
+        return self.used_quota_bytes_disk
 
 
 class Profile(object):
