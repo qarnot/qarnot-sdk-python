@@ -62,14 +62,15 @@ class Bucket(Storage):
        **must** be valid unix-like paths.
     """
 
-    def __init__(self, connection, name):
+    def __init__(self, connection, name, create=True):
         if connection.s3client is None:
             raise BucketStorageUnavailableException()
 
         self._connection = connection
         self._uuid = name
 
-        self._connection.s3client.create_bucket(Bucket=name)
+        if create:
+            self._connection.s3client.create_bucket(Bucket=name)
 
     def delete(self):
         """ Delete the bucket represented by this :class:`Bucket`.

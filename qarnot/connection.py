@@ -384,7 +384,7 @@ class Connection(object):
         if self.s3client is None:
             raise BucketStorageUnavailableException()
 
-        buckets = [Bucket(self, x.name) for x in self.s3resource.buckets.all()]
+        buckets = [Bucket(self, x.name, create=False) for x in self.s3resource.buckets.all()]
         return buckets
 
     def disks(self):
@@ -513,7 +513,7 @@ class Connection(object):
             raise BucketStorageUnavailableException()
 
         self.s3client.head_bucket(Bucket=uuid)
-        return Bucket(self, uuid)
+        return Bucket(self, uuid, create=False)
 
     def retrieve_disk(self, uuid):
         """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
