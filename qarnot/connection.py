@@ -198,6 +198,8 @@ class Connection(object):
                     return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
+                if 400 <= ret.status_code <= 499:
+                    return ret
                 if last_chance:
                     return ret
             except ConnectionError:
@@ -240,6 +242,8 @@ class Connection(object):
                     return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
+                if 400 <= ret.status_code <= 499:
+                    return ret
                 if last_chance:
                     return ret
             except ConnectionError:
@@ -282,6 +286,8 @@ class Connection(object):
                     return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
+                if 400 <= ret.status_code <= 499:
+                    return ret
                 if last_chance:
                     return ret
 
@@ -319,6 +325,8 @@ class Connection(object):
                     return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
+                if 400 <= ret.status_code <= 499:
+                    return ret
                 if last_chance:
                     return ret
             except ConnectionError:
@@ -348,6 +356,8 @@ class Connection(object):
                     return ret
                 if ret.status_code == 401:
                     raise UnauthorizedException()
+                if 400 <= ret.status_code <= 499:
+                    return ret
                 if last_chance:
                     return ret
 
