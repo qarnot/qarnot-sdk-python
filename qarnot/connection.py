@@ -158,22 +158,22 @@ class Connection(object):
             self.storage = api_settings.get("storage", "https://storage.qarnot.com")
 
             if self.storage is None:  # api_settings["storage"] is None
-                self.s3client = None
-                self.s3resource = None
+                self._s3client = None
+                self._s3resource = None
                 return
 
         user = self.user_info
         session = boto3.session.Session()
-        self.s3client = session.client(service_name='s3',
-                                       aws_access_key_id=user.email,
-                                       aws_secret_access_key=auth,
-                                       verify=(not storage_unsafe),
-                                       endpoint_url=self.storage)
-        self.s3resource = session.resource(service_name='s3',
-                                           aws_access_key_id=user.email,
-                                           aws_secret_access_key=auth,
-                                           verify=(not storage_unsafe),
-                                           endpoint_url=self.storage)
+        self._s3client = session.client(service_name='s3',
+                                        aws_access_key_id=user.email,
+                                        aws_secret_access_key=auth,
+                                        verify=(not storage_unsafe),
+                                        endpoint_url=self.storage)
+        self._s3resource = session.resource(service_name='s3',
+                                            aws_access_key_id=user.email,
+                                            aws_secret_access_key=auth,
+                                            verify=(not storage_unsafe),
+                                            endpoint_url=self.storage)
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
@@ -373,6 +373,24 @@ class Connection(object):
                 last_chance = True
 
     @property
+    def s3client(self):
+        """Pre-configured s3 client object.
+
+        :rtype: list(:class:`S3.Client`)
+        :returns: A list of ObjectSummary resources
+        """
+        return self._s3client
+
+    @property
+    def s3resource(self):
+        """Pre-configured s3 resource object.
+
+        :rtype: list(:class:`S3.ServiceResource`)
+        :returns: A list of ObjectSummary resources
+        """
+        return self._s3resource
+
+    @property
     def user_info(self):
         """Get information of the current user on the cluster.
 
@@ -393,10 +411,10 @@ class Connection(object):
         :rtype: list(class:`~qarnot.bucket.Bucket`).
         :returns: List of buckets
         """
-        if self.s3client is None:
+        if self._s3client is None:
             raise BucketStorageUnavailableException()
 
-        buckets = [Bucket(self, x.name, create=False) for x in self.s3resource.buckets.all()]
+        buckets = [Bucket(self, x.name, create=False) for x in self._s3resource.buckets.all()]
         return buckets
 
     def disks(self):
@@ -481,7 +499,7 @@ class Connection(object):
         :rtype: :class:`~qarnot.bucket.Bucket`
         :returns: Existing or newly created bucket defined by the given name
         """
-        if self.s3client is None:
+        if self._s3client is None:
             raise BucketStorageUnavailableException()
 
         return Bucket(self, uuid)
@@ -521,10 +539,10 @@ class Connection(object):
         :returns: Existing bucket defined by the given uuid (name)
         :raises: botocore.exceptions.ClientError: Bucket does not exist, or invalid credentials
         """
-        if self.s3client is None:
+        if self._s3client is None:
             raise BucketStorageUnavailableException()
 
-        self.s3client.head_bucket(Bucket=uuid)
+        self._s3client.head_bucket(Bucket=uuid)
         return Bucket(self, uuid, create=False)
 
     def retrieve_disk(self, uuid):
