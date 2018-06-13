@@ -1002,8 +1002,7 @@ class FileInfo(object):
         if isinstance(lastChange, datetime.datetime):
             self.lastchange = lastChange
         else:
-            self.lastchange = datetime.datetime.strptime(lastChange,
-                                                         "%Y-%m-%dT%H:%M:%SZ")
+            self.lastchange = _util.parse_datetime(lastChange)
 
         self.name = name
         self.key = name  # alias for name

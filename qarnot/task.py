@@ -17,11 +17,10 @@
 
 from os import makedirs, path
 import time
-import datetime
 import warnings
 import sys
 
-from . import get_url, raise_on_error
+from . import get_url, raise_on_error, _util
 from .status import Status
 from .disk import Disk
 from .bucket import Bucket
@@ -383,7 +382,7 @@ class Task(object):
 
         if 'status' in json_task:
             self._status = json_task['status']
-        self._creation_date = datetime.datetime.strptime(json_task['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
+        self._creation_date = _util.parse_datetime(json_task['creationDate'])
         if 'errors' in json_task:
             self._errors = [Error(d) for d in json_task['errors']]
         else:

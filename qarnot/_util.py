@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from datetime import datetime
 
 _IS_PY2 = bytes is str
 
@@ -37,3 +38,18 @@ def decode(string, encoding='utf-8'):
 def is_string(x):
     """Check if x is a string (bytes or unicode)."""
     return isinstance(x, (str, unicode))
+
+
+def parse_datetime(string):
+    """Support multiple formats to parse a datetime"""
+    try:
+        # '2018-06-13T09:06:20Z'
+        return datetime.strptime(string, "%Y-%m-%dT%H:%M:%SZ")
+    except Exception:
+        pass
+
+    try:
+        # '2018-06-13T09:06:20.537708Z'
+        return datetime.strptime(string, "%Y-%m-%dT%H:%M:%S.%fZ")
+    except Exception:
+        raise

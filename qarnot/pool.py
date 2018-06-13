@@ -16,9 +16,7 @@
 import time
 import warnings
 
-import datetime
-
-from . import raise_on_error, get_url
+from . import raise_on_error, get_url, _util
 from .bucket import Bucket
 from .disk import Disk
 from .status import Status
@@ -119,7 +117,7 @@ class Pool(object):
 
         if 'status' in json_pool:
             self._status = json_pool['status']
-        self._creation_date = datetime.datetime.strptime(json_pool['creationDate'], "%Y-%m-%dT%H:%M:%SZ")
+        self._creation_date = _util.parse_datetime(json_pool['creationDate'])
 
         for constant in json_pool['constants']:
             self.constants[constant.get('key')] = constant.get('value')
