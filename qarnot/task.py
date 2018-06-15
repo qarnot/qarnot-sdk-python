@@ -46,7 +46,7 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile_or_pool, instancecount_or_range):
+    def __init__(self, connection, name, profile_or_pool, instancecount_or_range, shortname=None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -58,8 +58,11 @@ class Task(object):
 
         :param instancecount_or_range: number of instances or ranges on which to run task
         :type instancecount_or_range: int or str
+        :param shortname: userfriendly task name
+        :type shortname: :class:`str`
         """
         self._name = name
+        self._shortname = shortname
         if isinstance(profile_or_pool, Pool):
             self._pooluuid = profile_or_pool.uuid
             self._profile = None
@@ -1137,8 +1140,9 @@ class Task(object):
         return json_task
 
     def __str__(self):
-        return '{0} - {1} - {2} - InstanceCount : {3} - {4} - Resources : {5} - Results : {6}'\
+        return '{0} - {1} - {2} - {3} - InstanceCount : {4} - {5} - Resources : {6} - Results : {7}'\
             .format(self.name,
+                    self.shortname,
                     self._uuid,
                     self._profile,
                     self._instancecount,

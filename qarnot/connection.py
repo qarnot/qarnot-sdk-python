@@ -582,21 +582,22 @@ class Connection(object):
         disk.create()
         return disk
 
-    def create_pool(self, name, profile, instancecount=1):
+    def create_pool(self, name, profile, instancecount=1, shortname=None):
         """Create a new :class:`~qarnot.pool.Pool`.
 
         :param str name: given name of the pool
         :param str profile: which profile to use with this pool
         :param instancecount: number of instances to run for the pool
         :type instancecount: int
+        :param str shortname: optional unique friendly shortname of the pool
         :rtype: :class:`~qarnot.pool.Pool`
         :returns: The created :class:`~qarnot.pool.Pool`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Pool(self, name, profile, instancecount)
+        return Pool(self, name, profile, instancecount, shortname)
 
-    def create_task(self, name, profile_or_pool, instancecount_or_range=1):
+    def create_task(self, name, profile_or_pool, instancecount_or_range=1, shortname=None):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
@@ -604,12 +605,13 @@ class Connection(object):
         :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
         :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
         :type instancecount_or_range: int or str
+        :param str shortname: optional unique friendly shortname of the task
         :rtype: :class:`~qarnot.task.Task`
         :returns: The created :class:`~qarnot.task.Task`.
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile_or_pool, instancecount_or_range)
+        return Task(self, name, profile_or_pool, instancecount_or_range, shortname)
 
     def profiles(self):
         """Get list of profiles available on the cluster.

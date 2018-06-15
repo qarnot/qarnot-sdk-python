@@ -32,8 +32,24 @@ class Pool(object):
        :meth:`qarnot.connection.Connection.create_pool`
        or retrieved with :meth:`qarnot.connection.Connection.pools` or :meth:`qarnot.connection.Connection.retrieve_pool`.
     """
-    def __init__(self, connection, name, profile, instancecount):
+    def __init__(self, connection, name, profile, instancecount, shortname=None):
+        """Create a new :class:`Task`.
+
+        :param connection: the cluster on which to send the pool
+        :type connection: :class:`qarnot.connection.Connection`
+        :param name: given name of the pool
+        :type name: :class:`str`
+        :param profile: which profile to use with this task
+        :type profile: :class:`str`
+
+        :param instancecount_or_range: number of instances or ranges on which to run pool
+        :type instancecount_or_range: int or str
+        :param shortname: userfriendly pool name
+        :type shortname: :class:`str`
+        """
+
         self._name = name
+        self._shortname = shortname
         self._state = 'UnSubmitted'  # RO property same for below
         self._profile = profile
         self._connection = connection
@@ -101,6 +117,7 @@ class Pool(object):
     def _update(self, json_pool):
         """Update this pool from retrieved info."""
         self._name = json_pool['name']
+        self._shortname = json_pool.get('shortname')
         self._profile = json_pool['profile']
         self._instancecount = json_pool['instanceCount']
 
@@ -144,6 +161,10 @@ class Pool(object):
             'instanceCount': self._instancecount,
             'tags': self._tags
         }
+
+        if self._shortname is not None:
+            json_pool['shortname'] = self._shortname
+
         alldisk = all(isinstance(x, Disk) for x in self._resource_objects)
         allbucket = all(isinstance(x, Bucket) for x in self._resource_objects)
 
@@ -342,6 +363,26 @@ class Pool(object):
             raise AttributeError("can't set attribute on a launched pool")
         else:
             self._name = value
+
+    @property
+    def shortname(self):
+        """:type: :class:`str`
+        :getter: Returns this pool's shortname
+        :setter: Sets this pool's shortname
+
+        The pool's shortname, must be DNS compliant and unique, if not provided, will default to :attr:`uuid`.
+
+        Can be set until pool is submitted.
+        """
+        return self._shortname
+
+    @shortname.setter
+    def shortname(self, value):
+        """Setter for shortname."""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+        else:
+            self._shortname = value
 
     @property
     def tags(self):
