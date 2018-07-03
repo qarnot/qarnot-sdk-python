@@ -21,7 +21,7 @@ from .bucket import Bucket
 from .disk import Disk
 from .status import Status
 from .exceptions import MissingPoolException, MaxDiskException, MaxPoolException, NotEnoughCreditsException, \
-    MissingDiskException, LockedDiskException
+    MissingDiskException, LockedDiskException, BucketStorageUnavailableException
 
 
 class Pool(object):
@@ -42,8 +42,8 @@ class Pool(object):
         :param profile: which profile to use with this task
         :type profile: :class:`str`
 
-        :param instancecount_or_range: number of instances or ranges on which to run pool
-        :type instancecount_or_range: int or str
+        :param instancecount: number of instances or ranges on which to run pool
+        :type instancecount: int or str
         :param shortname: userfriendly pool name
         :type shortname: :class:`str`
         """
@@ -261,12 +261,14 @@ class Pool(object):
             return
 
         if purge_resources and self.resources is not None:
-            rdisks = []
+            resources = []
             for duuid in self._resource_objects_ids:
                 try:
-                    d = Disk._retrieve(self._connection, duuid)
-                    rdisks.append(d)
-                except MissingDiskException:
+                    if self._resource_type == Disk:
+                        resources.append(Disk._retrieve(self._connection, duuid))
+                    else:
+                        resources.append(Bucket._retrieve(self._connection, duuid))
+                except (MissingDiskException, BucketStorageUnavailableException):
                     pass
 
         resp = self._connection._delete(get_url('pool update', uuid=self._uuid))
@@ -274,18 +276,18 @@ class Pool(object):
             raise self._max_objects_exceptions_class(resp.json()['message'])
         raise_on_error(resp)
 
-        if purge_resources and len(rdisks) != 0:
+        if purge_resources and len(resources) != 0:
             toremove = []
-            for rdisk in rdisks:
+            for r in resources:
                 try:
-                    rdisk.update()
-                    rdisk.delete()
-                    toremove.append(rdisk)
-                except (MissingDiskException, LockedDiskException) as exception:
+                    r.update()
+                    r.delete()
+                    toremove.append(r)
+                except (MissingDiskException, LockedDiskException, BucketStorageUnavailableException) as exception:
                     warnings.warn(str(exception))
             for tr in toremove:
-                rdisks.remove(tr)
-            self.resources = rdisks
+                resources.remove(tr)
+            self.resources = resources
 
         self._state = "Deleted"
         self._uuid = None

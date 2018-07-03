@@ -26,7 +26,7 @@ from .disk import Disk
 from .bucket import Bucket
 from .pool import Pool
 from .exceptions import MissingTaskException, MaxTaskException, MaxDiskException, NotEnoughCreditsException, \
-    MissingDiskException, LockedDiskException
+    MissingDiskException, LockedDiskException, BucketStorageUnavailableException
 
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar
@@ -298,14 +298,15 @@ class Task(object):
             return
 
         if purge_resources and self.resources is not None:
-            rdisks = []
+            resources = []
             for duuid in self._resource_objects_ids:
                 try:
-                    d = Disk._retrieve(self._connection, duuid)
-                    rdisks.append(d)
-                except MissingDiskException:
+                    if self._resource_type == Disk:
+                        resources.append(Disk._retrieve(self._connection, duuid))
+                    else:
+                        resources.append(Bucket._retrieve(self._connection, duuid))
+                except (MissingDiskException, BucketStorageUnavailableException):
                     pass
-
         if purge_results and self.results is not None:
             try:
                 self.results.update()
@@ -318,18 +319,18 @@ class Task(object):
             raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
-        if purge_resources and len(rdisks) != 0:
+        if purge_resources and len(resources) != 0:
             toremove = []
-            for rdisk in rdisks:
+            for r in resources:
                 try:
-                    rdisk.update()
-                    rdisk.delete()
-                    toremove.append(rdisk)
-                except (MissingDiskException, LockedDiskException) as exception:
+                    r.update()
+                    r.delete()
+                    toremove.append(r)
+                except (MissingDiskException, LockedDiskException, BucketStorageUnavailableException) as exception:
                     warnings.warn(str(exception))
             for tr in toremove:
-                rdisks.remove(tr)
-            self.resources = rdisks
+                resources.remove(tr)
+            self.resources = resources
 
         if purge_results and self._result_object is not None:
             try:
@@ -381,10 +382,10 @@ class Task(object):
         self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
 
-        if 'resourceDisks' in json_task and json_task['resourceDisks'] is not None:
+        if 'resourceDisks' in json_task and json_task['resourceDisks']:
             self._resource_objects_ids = json_task['resourceDisks']
             self._resource_type = Disk
-        if 'resourceBuckets' in json_task and json_task['resourceBuckets'] is not None:
+        elif 'resourceBuckets' in json_task and json_task['resourceBuckets']:
             self._resource_objects_ids = json_task['resourceBuckets']
             self._resource_type = Bucket
 
@@ -392,10 +393,10 @@ class Task(object):
                 len(self._resource_objects):
             del self._resource_objects[:]
 
-        if 'resultDisk' in json_task and json_task['resultDisk'] is not None:
+        if 'resultDisk' in json_task and json_task['resultDisk']:
             self._result_object_id = json_task['resultDisk']
             self._result_type = Disk
-        if 'resultBucket' in json_task and json_task['resultBucket'] is not None:
+        elif 'resultBucket' in json_task and json_task['resultBucket']:
             self._result_object_id = json_task['resultBucket']
             self._result_type = Bucket
 

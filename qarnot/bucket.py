@@ -72,9 +72,23 @@ class Bucket(Storage):
         if create:
             self._connection.s3client.create_bucket(Bucket=name)
 
-    def delete(self):
-        """ Delete the bucket represented by this :class:`Bucket`.
+    @classmethod
+    def _retrieve(cls, connection, bucket_uuid):
+        """Retrieve information of a bucket on a cluster.
+
+        :param :class:`qarnot.connection.Connection` connection: the cluster
+            to get the bucket from
+        :param str bucket_uuid: the UUID of the bucket to retrieve
+
+        :rtype: :class:`qarnot.bucket.Bucket`
+        :returns: The retrieved bucket.
+
+        :raises qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
         """
+        return connection.retrieve_bucket(uuid=bucket_uuid)
+
+    def delete(self):
+        """ Delete the bucket represented by this :class:`Bucket`."""
         bucket = self._connection.s3resource.Bucket(self._uuid)
         objectlist = list(bucket.objects.all())
         n = 1000  # delete object count max request
