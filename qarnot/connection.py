@@ -118,8 +118,8 @@ class Connection(object):
                        and cfg.getboolean('cluster', 'unsafe'):
                         self._http.verify = False
                     if cfg.has_option('storage', 'unsafe') \
-                       and cfg.getboolean('cluster', 'unsafe'):
-                        storage_unsafe = False
+                       and cfg.getboolean('storage', 'unsafe'):
+                        storage_unsafe = True
         else:
             self.cluster = cluster_url
             self.timeout = cluster_timeout
