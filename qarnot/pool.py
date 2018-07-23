@@ -33,7 +33,7 @@ class Pool(object):
        or retrieved with :meth:`qarnot.connection.Connection.pools` or :meth:`qarnot.connection.Connection.retrieve_pool`.
     """
     def __init__(self, connection, name, profile, instancecount, shortname=None):
-        """Create a new :class:`Task`.
+        """Create a new :class:`Pool`.
 
         :param connection: the cluster on which to send the pool
         :type connection: :class:`qarnot.connection.Connection`
@@ -304,6 +304,13 @@ class Pool(object):
 
     @property
     def uuid(self):
+        """:type: :class:`str`
+        :getter: Returns this pool's uuid
+
+        The pool's uuid.
+
+        Automatically set when a pool is submitted.
+        """
         return self._uuid
 
     @property
