@@ -209,7 +209,7 @@ class Bucket(Storage):
                 digests = b"".join(m.digest() for m in md5s)
 
                 new_md5 = hashlib.md5(digests)
-                return "\"{}-{}\"".format(new_md5.hexdigest(), len(md5s))
+                return "\"{0}-{1}\"".format(new_md5.hexdigest(), len(md5s))
 
         def localtocomparable(name_, filepath_, remote):
             if remote is not None:
