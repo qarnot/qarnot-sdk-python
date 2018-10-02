@@ -18,5 +18,5 @@ deploy:
   on:
      tags: true
      branch: master
-     ptyhon: '3.6'
+     python: '3.6'
 script: pytest
