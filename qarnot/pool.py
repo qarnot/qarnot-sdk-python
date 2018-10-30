@@ -260,7 +260,7 @@ class Pool(object):
                 try:
                     d = Disk._retrieve(self._connection, duuid)
                     rdisks.append(d)
-                except MissingDiskException as exception:
+                except MissingDiskException:
                     pass
 
         resp = self._connection._delete(get_url('pool update', uuid=self._uuid))

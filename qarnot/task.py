@@ -290,13 +290,13 @@ class Task(object):
                 try:
                     d = Disk._retrieve(self._connection, duuid)
                     rdisks.append(d)
-                except MissingDiskException as exception:
+                except MissingDiskException:
                     pass
 
         if purge_results and self.results is not None:
             try:
                 self.results.update()
-            except MissingDiskException as exception:
+            except MissingDiskException:
                 purge_results = False
 
         resp = self._connection._delete(

@@ -394,8 +394,10 @@ class Disk(Storage):
         for file_ in removes:
             if remote is not None and not file_.name.startswith(remote):
                 continue
-            renames = (x for x in adds if x.sha1sum == file_.sha1sum and not x.directory and not file_.directory and
-                       all(y.name != x.name for y in remotefiles))
+            renames = (
+                x for x in adds if x.sha1sum == file_.sha1sum and not x.directory and not file_.directory
+                and all(y.name != x.name for y in remotefiles)
+            )
             for dup in renames:
                 if verbose:
                     print("Copy", file_.name, "to", dup.name)
@@ -978,8 +980,8 @@ class Disk(Storage):
 
     def __str__(self):
         return (
-            ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ") +
-            self.uuid + " - " + self.description
+            ("[LOCKED]     - " if self.locked else "[NON LOCKED] - ")
+            + self.uuid + " - " + self.description
         )
 
     def __contains__(self, item):
@@ -1039,16 +1041,16 @@ class FileInfo(object):
                                self.directory, self.sha1sum)
 
     def __eq__(self, other):
-        return (self.name == other.name and
-                self.size == other.size and
-                self.directory == other.directory and
-                self.sha1sum == other.sha1sum)
+        return (self.name == other.name
+                and self.size == other.size
+                and self.directory == other.directory
+                and self.sha1sum == other.sha1sum)
 
     def __hash__(self):
-        return (hash(self.name) ^
-                hash(self.size) ^
-                hash(self.directory) ^
-                hash(self.sha1sum))
+        return (hash(self.name)
+                ^ hash(self.size)
+                ^ hash(self.directory)
+                ^ hash(self.sha1sum))
 
 
 class UploadMode(object):
