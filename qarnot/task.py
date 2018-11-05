@@ -208,10 +208,8 @@ class Task(object):
 
         .. note:: To get the results, call :meth:`download_results` once the job is done.
         """
-        if self._uuid is not None:
-            return self._state
-        for rdisk in self.resources:
-            rdisk.flush()
+        self._pre_submit()
+
         payload = self._to_json()
         resp = self._connection._post(get_url('tasks'), json=payload)
 
@@ -227,6 +225,17 @@ class Task(object):
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
 
+        self._post_submit()
+
+    def _pre_submit(self):
+        """Pre submit action on the task & its resources"""
+        if self._uuid is not None:
+            return self._state
+        for rdisk in self.resources:
+            rdisk.flush()
+
+    def _post_submit(self):
+        """Post submit action on the task after submission"""
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
 
@@ -1258,6 +1267,42 @@ class CompletedInstance(object):
         """:type: :class:list(`str`)
 
           Instance produced results"""
+
+    def __str__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
+
+
+class BulkTaskResponse(object):
+    """Bulk Task Response Information
+
+    .. note:: Read-only class
+    """
+    def __init__(self, json):
+        self.status_code = json['statusCode']
+        """:type: :class:`int`
+
+        Status code."""
+
+        self.uuid = json['uuid']
+        """:type: :class:`str`
+
+        Created Task Uuid."""
+
+        self.message = json['message']
+        """:type: :class:`str`
+
+        User friendly error message."""
+
+    def is_success(self):
+        """Check that the task submit has been successful.
+
+        :rtype: :class:`bool`
+        :returns: The task creation success(depending on received uuid and the status code).
+        """
+        return self.status_code >= 200 and self.status_code < 300 and self.uuid
 
     def __str__(self):
         if sys.version_info > (3, 0):

@@ -18,7 +18,7 @@
 
 from . import get_url, raise_on_error
 from .disk import Disk
-from .task import Task
+from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .bucket import Bucket
 from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
@@ -616,6 +616,39 @@ class Connection(object):
         .. note:: See available profiles with :meth:`profiles`.
         """
         return Task(self, name, profile_or_pool, instancecount_or_range, shortname)
+
+    def submit_tasks(self, tasks):
+        """Submit a list of :class:`~qarnot.task.Task`.
+
+        :param List of :class:`~qarnot.task.Task`.
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+
+        .. note:: Will ensure all added files are on the resource disk
+           regardless of their uploading mode.
+        """
+        error_message = ""
+
+        for task in tasks:
+            task._pre_submit()
+
+        payload = [task._to_json() for task in tasks]
+        responses = self._post(get_url('tasks'), json=payload)
+
+        if responses.status_code == 503:
+            raise QarnotGenericException("Service Unavailable")
+
+        bulk_responses = [BulkTaskResponse(x) for x in responses.json()]
+
+        # The contract with the API is that the response list and the request list should be in the same order
+        for i, response in enumerate(bulk_responses):
+            if not response.is_success():
+                error_message += "[{0}] : {1}, {2}\n".format(tasks[i], response.status_code, response.message)
+            else:
+                tasks[i]._uuid = response.uuid
+                tasks[i]._post_submit()
+
+        if error_message:
+            raise QarnotGenericException(error_message)
 
     def profiles(self):
         """Get list of profiles available on the cluster.
