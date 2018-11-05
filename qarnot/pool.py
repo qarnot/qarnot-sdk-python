@@ -77,6 +77,7 @@ class Pool(object):
         self._creation_date = None
         self._uuid = None
         self._max_objects_exceptions_class = MaxPoolException
+        self._is_summary = False
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -100,7 +101,7 @@ class Pool(object):
         return Pool.from_json(connection, resp.json())
 
     @classmethod
-    def from_json(cls, connection, json_pool):
+    def from_json(cls, connection, json_pool, is_summary=False):
         """Create a Pool object from a json pool.
 
         :param qarnot.connection.Connection connection: the cluster connection
@@ -112,6 +113,7 @@ class Pool(object):
                        json_pool['profile'],
                        json_pool['instanceCount'])
         new_pool._update(json_pool)
+        new_pool._is_summary = is_summary
         return new_pool
 
     def _update(self, json_pool):
@@ -136,8 +138,9 @@ class Pool(object):
             self._status = json_pool['status']
         self._creation_date = _util.parse_datetime(json_pool['creationDate'])
 
-        for constant in json_pool['constants']:
-            self.constants[constant.get('key')] = constant.get('value')
+        if 'constants' in json_pool:
+            for constant in json_pool['constants']:
+                self.constants[constant.get('key')] = constant.get('value')
         self._uuid = json_pool['uuid']
         self._state = json_pool['state']
         self._tags = json_pool.get('tags', None)
@@ -239,6 +242,7 @@ class Pool(object):
 
         raise_on_error(resp)
         self._update(resp.json())
+        self._is_summary = False
         self._last_cache = time.time()
 
     def delete(self, purge_resources=False):
@@ -251,6 +255,8 @@ class Pool(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.MissingTaskException: pool does not exist
         """
+        if purge_resources:
+            self._update_if_summmary()
         if self._uuid is None:
             return
 
@@ -399,6 +405,7 @@ class Pool(object):
 
         Custom tags.
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -465,6 +472,7 @@ class Pool(object):
 
         Status of the task
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -508,3 +516,11 @@ class Pool(object):
         """Setter for update_cache_time
         """
         self._update_cache_time = value
+
+    def _update_if_summmary(self):
+        """Trigger flush update if the task is made from a summary.
+
+        This should be called before accessing any fields not contained in a summary task
+        """
+        if self._is_summary:
+            self.update(True)

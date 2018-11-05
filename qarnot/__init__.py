@@ -46,6 +46,7 @@ def get_url(key, **kwargs):
         'ls disk': u'/disks/list/{name}/{path}',  # GET -> ls on the dir {path}
         'update file': u'/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file; PUT -> update file settings
         'tasks': u'/tasks',  # GET -> running tasks; POST -> submit task
+        'tasks summaries': u'/tasks/summaries',  # GET -> running tasks summaries;
         'task force': u'/tasks/force',  # POST -> force add
         'task update': u'/tasks/{uuid}',  # GET->result; DELETE -> abort, PATCH -> update resources
         'task snapshot': u'/tasks/{uuid}/snapshot/periodic',  # POST -> snapshots
@@ -54,6 +55,7 @@ def get_url(key, **kwargs):
         'task stderr': u'/tasks/{uuid}/stderr',  # GET -> task stderr
         'task abort': u'/tasks/{uuid}/abort',  # GET -> task
         'pools': u'/pools',  # GET -> pools, POST -> submit pool
+        'pools summaries': u'/pools/summaries',  # GET -> pools summaries
         'pool close': u'/pools/{uuid}/close',  # POST -> close pool
         'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete
         'user': u'/info',  # GET -> user info

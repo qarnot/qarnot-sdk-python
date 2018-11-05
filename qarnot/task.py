@@ -117,6 +117,7 @@ class Task(object):
         self._resource_type = None
         self._result_type = None
         self._result_object_id = None
+        self._is_summary = False
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -290,6 +291,9 @@ class Task(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
+        if purge_resources or purge_results:
+            self._update_if_summmary()
+
         if self._uuid is None:
             return
 
@@ -366,6 +370,7 @@ class Task(object):
         raise_on_error(resp)
         self._update(resp.json())
         self._last_cache = time.time()
+        self._is_summary = False
 
     def _update(self, json_task):
         """Update this task from retrieved info."""
@@ -401,14 +406,19 @@ class Task(object):
             self._errors = [Error(d) for d in json_task['errors']]
         else:
             self._errors = []
-        for constant in json_task['constants']:
-            self.constants[constant.get('key')] = constant.get('value')
+
+        if 'constants' in json_task:
+            for constant in json_task['constants']:
+                self.constants[constant.get('key')] = constant.get('value')
+
         self._uuid = json_task['uuid']
         self._state = json_task['state']
         self._tags = json_task.get('tags', None)
-        if self._rescount < json_task['resultsCount']:
-            self._dirty = True
-        self._rescount = json_task['resultsCount']
+        if 'resultsCount' in json_task:
+            if self._rescount < json_task['resultsCount']:
+                self._dirty = True
+            self._rescount = json_task['resultsCount']
+
         if 'resultsBlacklist' in json_task:
             self._results_blacklist = json_task['resultsBlacklist']
         if 'resultsWhitelist' in json_task:
@@ -424,7 +434,7 @@ class Task(object):
             self._completed_instances = []
 
     @classmethod
-    def from_json(cls, connection, json_task):
+    def from_json(cls, connection, json_task, is_summary=False):
         """Create a Task object from a json task.
 
         :param qarnot.connection.Connection connection: the cluster connection
@@ -440,6 +450,7 @@ class Task(object):
                        json_task.get('profile') or json_task.get('pooluuid'),
                        instancecount_or_range)
         new_task._update(json_task)
+        new_task._is_summary = is_summary
         return new_task
 
     def commit(self):
@@ -614,6 +625,7 @@ class Task(object):
 
         Represents resource files.
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -641,6 +653,7 @@ class Task(object):
         :setter: Sets this task's results disk
 
         Represents results files."""
+        self._update_if_summmary()
         if self._result_object is None:
             if self._result_type == Disk:
                 self._result_object = Disk._retrieve(self._connection, self._result_object_id)
@@ -834,6 +847,7 @@ class Task(object):
 
         Custom tags.
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -958,6 +972,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
+        self._update_if_summmary()
         return self._snapshot_whitelist
 
     @snapshot_whitelist.setter
@@ -978,6 +993,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
+        self._update_if_summmary()
         return self._snapshot_blacklist
 
     @snapshot_blacklist.setter
@@ -998,6 +1014,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
+        self._update_if_summmary()
         return self._results_whitelist
 
     @results_whitelist.setter
@@ -1018,6 +1035,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -1038,6 +1056,7 @@ class Task(object):
 
         Status of the task
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -1050,6 +1069,7 @@ class Task(object):
         """:type: list(:class:`CompletedInstance`)
         :getter: Return this task's completed instances
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
         return self._completed_instances
@@ -1071,6 +1091,7 @@ class Task(object):
 
         Error reason if any, empty string if none
         """
+        self._update_if_summmary()
         if self._auto_update:
             self.update()
 
@@ -1172,6 +1193,14 @@ class Task(object):
         if self._results_blacklist is not None:
             json_task['resultsBlacklist'] = self._results_blacklist
         return json_task
+
+    def _update_if_summmary(self):
+        """Trigger flush update if the task is made from a summary.
+
+        This should be called before accessing any fields not contained in a summary task
+        """
+        if self._is_summary:
+            self.update(True)
 
     def __str__(self):
         return '{0} - {1} - {2} - {3} - InstanceCount : {4} - {5} - Resources : {6} - Results : {7}'\

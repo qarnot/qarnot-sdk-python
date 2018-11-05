@@ -432,7 +432,7 @@ class Connection(object):
         disks = [Disk.from_json(self, data) for data in response.json()]
         return disks
 
-    def pools(self):
+    def pools(self, summary=True):
         """Get the list of pools stored on this cluster for this user.
 
         :rtype: List of :class:`~qarnot.pool.Pool`.
@@ -441,11 +441,12 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
-        response = self._get(get_url('pools'))
+        url = get_url('pools summaries') if summary else get_url('pools')
+        response = self._get(url)
         raise_on_error(response)
-        return [Pool.from_json(self, pool) for pool in response.json()]
+        return [Pool.from_json(self, pool, summary) for pool in response.json()]
 
-    def tasks(self, tags=list()):
+    def tasks(self, tags=None, summary=True):
         """Get the list of tasks stored on this cluster for this user.
 
         :param List of :class:`str` tags: Desired filtering tags
@@ -455,12 +456,14 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
+
+        url = get_url('tasks summaries') if summary else get_url('tasks')
         if tags:
-            response = self._get(get_url('tasks'), params={'tag': tags})
+            response = self._get(url, params={'tag': tags})
         else:
-            response = self._get(get_url('tasks'))
+            response = self._get(url)
         raise_on_error(response)
-        return [Task.from_json(self, task) for task in response.json()]
+        return [Task.from_json(self, task, summary) for task in response.json()]
 
     def retrieve_pool(self, uuid):
         """Retrieve a :class:`qarnot.pool.Pool` from its uuid
