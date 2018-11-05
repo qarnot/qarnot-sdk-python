@@ -445,16 +445,20 @@ class Connection(object):
         raise_on_error(response)
         return [Pool.from_json(self, pool) for pool in response.json()]
 
-    def tasks(self):
+    def tasks(self, tags=list()):
         """Get the list of tasks stored on this cluster for this user.
 
+        :param List of :class:`str` tags: Desired filtering tags
         :rtype: List of :class:`~qarnot.task.Task`.
         :returns: Tasks stored on the cluster owned by the user.
 
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
-        response = self._get(get_url('tasks'))
+        if tags:
+            response = self._get(get_url('tasks'), params={'tag': tags})
+        else:
+            response = self._get(get_url('tasks'))
         raise_on_error(response)
         return [Task.from_json(self, task) for task in response.json()]
 
@@ -616,7 +620,7 @@ class Connection(object):
     def profiles(self):
         """Get list of profiles available on the cluster.
 
-        :rtype: List of :class:`Profile`
+        :rtype: list of :class:`Profile`
 
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
