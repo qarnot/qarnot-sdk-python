@@ -274,7 +274,7 @@ class Pool(object):
             raise self._max_objects_exceptions_class(resp.json()['message'])
         raise_on_error(resp)
 
-        if purge_resources and self.resources is not None:
+        if purge_resources and len(rdisks) != 0:
             toremove = []
             for rdisk in rdisks:
                 try:

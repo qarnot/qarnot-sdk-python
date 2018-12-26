@@ -318,7 +318,7 @@ class Task(object):
             raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
-        if purge_resources and self.resources is not None:
+        if purge_resources and len(rdisks) != 0:
             toremove = []
             for rdisk in rdisks:
                 try:
@@ -331,7 +331,7 @@ class Task(object):
                 rdisks.remove(tr)
             self.resources = rdisks
 
-        if purge_results and self.results is not None:
+        if purge_results and self._result_object is not None:
             try:
                 self._result_object.delete()
                 self._result_object = None
