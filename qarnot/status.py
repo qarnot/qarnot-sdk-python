@@ -301,6 +301,11 @@ class TaskActiveForward(object):
 
         Forwarder Host."""
 
+        self.bind_address = json.get('bindAddress')
+        """:type: :class:`str`
+
+        Bind address of the listening socket on the forwarder host."""
+
     def __str__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
