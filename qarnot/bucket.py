@@ -292,13 +292,20 @@ class Bucket(Storage):
 
     @_util.copy_docs(Storage.get_all_files)
     def get_all_files(self, output_dir, progress=None):
-        for _, dupes in groupby(sorted(self.list_files(), key=attrgetter('e_tag')), attrgetter('e_tag')):
+        list_files_only = [x for x in self.list_files() if not x.key.endswith('/')]
+        list_directories_only = [x for x in self.list_files() if x.key.endswith('/')]
+
+        for dir in list_directories_only:
+            if not os.path.isdir(os.path.join(output_dir, dir.key.lstrip('/'))):
+                os.makedirs(os.path.join(output_dir, dir.key.lstrip('/')))
+
+        for _, dupes in groupby(sorted(list_files_only, key=attrgetter('e_tag')), attrgetter('e_tag')):
             file_info = next(dupes)
-            first_file = os.path.join(output_dir, os.path.normpath(file_info.key.lstrip('/')))
+            first_file = os.path.join(output_dir, file_info.key.lstrip('/'))
             self.get_file(file_info.get()['Body'], local=first_file)  # avoids making a useless HEAD request
 
             for dupe in dupes:
-                local = os.path.join(output_dir, os.path.normpath(dupe.key.lstrip('/')))
+                local = os.path.join(output_dir, dupe.key.lstrip('/'))
                 directory = os.path.dirname(local)
                 if not os.path.exists(directory):
                     os.makedirs(directory)
