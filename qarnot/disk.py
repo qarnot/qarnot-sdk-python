@@ -371,8 +371,8 @@ class Disk(Storage):
             dtutc = dtutc.replace(microsecond=0)
 
             type = 'directory' if os.path.isdir(filepath) else 'file'
-            sha1 = generate_file_sha1(filepath) if type is 'file' else 'N/A'
-            size = os.stat(filepath).st_size if type is 'file' else 0
+            sha1 = generate_file_sha1(filepath) if type == 'file' else 'N/A'
+            size = os.stat(filepath).st_size if type == 'file' else 0
             qfi = FileInfo(dtutc, name, size, type, sha1)
             qfi.filepath = filepath
             return qfi
@@ -777,8 +777,8 @@ class Disk(Storage):
             json=settings)
 
         if response.status_code == 404:
-                if response.json()['message'] == "No such disk":
-                    raise MissingDiskException(response.json()['message'])
+            if response.json()['message'] == "No such disk":
+                raise MissingDiskException(response.json()['message'])
         raise_on_error(response)
 
     def delete_file(self, remote, force=False):

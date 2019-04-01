@@ -10,7 +10,7 @@ try:
     import setuptools
     [setuptools]
 except ImportError:
-        pass
+    pass
 
 with open(path.join(path.dirname(__file__), 'README.rst')) as long_d_f:
     LONG_DESCRIPTION = long_d_f.read()
