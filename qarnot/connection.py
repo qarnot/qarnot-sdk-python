@@ -16,7 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import get_url, raise_on_error
+from . import get_url, raise_on_error, __version__
 from .disk import Disk
 from .task import Task, BulkTaskResponse
 from .pool import Pool
@@ -29,6 +29,7 @@ import warnings
 import os
 import time
 import boto3
+import botocore
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -149,6 +150,8 @@ class Connection(object):
             raise QarnotGenericException("Token is mandatory.")
         self._http.headers.update({"Authorization": auth})
 
+        self._http.headers.update({"User-Agent": "qarnot-sdk-python/" + __version__})
+
         if self.cluster is None:
             self.cluster = "https://api.qarnot.com"
 
@@ -164,16 +167,21 @@ class Connection(object):
 
         user = self.user_info
         session = boto3.session.Session()
+        conf = botocore.config.Config(
+            user_agent="qarnot-sdk-python/" + __version__)
+
         self._s3client = session.client(service_name='s3',
                                         aws_access_key_id=user.email,
                                         aws_secret_access_key=auth,
                                         verify=(not storage_unsafe),
-                                        endpoint_url=self.storage)
+                                        endpoint_url=self.storage,
+                                        config=conf)
         self._s3resource = session.resource(service_name='s3',
                                             aws_access_key_id=user.email,
                                             aws_secret_access_key=auth,
                                             verify=(not storage_unsafe),
-                                            endpoint_url=self.storage)
+                                            endpoint_url=self.storage,
+                                            config=conf)
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
