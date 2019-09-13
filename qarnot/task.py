@@ -47,7 +47,7 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile_or_pool_or_job, instancecount_or_range, shortname=None):
+    def __init__(self, connection, name, profile_or_pool, instancecount_or_range, job = None, shortname=None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -64,19 +64,16 @@ class Task(object):
         """
         self._name = name
         self._shortname = shortname
-        if isinstance(profile_or_pool_or_job, Pool):
-            self._pooluuid = profile_or_pool_or_job.uuid
-            self._profile = None
-            self._jobuuid = None
-        elif isinstance(profile_or_pool_or_job, Job):
-            self._pooluuid = None
-            self._jobuuid = profile_or_pool_or_job.uuid
-            profile_or_pool_or_job.tasks.append(self.uuid)
+        if isinstance(profile_or_pool, Pool):
+            self._pooluuid = profile_or_pool.uuid
             self._profile = None
         else:
-            self._profile = profile_or_pool_or_job
-            self._jobuuid = None
+            self._profile = profile_or_pool
             self._pooluuid = None
+
+        self._jobuuid = None
+        if job is not None:
+            self._jobuuid = job.uuid
 
         if isinstance(instancecount_or_range, int):
             self._instancecount = instancecount_or_range
@@ -1159,6 +1156,7 @@ class Task(object):
             'name': self._name,
             'profile': self._profile,
             'pooluuid': self._pooluuid,
+            'jobuuid': None if self._jobuuid == "" else self._jobuuid,
             'constants': const_list,
             'constraints': constr_list,
             'dependsOn': self._dependentOn

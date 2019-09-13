@@ -85,7 +85,7 @@ class Job(object):
         return json_job
 
     def _update(self, json_job):
-        """Update this pool from retrieved info."""
+        """Update this job from retrieved info."""
         self.uuid = json_job['uuid']
         self.name = json_job['name']
         self.shortname = json_job.get('shortname')
