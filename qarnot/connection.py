@@ -21,6 +21,7 @@ from .disk import Disk
 from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .bucket import Bucket
+from .job import Job
 from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
                          MissingDiskException, MissingTaskException, MissingPoolException)
 import requests
@@ -702,6 +703,8 @@ class Connection(object):
         """
         return Bucket(self, name)
 
+    def create_job(self, name, pool = None, shortname = None, useDependencies = False):
+        return Job(self, name, pool, shortname, useDependencies)
 
 ###################
 # utility Classes #

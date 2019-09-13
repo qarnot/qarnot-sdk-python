@@ -1,6 +1,5 @@
 """Rest API for submitting qarnot jobs in Python."""
 
-
 # Copyright 2017 Qarnot computing
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,7 +16,6 @@
 
 
 from .exceptions import QarnotGenericException
-
 
 __all__ = ["task", "connection", "disk", "bucket", "pool", "storage", "status"]
 
@@ -44,7 +42,10 @@ def get_url(key, **kwargs):
         'link disk': u'/disks/link/{name}',  # POST -> create links
         'move disk': u'/disks/move/{name}',  # POST -> create links
         'ls disk': u'/disks/list/{name}/{path}',  # GET -> ls on the dir {path}
-        'update file': u'/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file; PUT -> update file settings
+        'update file': u'/disks/{name}/{path}',
+        # POST -> add file; GET -> download file; DELETE -> remove file; PUT -> update file settings
+        'jobs': u'/jobs/',
+        'job update': u'/jobs/{uuid}',  # Get->result
         'tasks': u'/tasks',  # GET -> running tasks; POST -> submit task
         'tasks summaries': u'/tasks/summaries',  # GET -> running tasks summaries;
         'task force': u'/tasks/force',  # POST -> force add
@@ -65,8 +66,10 @@ def get_url(key, **kwargs):
     }
     return urls[key].format(**kwargs)
 
+
 from .connection import Connection  # noqa
 
 from ._version import get_versions  # noqa
+
 __version__ = get_versions()['version']
 del get_versions
