@@ -101,7 +101,7 @@ class Status(object):
         if 'runningInstancesInfo' in json and json['runningInstancesInfo'] is not None:
             self.running_instances_info = RunningInstancesInfo(json['runningInstancesInfo'])
 
-    def __str__(self):
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
@@ -182,7 +182,7 @@ class RunningInstancesInfo(object):
 
         Total Network Output in Kbps."""
 
-    def __str__(self):
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
@@ -273,7 +273,15 @@ class PerRunningInstanceInfo(object):
         if 'activeForwards' in json:
             self.active_forward = [TaskActiveForward(x) for x in json['activeForwards']]
 
-    def __str__(self):
+        self.vpn_connections = []
+        """type: list(:class:`TaskVpnConnection`)
+
+        Vpn connection list."""
+
+        if "vpnConnections" in json:
+            self.vpn_connections = [TaskVpnConnection(x) for x in json["vpnConnections"]]
+
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
@@ -306,7 +314,30 @@ class TaskActiveForward(object):
 
         Bind address of the listening socket on the forwarder host."""
 
-    def __str__(self):
+    def __repr__(self):
+        if sys.version_info > (3, 0):
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+        else:
+            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
+
+
+class TaskVpnConnection(object):
+    """ Vpn Connection Information
+
+    .. note:: Read-only class
+    """
+    def __init__(self, json):
+        self.node_ip_address_cidr = json['nodeIPAddressCidr']
+        """:type: :class:`str`
+
+        Vpn classless inter-domain routing address."""
+
+        self.vpn_name = json['vpnName']
+        """:type: :class:`str`
+
+        Vpn name."""
+
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:

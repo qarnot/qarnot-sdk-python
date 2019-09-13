@@ -22,11 +22,10 @@ import sys
 
 from . import get_url, raise_on_error, _util
 from .status import Status
-from .disk import Disk
 from .bucket import Bucket
 from .pool import Pool
-from .exceptions import MissingTaskException, MaxTaskException, MaxDiskException, NotEnoughCreditsException, \
-    MissingDiskException, LockedDiskException, BucketStorageUnavailableException
+from .exceptions import MissingTaskException, MaxTaskException, NotEnoughCreditsException, \
+    MissingBucketException, BucketStorageUnavailableException
 
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar
@@ -39,36 +38,45 @@ RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
 
 
 class Task(object):
-    """Represents a Qarnot job.
+    """Represents a Qarnot task.
 
     .. note::
        A :class:`Task` must be created with
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile_or_pool, instancecount_or_range, shortname=None):
+    def __init__(self, connection, name, profile_or_pool=None, instancecount_or_range=1, shortname=None, job=None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
         :type connection: :class:`qarnot.connection.Connection`
         :param name: given name of the task
         :type name: :class:`str`
-        :param profile_or_pool: which profile to use with this task, or which Pool to run task
-        :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
+        :param profile_or_pool: which profile to use with this task, or which Pool to run task,
+        :type profile_or_pool: str or :class:`~qarnot.pool.Pool` or None
 
         :param instancecount_or_range: number of instances or ranges on which to run task
         :type instancecount_or_range: int or str
         :param shortname: userfriendly task name
         :type shortname: :class:`str`
+        :param job: which job to attach the task to
+        :type job: :class:`~qarnot.job.Job`
         """
         self._name = name
         self._shortname = shortname
-        if isinstance(profile_or_pool, Pool):
-            self._pooluuid = profile_or_pool.uuid
-            self._profile = None
-        else:
-            self._profile = profile_or_pool
-            self._pooluuid = None
+        self._profile = None
+        self._pool_uuid = None
+        self._job_uuid = None
+        if profile_or_pool is not None:
+            if isinstance(profile_or_pool, Pool):
+                self._pool_uuid = profile_or_pool.uuid
+            else:
+                self._profile = profile_or_pool
+
+        if job is not None:
+            if isinstance(profile_or_pool, Pool):
+                raise Exception("Cannot attach a same task to pool and a job simultaneously")
+            self._job_uuid = job.uuid
 
         if isinstance(instancecount_or_range, int):
             self._instancecount = instancecount_or_range
@@ -92,6 +100,8 @@ class Task(object):
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
 
+        self._dependentOn = []
+
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
@@ -113,9 +123,7 @@ class Task(object):
         self._tags = []
         self._creation_date = None
         self._errors = None
-        self._resource_objects_ids = []
-        self._resource_type = None
-        self._result_type = None
+        self._resource_object_ids = []
         self._result_object_id = None
         self._is_summary = False
 
@@ -153,10 +161,8 @@ class Task(object):
         :raises qarnot.exceptions.MaxTaskException: Task quota reached
         :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingDiskException:
-          resource disk is not a valid disk
 
-        .. note:: Will ensure all added file are on the resource disk
+        .. note:: Will ensure all added file are on the resource bucket
            regardless of their uploading mode.
         .. note:: If this function is interrupted (script killed for example),
            but the task is submitted, the task will still be executed remotely
@@ -183,8 +189,6 @@ class Task(object):
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.MissingTaskException: task does not exist
-        :raises qarnot.exceptions.MissingDiskException:
-          resource disk is not a valid disk
 
         .. note:: Do nothing if the task has not been submitted.
         .. warning:: Will override *output_dir* content.
@@ -201,10 +205,8 @@ class Task(object):
         :raises qarnot.exceptions.MaxTaskException: Task quota reached
         :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingDiskException:
-          resource disk is not a valid disk
 
-        .. note:: Will ensure all added files are on the resource disk
+        .. note:: Will ensure all added files are on the resource bucket
            regardless of their uploading mode.
 
         .. note:: To get the results, call :meth:`download_results` once the job is done.
@@ -215,12 +217,9 @@ class Task(object):
         resp = self._connection._post(get_url('tasks'), json=payload)
 
         if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'])
+            raise MissingBucketException(resp.json()['message'])
         elif resp.status_code == 403:
-            if resp.json()['message'].startswith('Maximum number of disks reached'):
-                raise MaxDiskException(resp.json()['message'])
-            else:
-                raise MaxTaskException(resp.json()['message'])
+            raise MaxTaskException(resp.json()['message'])
         elif resp.status_code == 402:
             raise NotEnoughCreditsException(resp.json()['message'])
         raise_on_error(resp)
@@ -232,8 +231,8 @@ class Task(object):
         """Pre submit action on the task & its resources"""
         if self._uuid is not None:
             return self._state
-        for rdisk in self.resources:
-            rdisk.flush()
+        for resource_buckets in self.resources:
+            resource_buckets.flush()
 
     def _post_submit(self):
         """Post submit action on the task after submission"""
@@ -281,10 +280,10 @@ class Task(object):
     def delete(self, purge_resources=False, purge_results=False):
         """Delete this task on the server.
 
-        :param bool purge_resources: parameter value is used to determine if the disk is also deleted.
+        :param bool purge_resources: parameter value is used to determine if the bucket is also deleted.
                 Defaults to False.
 
-        :param bool purge_results: parameter value is used to determine if the disk is also deleted.
+        :param bool purge_results: parameter value is used to determine if the bucket is also deleted.
                 Defaults to False.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -297,20 +296,10 @@ class Task(object):
         if self._uuid is None:
             return
 
-        if purge_resources and self.resources is not None:
-            resources = []
-            for duuid in self._resource_objects_ids:
-                try:
-                    if self._resource_type == Disk:
-                        resources.append(Disk._retrieve(self._connection, duuid))
-                    else:
-                        resources.append(Bucket._retrieve(self._connection, duuid))
-                except (MissingDiskException, BucketStorageUnavailableException):
-                    pass
         if purge_results and self.results is not None:
             try:
                 self.results.update()
-            except MissingDiskException:
+            except MissingBucketException:
                 purge_results = False
 
         resp = self._connection._delete(
@@ -319,25 +308,23 @@ class Task(object):
             raise MissingTaskException(resp.json()['message'])
         raise_on_error(resp)
 
-        if purge_resources and len(resources) != 0:
+        if purge_resources and len(self.resources) != 0:
             toremove = []
-            for r in resources:
+            for r in self.resources:
                 try:
                     r.update()
                     r.delete()
                     toremove.append(r)
-                except (MissingDiskException, LockedDiskException, BucketStorageUnavailableException) as exception:
+                except (MissingBucketException, BucketStorageUnavailableException) as exception:
                     warnings.warn(str(exception))
             for tr in toremove:
-                resources.remove(tr)
-            self.resources = resources
+                self.resources.remove(tr)
 
         if purge_results and self._result_object is not None:
             try:
                 self._result_object.delete()
                 self._result_object = None
-                self._result_object_id = None
-            except (MissingDiskException, LockedDiskException) as exception:
+            except MissingBucketException as exception:
                 warnings.warn(str(exception))
 
         self._state = "Deleted"
@@ -378,27 +365,16 @@ class Task(object):
         self._name = json_task['name']
         self._shortname = json_task.get('shortname')
         self._profile = json_task['profile']
-        self._pooluuid = json_task.get('pooluuid')
+        self._pool_uuid = json_task.get('poolUuid')
+        self._job_uuid = json_task.get('jobUuid')
         self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
 
-        if 'resourceDisks' in json_task and json_task['resourceDisks']:
-            self._resource_objects_ids = json_task['resourceDisks']
-            self._resource_type = Disk
-        elif 'resourceBuckets' in json_task and json_task['resourceBuckets']:
-            self._resource_objects_ids = json_task['resourceBuckets']
-            self._resource_type = Bucket
+        if 'resourceBuckets' in json_task and json_task['resourceBuckets']:
+            self._resource_object_ids = json_task['resourceBuckets']
 
-        if len(self._resource_objects_ids) != \
-                len(self._resource_objects):
-            del self._resource_objects[:]
-
-        if 'resultDisk' in json_task and json_task['resultDisk']:
-            self._result_object_id = json_task['resultDisk']
-            self._result_type = Disk
-        elif 'resultBucket' in json_task and json_task['resultBucket']:
+        if 'resultBucket' in json_task and json_task['resultBucket']:
             self._result_object_id = json_task['resultBucket']
-            self._result_type = Bucket
 
         if 'status' in json_task:
             self._status = json_task['status']
@@ -443,13 +419,13 @@ class Task(object):
         :returns: The created :class:`~qarnot.task.Task`.
         """
         if 'instanceCount' in json_task:
-            instancecount_or_range = json_task['instanceCount']
+            instance_count_or_range = json_task['instanceCount']
         else:
-            instancecount_or_range = json_task['advancedRanges']
+            instance_count_or_range = json_task['advancedRanges']
         new_task = cls(connection,
                        json_task['name'],
-                       json_task.get('profile') or json_task.get('pooluuid'),
-                       instancecount_or_range)
+                       json_task.get('profile') or json_task.get('poolUuid'),
+                       instance_count_or_range)
         new_task._update(json_task)
         new_task._is_summary = is_summary
         return new_task
@@ -460,7 +436,7 @@ class Task(object):
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
-        .. note:: When updating disks' properties, auto update will be disabled until commit is called.
+        .. note:: When updating buckets' properties, auto update will be disabled until commit is called.
         """
         data = self._to_json()
         resp = self._connection._put(get_url('task update', uuid=self._uuid), json=data)
@@ -620,25 +596,19 @@ class Task(object):
 
     @property
     def resources(self):
-        """:type: list(:class:`~qarnot.disk.Disk`)
-        :getter: Returns this task's resources disks
-        :setter: Sets this task's resources disks
+        """:type: list(:class:`~qarnot.bucket.Bucket`)
+        :getter: Returns this task's resources bucket
+        :setter: Sets this task's resources bucket
 
         Represents resource files.
         """
         self._update_if_summmary()
         if self._auto_update:
             self.update()
-
         if not self._resource_objects:
-            if self._resource_type == Disk:
-                for duuid in self._resource_objects_ids:
-                    d = Disk._retrieve(self._connection, duuid)
-                    self._resource_objects.append(d)
-            elif self._resource_type == Bucket:
-                for bid in self._resource_objects_ids:
-                    d = Bucket(self._connection, bid)
-                    self._resource_objects.append(d)
+            for bid in self._resource_object_ids:
+                d = Bucket(self._connection, bid)
+                self._resource_objects.append(d)
 
         return self._resource_objects
 
@@ -649,17 +619,14 @@ class Task(object):
 
     @property
     def results(self):
-        """:type: :class:`~qarnot.disk.Disk`
-        :getter: Returns this task's results disk
-        :setter: Sets this task's results disk
+        """:type: :class:`~qarnot.bucket.Bucket`
+        :getter: Returns this task's results bucket
+        :setter: Sets this task's results bucket
 
         Represents results files."""
         self._update_if_summmary()
-        if self._result_object is None:
-            if self._result_type == Disk:
-                self._result_object = Disk._retrieve(self._connection, self._result_object_id)
-            elif self._result_type == Bucket:
-                self._result_object = Bucket(self._connection, self._result_object_id)
+        if self._result_object is None and self._result_object_id is not None:
+            self._result_object = Bucket(self._connection, self._result_object_id)
 
         if self._auto_update:
             self.update()
@@ -677,7 +644,7 @@ class Task(object):
         :param str output_dir: local directory for the retrieved files.
         :param progress: can be a callback (read,total,filename)  or True to display a progress bar
         :type progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.MissingDiskException: the disk is not on the server
+        :raises qarnot.exceptions.MissingBucketException: the bucket is not on the server
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
@@ -871,7 +838,7 @@ class Task(object):
 
         .. warning:: This property is mutually exclusive with :attr:`profile`
         """
-        return self._connection.retrieve_pool(self._pooluuid)
+        return self._connection.retrieve_pool(self._pool_uuid)
 
     @pool.setter
     def pool(self, value):
@@ -881,7 +848,7 @@ class Task(object):
         if self._profile is not None:
             raise AttributeError("Can't set pool if profile is not None")
         else:
-            self._pooluuid = value.uuid
+            self._pool_uuid = value.uuid
 
     @property
     def profile(self):
@@ -902,7 +869,7 @@ class Task(object):
         """setter for profile"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
-        if self._pooluuid is not None:
+        if self._pool_uuid is not None:
             raise AttributeError("Can't set profile if pool is not None")
         else:
             self._profile = value
@@ -1135,6 +1102,12 @@ class Task(object):
         """
         self._update_cache_time = value
 
+    def set_task_dependencies_from_uuids(self, uuids):
+        self._dependentOn += uuids
+
+    def set_task_dependencies_from_tasks(self, tasks):
+        self._dependentOn += [task._uuid for task in tasks]
+
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
         const_list = [
@@ -1149,34 +1122,22 @@ class Task(object):
         json_task = {
             'name': self._name,
             'profile': self._profile,
-            'pooluuid': self._pooluuid,
+            'poolUuid': self._pool_uuid,
+            'jobUuid': None if self._job_uuid == "" else self._job_uuid,
             'constants': const_list,
-            'constraints': constr_list
+            'constraints': constr_list,
+            'dependencies': {}
         }
+        json_task['dependencies']["dependsOn"] = self._dependentOn
 
         if self._shortname is not None:
             json_task['shortname'] = self._shortname
 
-        alldisk = all(isinstance(x, Disk) for x in self._resource_objects)
-        allbucket = all(isinstance(x, Bucket) for x in self._resource_objects)
-
-        if alldisk or allbucket:
-            self._resource_objects_ids = [x.uuid for x in self._resource_objects]
-        else:
-            raise ValueError("Can't mix Buckets and Disks as resources")
-        if allbucket:
-            self._resource_type = Bucket
-            json_task['resourceBuckets'] = self._resource_objects_ids
-        if alldisk:
-            self._resource_type = Disk
-            json_task['resourceDisks'] = self._resource_objects_ids
+        self._resource_object_ids = [x.uuid for x in self._resource_objects]
+        json_task['resourceBuckets'] = self._resource_object_ids
 
         if self._result_object is not None:
-            self._result_type = type(self._result_object)
-            if isinstance(self._result_object, Bucket):
-                json_task['resultBucket'] = self._result_object.uuid
-            elif isinstance(self._result_object, Disk):
-                json_task['resultDisk'] = self._result_object.uuid
+            json_task['resultBucket'] = self._result_object.uuid
 
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
@@ -1203,7 +1164,7 @@ class Task(object):
         if self._is_summary:
             self.update(True)
 
-    def __str__(self):
+    def __repr__(self):
         return '{0} - {1} - {2} - {3} - InstanceCount : {4} - {5} - Resources : {6} - Results : {7}'\
             .format(self.name,
                     self.shortname,
@@ -1211,7 +1172,7 @@ class Task(object):
                     self._profile,
                     self._instancecount,
                     self.state,
-                    (self._resource_objects_ids if self._resource_objects is not None else ""),
+                    (self._resource_object_ids if self._resource_objects is not None else ""),
                     (self._result_object.uuid if self._result_object is not None else ""))
 
     # Context manager
@@ -1245,7 +1206,7 @@ class Error(object):
 
         Optional extra debug information"""
 
-    def __str__(self):
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
@@ -1298,7 +1259,7 @@ class CompletedInstance(object):
 
           Instance produced results"""
 
-    def __str__(self):
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
@@ -1334,7 +1295,7 @@ class BulkTaskResponse(object):
         """
         return self.status_code >= 200 and self.status_code < 300 and self.uuid
 
-    def __str__(self):
+    def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:

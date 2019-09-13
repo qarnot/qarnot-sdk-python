@@ -18,8 +18,7 @@
 
 from .exceptions import QarnotGenericException
 
-
-__all__ = ["task", "connection", "disk", "bucket", "pool", "storage", "status"]
+__all__ = ["task", "connection", "bucket", "pool", "storage", "status", "job"]
 
 
 def raise_on_error(response):
@@ -36,15 +35,12 @@ def get_url(key, **kwargs):
     """Get and format the url for the given key.
     """
     urls = {
-        'disk folder': u'/disks',  # GET -> list; POST -> add
-        'disk force': u'/disks/force',  # POST -> force add
-        'disk info': u'/disks/{name}',  # DELETE -> remove; PUT -> update
-        'get disk': u'/disks/archive/{name}.{ext}',  # GET-> disk archive
-        'tree disk': u'/disks/tree/{name}',  # GET -> ls on the disk
-        'link disk': u'/disks/link/{name}',  # POST -> create links
-        'move disk': u'/disks/move/{name}',  # POST -> create links
-        'ls disk': u'/disks/list/{name}/{path}',  # GET -> ls on the dir {path}
-        'update file': u'/disks/{name}/{path}',  # POST -> add file; GET -> download file; DELETE -> remove file; PUT -> update file settings
+        'jobs': u'/jobs/',  # GET -> jobs, POST -> Submit Job
+        'job update': u'/jobs/{uuid}',  # GET -> result; DELETE -> abort
+        'job delete': u'/jobs/{uuid}?force={force}',  # DELETE -> delete job
+        'jobs search': u'/jobs/search',  # POST -> make a custom search on jobs
+        'job terminate': u'/jobs/{uuid}/terminate',  # POST -> terminate a job
+        'job tasks': u'/jobs/{uuid}/tasks',  # GET -> tasks in job
         'tasks': u'/tasks',  # GET -> running tasks; POST -> submit task
         'tasks summaries': u'/tasks/summaries',  # GET -> running tasks summaries;
         'task force': u'/tasks/force',  # POST -> force add
@@ -65,8 +61,9 @@ def get_url(key, **kwargs):
     }
     return urls[key].format(**kwargs)
 
-from .connection import Connection  # noqa
 
 from ._version import get_versions  # noqa
 __version__ = get_versions()['version']
 del get_versions
+
+from .connection import Connection  # noqa

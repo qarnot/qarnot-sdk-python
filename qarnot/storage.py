@@ -24,12 +24,12 @@ class Storage(object):
     """
 
     def get_all_files(self, output_dir, progress=None):
-        """Get all files the disk.
+        """Get all files from the storage.
 
         :param str output_dir: local directory for the retrieved files.
         :param progress: can be a callback (read,total,filename)  or True to display a progress bar
         :type progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.MissingDiskException: the disk is not on the server
+        :raises qarnot.exceptions.MissingBucketException: the bucket is not on the server
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
 
@@ -74,8 +74,6 @@ class Storage(object):
         """Get a file from the storage.
         Create needed subfolders.
 
-        .. note::
-           You can also use **disk[file]**
 
         :param remote: the name of the remote file
         :type remote: str
@@ -86,8 +84,7 @@ class Storage(object):
         :returns: The name of the output file.
 
         :raises ValueError: no such file
-          (:exc:`KeyError` with disk[file] syntax)
-          """
+        """
 
         def make_dirs(_local):
             """Make directory if needed"""
@@ -117,11 +114,9 @@ class Storage(object):
         self._not_implemented()
 
     def add_directory(self, local, remote):
-        """ Add a directory to the disk. Does not follow symlinks.
+        """ Add a directory to the storage. Does not follow symlinks.
         File hierarchy is preserved.
 
-        .. note::
-           You can also use **disk[remote] = local**
 
         :param str local: path of the local directory to add
         :param str remote: path of the directory on remote node
@@ -146,10 +141,7 @@ class Storage(object):
         self._not_implemented()
 
     def delete_file(self, remote):
-        """Delete a file from the disk.
-
-        .. note::
-           You can also use **del disk[file]**
+        """Delete a file from the storage.
 
         :param str remote: the name of the remote file
         """

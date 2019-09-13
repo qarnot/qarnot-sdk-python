@@ -117,7 +117,7 @@ class Bucket(Storage):
         return bucket.objects.all()
 
     def directory(self, directory=''):
-        """List files in a directory of the disk according to prefix.
+        """List files in a directory of the bucket according to prefix.
 
         :rtype: list(:class:`S3.ObjectSummary`)
         :returns: A list of ObjectSummary resources
@@ -126,7 +126,7 @@ class Bucket(Storage):
         return bucket.objects.filter(Prefix=directory)
 
     def sync_directory(self, directory, verbose=False, remote=None):
-        """Synchronize a local directory with the remote disks.
+        """Synchronize a local directory with the remote buckets.
 
         :param str directory: The local directory to use for synchronization
         :param bool verbose: Print information about synchronization operations
@@ -134,9 +134,9 @@ class Bucket(Storage):
 
         .. warning::
            Local changes are reflected on the server, a file present on the
-           disk but not in the local directory will be deleted from the disk.
+           bucket but not in the local directory will be deleted from the bucket.
 
-           A file present in the directory but not in the disk will be uploaded.
+           A file present in the directory but not in the bucket will be uploaded.
 
         .. note::
            The following parameters are used to determine whether
@@ -162,7 +162,7 @@ class Bucket(Storage):
         self.sync_files(filesdict, verbose, remote)
 
     def sync_files(self, files, verbose=False, remote=None):
-        """Synchronize files  with the remote disks.
+        """Synchronize files  with the remote buckets.
 
         :param dict files: Dictionary of synchronized files
         :param bool verbose: Print information about synchronization operations
@@ -173,10 +173,10 @@ class Bucket(Storage):
 
         .. warning::
            Local changes are reflected on the server, a file present on the
-           disk but
-           not in the local directory will be deleted from the disk.
+           bucket but
+           not in the local directory will be deleted from the bucket.
 
-           A file present in the directory but not in the disk will be uploaded.
+           A file present in the directory but not in the bucket will be uploaded.
 
         .. note::
            The following parameters are used to determine whether

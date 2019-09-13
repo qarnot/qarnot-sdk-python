@@ -1,7 +1,7 @@
-Disk
+Job
 ----
 
-.. automodule:: qarnot.disk
+.. automodule:: qarnot.job
     :members:
     :show-inheritance:
     :special-members:

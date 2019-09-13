@@ -16,19 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from . import get_url, raise_on_error
-from .disk import Disk
+from . import get_url, raise_on_error, __version__
 from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .bucket import Bucket
+from .job import Job
 from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
-                         MissingDiskException, MissingTaskException, MissingPoolException)
+                         MissingTaskException, MissingPoolException, MissingJobException)
 import requests
 import sys
 import warnings
 import os
 import time
 import boto3
+import botocore
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -80,6 +81,7 @@ class Connection(object):
            unsafe=False
 
         """
+        self._version = "qarnot-sdk-python/" + __version__
         self._http = requests.session()
         self._retry_count = retry_count
         self._retry_wait = retry_wait
@@ -149,6 +151,8 @@ class Connection(object):
             raise QarnotGenericException("Token is mandatory.")
         self._http.headers.update({"Authorization": auth})
 
+        self._http.headers.update({"User-Agent": self._version})
+
         if self.cluster is None:
             self.cluster = "https://api.qarnot.com"
 
@@ -164,16 +168,20 @@ class Connection(object):
 
         user = self.user_info
         session = boto3.session.Session()
+        conf = botocore.config.Config(user_agent=self._version)
+
         self._s3client = session.client(service_name='s3',
                                         aws_access_key_id=user.email,
                                         aws_secret_access_key=auth,
                                         verify=(not storage_unsafe),
-                                        endpoint_url=self.storage)
+                                        endpoint_url=self.storage,
+                                        config=conf)
         self._s3resource = session.resource(service_name='s3',
                                             aws_access_key_id=user.email,
                                             aws_secret_access_key=auth,
                                             verify=(not storage_unsafe),
-                                            endpoint_url=self.storage)
+                                            endpoint_url=self.storage,
+                                            config=conf)
 
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
@@ -417,21 +425,6 @@ class Connection(object):
         buckets = [Bucket(self, x.name, create=False) for x in self._s3resource.buckets.all()]
         return buckets
 
-    def disks(self):
-        """Get the list of disks on this cluster for this user.
-
-        :rtype: list(:class:`~qarnot.disk.Disk`).
-        :returns: Disks on the cluster owned by the user.
-
-
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        """
-        response = self._get(get_url('disk folder'))
-        raise_on_error(response)
-        disks = [Disk.from_json(self, data) for data in response.json()]
-        return disks
-
     def pools(self, summary=True):
         """Get the list of pools stored on this cluster for this user.
 
@@ -464,6 +457,17 @@ class Connection(object):
             response = self._get(url)
         raise_on_error(response)
         return [Task.from_json(self, task, summary) for task in response.json()]
+
+    def jobs(self):
+        """Get the list of jobs stored on this cluster for this user.
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+
+        response = self._get(get_url('jobs'))
+        raise_on_error(response)
+        return [Job.from_json(self, job) for job in response.json()]
 
     def retrieve_pool(self, uuid):
         """Retrieve a :class:`qarnot.pool.Pool` from its uuid
@@ -499,6 +503,23 @@ class Connection(object):
         raise_on_error(response)
         return Task.from_json(self, response.json())
 
+    def retrieve_job(self, uuid):
+        """Retrieve a :class:`qarnot.job.Job` from its uuid
+
+        :param str uuid: Desired job uuid
+        :rtype: :class:`~qarnot.job.Job`
+        :returns: Existing job defined by the given uuid
+        :raises qarnot.exceptions.MissingJobException: job does not exist
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+
+        response = self._get(get_url('job update', uuid=uuid))
+        if response.status_code == 404:
+            raise MissingJobException(response.json()['message'])
+        raise_on_error(response)
+        return Job.from_json(self, response.json())
+
     def retrieve_or_create_bucket(self, uuid):
         """Retrieve a :class:`~qarnot.bucket.Bucket` from its description, or create a new one.
 
@@ -511,37 +532,10 @@ class Connection(object):
 
         return Bucket(self, uuid)
 
-    def retrieve_or_create_disk(self, description):
-        """Retrieve a :class:`~qarnot.disk.Disk` from its description, or create a new one.
-
-        .. note:: Description are not unique, if multiple description match, an exception will be raised
-
-
-        :param str description: a short description of the disk
-        :rtype: :class:`~qarnot.disk.Disk`
-        :returns: Existing or newly created disk defined by the given description
-        :raises ValueError: no such disk
-        :raises qarnot.exceptions.MaxDiskException: disk quota reached
-        :raises qarnot.exceptions.MissingDiskException: disk does not exist
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        """
-
-        disks = self.disks()
-
-        matches = [d for d in disks if d.description == description]
-        matchcount = len(matches)
-        if matchcount == 0:
-            return self.create_disk(description)
-        elif matchcount == 1:
-            return matches[0]
-        else:
-            raise QarnotGenericException("No unique match for given description.")
-
     def retrieve_bucket(self, uuid):
         """Retrieve a :class:`~qarnot.bucket.Bucket` from its uuid (name)
 
-        :param str uuid: Desired disk uuid (name)
+        :param str uuid: Desired bucket uuid (name)
         :rtype: :class:`~qarnot.bucket.Bucket`
         :returns: Existing bucket defined by the given uuid (name)
         :raises: botocore.exceptions.ClientError: Bucket does not exist, or invalid credentials
@@ -551,43 +545,6 @@ class Connection(object):
 
         self._s3client.head_bucket(Bucket=uuid)
         return Bucket(self, uuid, create=False)
-
-    def retrieve_disk(self, uuid):
-        """Retrieve a :class:`~qarnot.disk.Disk` from its uuid
-
-        :param str uuid: Desired disk uuid
-        :rtype: :class:`~qarnot.disk.Disk`
-        :returns: Existing disk defined by the given uuid
-        :raises ValueError: no such disk
-        :raises qarnot.exceptions.MissingDiskException: disk does not exist
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        """
-
-        response = self._get(get_url('disk info', name=uuid))
-        if response.status_code == 404:
-            raise MissingDiskException(response.json()['message'])
-        raise_on_error(response)
-        return Disk.from_json(self, response.json())
-
-    def create_disk(self, description, lock=False, tags=None):
-        """Create a new :class:`~qarnot.disk.Disk`.
-
-        :param str description: a short description of the disk
-        :param bool lock: prevents the disk to be removed accidentally
-        :param tags: custom tags
-        :type tags: list(`str`)
-
-        :rtype: :class:`qarnot.disk.Disk`
-        :returns: The created :class:`~qarnot.disk.Disk`.
-
-        :raises qarnot.exceptions.MaxDiskException: disk quota reached
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        """
-        disk = Disk(self, description, lock=lock, tags=tags)
-        disk.create()
-        return disk
 
     def create_pool(self, name, profile, instancecount=1, shortname=None):
         """Create a new :class:`~qarnot.pool.Pool`.
@@ -604,21 +561,44 @@ class Connection(object):
         """
         return Pool(self, name, profile, instancecount, shortname)
 
-    def create_task(self, name, profile_or_pool, instancecount_or_range=1, shortname=None):
+    def create_elastic_pool(self, name, profile, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=0, resize_period=0, shortname=None):
+        """Create a new :class:`~qarnot.pool.Pool`.
+
+        :param str name: given name of the pool
+        :param str profile: which profile to use with this pool
+        :param int minimum_total_slots: minimum number of instances to run for the pool
+        :param int maximum_total_slots: maximum number of instances to run for the pool
+        :param int minimum_idle_slots: the number of instances that can be idle before considering shrinking the pool
+        :param int minimum_idle_time_seconds: the number of seconds before considering shrinking the pool
+        :param float resize_factor: the speed with which we grow the pool to meet the demand
+        :param int resize_period: the time between the load checks that decide if the pool grows or shrinks
+        :param str shortname: optional unique friendly shortname of the pool
+        :rtype: :class:`~qarnot.pool.Pool`
+        :returns: The created :class:`~qarnot.pool.Pool`.
+
+        .. note:: See available profiles with :meth:`profiles`.
+        """
+        pool = Pool(self, name, profile, shortname=shortname)
+        pool.setup_elastic(minimum_total_slots, maximum_total_slots, minimum_idle_slots, minimum_idle_time_seconds, resize_factor, resize_period)
+        return pool
+
+    def create_task(self, name, profile_or_pool=None, instancecount_or_range=1, shortname=None, job=None):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
-        :param profile_or_pool: which profile to use with this task, or which Pool to run task
-        :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
+        :param profile_or_pool: which profile to use with this task, or which Pool to run task, or which job to attach it to
+        :type profile_or_pool: str or :class:`~qarnot.pool.Pool` or None
         :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
         :type instancecount_or_range: int or str
         :param str shortname: optional unique friendly shortname of the task
         :rtype: :class:`~qarnot.task.Task`
         :returns: The created :class:`~qarnot.task.Task`.
+        :param job: which job to attach the task to
+        :type job: :class:`~qarnot.job.Job`
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile_or_pool, instancecount_or_range, shortname)
+        return Task(self, name, profile_or_pool, instancecount_or_range, shortname, job)
 
     def submit_tasks(self, tasks):
         """Submit a list of :class:`~qarnot.task.Task`.
@@ -626,7 +606,7 @@ class Connection(object):
         :param List of :class:`~qarnot.task.Task`.
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
 
-        .. note:: Will ensure all added files are on the resource disk
+        .. note:: Will ensure all added files are on the resource bucket
            regardless of their uploading mode.
         """
         error_message = ""
@@ -702,10 +682,26 @@ class Connection(object):
         """
         return Bucket(self, name)
 
+    def create_job(self, name, pool=None, shortname=None, useDependencies=False):
+        """Create a new :class:`~qarnot.job.Job`.
+
+        :param name: given name of the job
+        :type name: :class:`str`
+        :param pool: which Pool to submit the job in,
+        :type pool: :class:`~qarnot.pool.Pool` or None
+        :param shortname: userfriendly job name
+        :type shortname: :class:`str`
+        :param use_dependencies: allow dependencies between tasks in this job
+        :type job: :class:`bool`
+
+        :returns: The created :class:`~qarnot.job.Job`.
+        """
+        return Job(self, name, pool, shortname, useDependencies)
 
 ###################
 # utility Classes #
 ###################
+
 
 class UserInfo(object):
     """Information about a qarnot user."""
@@ -715,31 +711,14 @@ class UserInfo(object):
         """:type: :class:`str`
 
         User email address."""
-
-        self.disk_count = info['diskCount']
-        """:type: :class:`int`
-
-        Number of disks owned by the user."""
-        self.max_disk = info['maxDisk']
-        """:type: :class:`int`
-
-        Maximum number of disks allowed (resource and result disks)."""
         self.max_bucket = info['maxBucket']
         """:type: :class:`int`
 
         Maximum number of buckets allowed (resource and result buckets)."""
-        self.quota_bytes_disk = info['quotaBytesDisk']
-        """:type: :class:`int`
-
-        Total storage space allowed for the user's disks (in Bytes)."""
         self.quota_bytes_bucket = info['quotaBytesBucket']
         """:type: :class:`int`
 
         Total storage space allowed for the user's buckets (in Bytes)."""
-        self.used_quota_bytes_disk = info['usedQuotaBytesDisk']
-        """:type: :class:`int`
-
-        Total storage space used by the user's disks (in Bytes)."""
         self.used_quota_bytes_bucket = info['usedQuotaBytesBucket']
         """:type: :class:`int`
 
@@ -764,14 +743,6 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Maximum number of instances."""
-
-    @property
-    def quota_bytes(self):
-        return self.quota_bytes_disk
-
-    @property
-    def used_quota_bytes(self):
-        return self.used_quota_bytes_disk
 
 
 class Profile(object):

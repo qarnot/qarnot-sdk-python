@@ -24,10 +24,10 @@ __all__ = ['QarnotException',
            'MissingPoolException',
            'MaxTaskException',
            'MaxPoolException',
-           'MissingDiskException',
-           'MaxDiskException',
            'NotEnoughCreditsException',
-           'LockedDiskException']
+           'MissingBucketException',
+           'MaxJobException',
+           'MissingJobException']
 
 
 class QarnotException(Exception):
@@ -56,6 +56,11 @@ class MissingTaskException(QarnotException):
     pass
 
 
+class MissingBucketException(QarnotException):
+    """Non existent bucket."""
+    pass
+
+
 class MissingPoolException(QarnotException):
     """Non existent pool."""
     pass
@@ -71,21 +76,16 @@ class MaxPoolException(QarnotException):
     pass
 
 
-class MissingDiskException(QarnotException):
-    """Non existing disk."""
-    pass
-
-
-class MaxDiskException(QarnotException):
-    """Max number of disks reached."""
-    pass
-
-
 class NotEnoughCreditsException(QarnotException):
-    """Not enough credits exceptions."""
+    """Not enough credits exception."""
     pass
 
 
-class LockedDiskException(QarnotException):
-    """Locked disk."""
+class MissingJobException(Exception):
+    """Non existentjob."""
+    pass
+
+
+class MaxJobException(Exception):
+    """Max number of jobs reached."""
     pass

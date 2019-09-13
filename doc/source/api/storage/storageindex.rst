@@ -6,5 +6,4 @@ Storage
 
    storage
    bucket
-   disk
 

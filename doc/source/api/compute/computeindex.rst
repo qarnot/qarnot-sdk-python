@@ -5,6 +5,7 @@ Compute
    :maxdepth: 1
 
    task
+   job
    pool
    status
 

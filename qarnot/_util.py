@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 _IS_PY2 = bytes is str
 
@@ -53,3 +53,42 @@ def parse_datetime(string):
         return datetime.strptime(string, "%Y-%m-%dT%H:%M:%S.%fZ")
     except Exception:
         raise
+
+
+def parse_timedelta(string):
+    # """Support multiple formats to parse a datetime"""
+    # [d'.']hh':'mm':'ss['.'fffffff].
+    day, hour, minute, second, millisecond = 0, 0, 0, 0, 0
+    day_string = '0'
+    hour_string = '0'
+    minute_string = '0'
+    second_string = '0'
+    millisecond_string = '0'
+    if string is None:
+        return timedelta(day, second, 0, millisecond, minute, hour)
+
+    try:
+        splitted_timedelta = string.split(":")
+        if len(splitted_timedelta) == 3:
+            # handle days and hours
+            if ('.' in splitted_timedelta[0]):
+                day_string, hour_string = splitted_timedelta[0].split('.')
+            else:
+                hour_string = splitted_timedelta[0]
+            # handle minute
+            minute_string = splitted_timedelta[1]
+            # handle seconds and milliseconds
+            if ('.' in splitted_timedelta[2]):
+                second_string, millisecond_string = splitted_timedelta[2].split('.')
+            else:
+                second_string = splitted_timedelta[2]
+
+            day = int(day_string)
+            hour = int(hour_string)
+            minute = int(minute_string)
+            second = int(second_string)
+            millisecond = int(millisecond_string)
+    except Exception:
+        raise
+
+    return timedelta(day, second, 0, millisecond, minute, hour)

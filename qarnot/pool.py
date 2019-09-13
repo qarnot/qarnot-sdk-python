@@ -18,10 +18,9 @@ import warnings
 
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
-from .disk import Disk
 from .status import Status
-from .exceptions import MissingPoolException, MaxDiskException, MaxPoolException, NotEnoughCreditsException, \
-    MissingDiskException, LockedDiskException, BucketStorageUnavailableException
+from .exceptions import MissingPoolException, MaxPoolException, NotEnoughCreditsException, \
+    BucketStorageUnavailableException, MissingBucketException
 
 
 class Pool(object):
@@ -32,7 +31,8 @@ class Pool(object):
        :meth:`qarnot.connection.Connection.create_pool`
        or retrieved with :meth:`qarnot.connection.Connection.pools` or :meth:`qarnot.connection.Connection.retrieve_pool`.
     """
-    def __init__(self, connection, name, profile, instancecount, shortname=None):
+
+    def __init__(self, connection, name, profile, instancecount=1, shortname=None):
         """Create a new :class:`Pool`.
 
         :param connection: the cluster on which to send the pool
@@ -70,14 +70,21 @@ class Pool(object):
 
         self._last_cache = time.time()
         self._instancecount = instancecount
-        self._resource_objects_ids = []
-        self._resource_type = None
+        self._resource_object_ids = []
         self._resource_objects = []
         self._tags = []
         self._creation_date = None
         self._uuid = None
         self._max_objects_exceptions_class = MaxPoolException
         self._is_summary = False
+
+        self._is_elastic = False
+        self._elastic_min_total_slots = 0
+        self._elastic_max_total_slots = 1
+        self._elastic_min_idle_slots = 0
+        self._elastic_resize_period = 90
+        self._elastic_resize_factor = 1
+        self._elastic_min_idle_time_seconds = 0
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -123,16 +130,8 @@ class Pool(object):
         self._profile = json_pool['profile']
         self._instancecount = json_pool['instanceCount']
 
-        if 'resourceDisks' in json_pool and json_pool['resourceDisks'] is not None:
-            self._resource_objects_ids = json_pool['resourceDisks']
-            self._resource_type = Disk
         if 'resourceBuckets' in json_pool and json_pool['resourceBuckets'] is not None:
-            self._resource_objects_ids = json_pool['resourceBuckets']
-            self._resource_type = Bucket
-
-        if len(self._resource_objects_ids) != \
-                len(self._resource_objects):
-            del self._resource_objects[:]
+            self._resource_object_ids = json_pool['resourceBuckets']
 
         if 'status' in json_pool:
             self._status = json_pool['status']
@@ -145,6 +144,16 @@ class Pool(object):
         self._state = json_pool['state']
         self._tags = json_pool.get('tags', None)
 
+        if 'elasticProperty' in json_pool:
+            elasticProperty = json_pool["elasticProperty"]
+            self._is_elastic = elasticProperty["isElastic"]
+            self._elastic_max_total_slots = elasticProperty["maxTotalSlots"]
+            self._elastic_min_total_slots = elasticProperty["minTotalSlots"]
+            self._elastic_min_idle_slots = elasticProperty["minIdleSlots"]
+            self._elastic_min_idle_time_seconds = elasticProperty["minIdleTimeSeconds"]
+            self._elastic_resize_factor = elasticProperty["rampResizeFactor"]
+            self._elastic_resize_period = elasticProperty["resizePeriod"]
+
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
         const_list = [
@@ -156,31 +165,31 @@ class Pool(object):
             for key, value in self.constraints.items()
         ]
 
+        elastic_dict = {
+            "isElastic": self._is_elastic,
+            "minTotalSlots": self._elastic_min_total_slots,
+            "maxTotalSlots": self._elastic_max_total_slots,
+            "minIdleSlots": self._elastic_min_idle_slots,
+            "resizePeriod": self._elastic_resize_period,
+            "rampResizeFactor": self._elastic_resize_factor,
+            "minIdleTimeSeconds": self._elastic_min_idle_time_seconds
+        }
+
         json_pool = {
             'name': self._name,
             'profile': self._profile,
             'constants': const_list,
             'constraints': constr_list,
             'instanceCount': self._instancecount,
-            'tags': self._tags
+            'tags': self._tags,
+            'elasticProperty': elastic_dict
         }
 
         if self._shortname is not None:
             json_pool['shortname'] = self._shortname
 
-        alldisk = all(isinstance(x, Disk) for x in self._resource_objects)
-        allbucket = all(isinstance(x, Bucket) for x in self._resource_objects)
+        json_pool['resourceBuckets'] = self._resource_object_ids
 
-        if alldisk or allbucket:
-            self._resource_objects_ids = [x.uuid for x in self._resource_objects]
-        else:
-            raise ValueError("Can't mix Buckets and Disks as resources")
-        if allbucket:
-            self._resource_type = Bucket
-            json_pool['resourceBuckets'] = self._resource_objects_ids
-        if alldisk:
-            self._resource_type = Disk
-            json_pool['resourceDisks'] = self._resource_objects_ids
         return json_pool
 
     def submit(self):
@@ -190,26 +199,21 @@ class Pool(object):
         :raises qarnot.exceptions.MaxPoolException: Pool quota reached
         :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingDiskException:
-          resource disk is not a valid disk
 
-        .. note:: Will ensure all added files are on the resource disk
+        .. note:: Will ensure all added files are on the resource bucket
            regardless of their uploading mode.
         """
         if self._uuid is not None:
             return self._state
-        for rdisk in self.resources:
-            rdisk.flush()
+        for bucket in self.resources:
+            bucket.flush()
         payload = self._to_json()
         resp = self._connection._post(get_url('pools'), json=payload)
 
         if resp.status_code == 404:
-            raise MissingDiskException(resp.json()['message'])
+            raise MissingBucketException(resp.json()['message'])
         elif resp.status_code == 403:
-            if resp.json()['message'].startswith('Maximum number of disks reached'):
-                raise MaxDiskException(resp.json()['message'])
-            else:
-                raise MaxPoolException(resp.json()['message'])
+            raise MaxPoolException(resp.json()['message'])
         elif resp.status_code == 402:
             raise NotEnoughCreditsException(resp.json()['message'])
         raise_on_error(resp)
@@ -245,10 +249,27 @@ class Pool(object):
         self._is_summary = False
         self._last_cache = time.time()
 
+    def apply_elastic_settings(self):
+        response = self._connection._put('pool update', json=self._to_json())
+        if response.status_code == 404:
+            raise MissingPoolException(response.json()['message'])
+
+        raise_on_error(response)
+        self.update()
+
+    def setup_elastic(self, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=1, resize_period=90):
+        self._is_elastic = True
+        self.elastic_max_total_slots = maximum_total_slots
+        self.elastic_min_total_slots = minimum_total_slots
+        self.elastic_min_idle_slots = minimum_idle_slots
+        self.elastic_min_idle_time_seconds = minimum_idle_time_seconds
+        self.elastic_resize_factor = resize_factor
+        self.elastic_resize_period = resize_period
+
     def delete(self, purge_resources=False):
         """Delete this pool on the server.
 
-        :param bool purge_resources: parameter value is used to determine if the disk is also deleted.
+        :param bool purge_resources: parameter value is used to determine if the bucket is also deleted.
                 Defaults to False.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -260,34 +281,22 @@ class Pool(object):
         if self._uuid is None:
             return
 
-        if purge_resources and self.resources is not None:
-            resources = []
-            for duuid in self._resource_objects_ids:
-                try:
-                    if self._resource_type == Disk:
-                        resources.append(Disk._retrieve(self._connection, duuid))
-                    else:
-                        resources.append(Bucket._retrieve(self._connection, duuid))
-                except (MissingDiskException, BucketStorageUnavailableException):
-                    pass
-
         resp = self._connection._delete(get_url('pool update', uuid=self._uuid))
         if resp.status_code == 404:
             raise self._max_objects_exceptions_class(resp.json()['message'])
         raise_on_error(resp)
 
-        if purge_resources and len(resources) != 0:
+        if purge_resources and len(self.resources) != 0:
             toremove = []
-            for r in resources:
+            for r in self.resources:
                 try:
                     r.update()
                     r.delete()
                     toremove.append(r)
-                except (MissingDiskException, LockedDiskException, BucketStorageUnavailableException) as exception:
+                except (MissingBucketException, BucketStorageUnavailableException) as exception:
                     warnings.warn(str(exception))
             for tr in toremove:
-                resources.remove(tr)
-            self.resources = resources
+                self.resources.remove(tr)
 
         self._state = "Deleted"
         self._uuid = None
@@ -333,24 +342,18 @@ class Pool(object):
 
     @property
     def resources(self):
-        """:type: list(:class:`~qarnot.disk.Disk`)
-        :getter: Returns this pool's resources disks
-        :setter: Sets this pool's resources disks
+        """:type: list(:class:`~qarnot.bucket.Bucket`)
+        :getter: Returns this pool's resources bucket
+        :setter: Sets this pool's resources bucket
 
         Represents resource files.
         """
         if self._auto_update:
             self.update()
-
         if not self._resource_objects:
-            if self._resource_type == Disk:
-                for duuid in self._resource_objects_ids:
-                    d = Disk._retrieve(self._connection, duuid)
-                    self._resource_objects.append(d)
-            elif self._resource_type == Bucket:
-                for bid in self._resource_objects_ids:
-                    d = Bucket(self._connection, bid)
-                    self._resource_objects.append(d)
+            for bid in self._resource_object_ids:
+                d = Bucket(self._connection, bid)
+                self._resource_objects.append(d)
 
         return self._resource_objects
 
@@ -526,3 +529,83 @@ class Pool(object):
         """
         if self._is_summary:
             self.update(True)
+
+    @property
+    def is_elastic(self):
+        return self._is_elastic
+
+    @is_elastic.setter
+    def is_elastic(self, value):
+        self._is_elastic = value
+
+    @property
+    def elastic_minimum_slots(self):
+        return self._elastic_min_total_slots
+
+    @elastic_minimum_slots.setter
+    def elastic_minimum_slots(self, value):
+        self._elastic_min_total_slots = value
+
+    @property
+    def elastic_maximum_slots(self):
+        return self._elastic_max_total_slots
+
+    @elastic_maximum_slots.setter
+    def elastic_maximum_slots(self, value):
+        self._elastic_max_total_slots = value
+
+    @property
+    def elastic_minimum_idle_slots(self):
+        return self._elastic_min_idle_slots
+
+    @elastic_minimum_idle_slots.setter
+    def elastic_minimum_idle_slots(self, value):
+        self._elastic_min_idle_slots = value
+
+    @property
+    def elastic_minimum_idle_time(self):
+        return self._elastic_min_idle_time_seconds
+
+    @elastic_minimum_idle_time.setter
+    def elastic_minimum_idle_time(self, value):
+        self._elastic_min_idle_time_seconds = value
+
+    @property
+    def elastic_resize_factor(self):
+        return self._elastic_resize_factor
+
+    @elastic_resize_factor.setter
+    def elastic_resize_factor(self, value):
+        if value <= 0:
+            raise Exception("resize factor must be > 0")
+        elif value > 1:
+            raise Exception("resize factor must be <= 1")
+        self._elastic_resize_factor = value
+
+    @property
+    def elastic_resize_period(self):
+        return self._elastic_resize_period
+
+    @elastic_resize_period.setter
+    def elastic_resize_period(self, value):
+        self._elastic_resize_period = value
+
+    def __repr__(self):
+        return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\
+            'Tag {7} - IsElastic {8} - ElasticMin {9} - ElasticMax {10} - ElasticMinIdle {11} -'\
+            ' ElasticResizePeriod {12} - ElasticResizeFactor {13} - ElasticMinIdleTimeSeconds {14}'\
+            .format(self.name,
+                    self.shortname,
+                    self._uuid,
+                    self._profile,
+                    self._instancecount,
+                    self.state,
+                    (self._resource_object_ids if self._resource_objects is not None else ""),
+                    self._tags,
+                    self._is_elastic,
+                    self._elastic_min_total_slots,
+                    self._elastic_max_total_slots,
+                    self._elastic_min_idle_slots,
+                    self._elastic_resize_period,
+                    self._elastic_resize_factor,
+                    self._elastic_min_idle_time_seconds)
