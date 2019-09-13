@@ -1160,7 +1160,8 @@ class Task(object):
             'profile': self._profile,
             'pooluuid': self._pooluuid,
             'constants': const_list,
-            'constraints': constr_list
+            'constraints': constr_list,
+            'dependsOn': self._dependentOn
         }
 
         if self._shortname is not None:
