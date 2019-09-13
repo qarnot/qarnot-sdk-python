@@ -25,6 +25,7 @@ from .status import Status
 from .disk import Disk
 from .bucket import Bucket
 from .pool import Pool
+from .job import Job
 from .exceptions import MissingTaskException, MaxTaskException, MaxDiskException, NotEnoughCreditsException, \
     MissingDiskException, LockedDiskException, BucketStorageUnavailableException
 
@@ -46,7 +47,7 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile_or_pool, instancecount_or_range, shortname=None):
+    def __init__(self, connection, name, profile_or_pool_or_job, instancecount_or_range, shortname=None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -63,11 +64,18 @@ class Task(object):
         """
         self._name = name
         self._shortname = shortname
-        if isinstance(profile_or_pool, Pool):
-            self._pooluuid = profile_or_pool.uuid
+        if isinstance(profile_or_pool_or_job, Pool):
+            self._pooluuid = profile_or_pool_or_job.uuid
+            self._profile = None
+            self._jobuuid = None
+        elif isinstance(profile_or_pool_or_job, Job):
+            self._pooluuid = None
+            self._jobuuid = profile_or_pool_or_job.uuid
+            profile_or_pool_or_job.tasks.append(self.uuid)
             self._profile = None
         else:
-            self._profile = profile_or_pool
+            self._profile = profile_or_pool_or_job
+            self._jobuuid = None
             self._pooluuid = None
 
         if isinstance(instancecount_or_range, int):
