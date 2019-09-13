@@ -90,6 +90,7 @@ class Task(object):
         self._result_object = None
         self._connection = connection
         self.constants = {}
+        self._dependentOn = []
         """
          :type: dict(str,str)
 

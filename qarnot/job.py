@@ -46,7 +46,6 @@ class Job(object):
         self.lastModified = datetime.datetime.now()
         self.useDependencies = useDependencies
         self.maxWallTime = None
-        self.tasks = []
         self.constants = {}
         self.constraints = {}
         self.last_cache = time.time()
