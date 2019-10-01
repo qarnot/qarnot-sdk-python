@@ -28,7 +28,7 @@ class MaxJobException(Exception):
 
 class Job(object):
 
-    def __init__(self, connection, name, pool = None, shortname = None, useDependencies = False):
+    def __init__(self, connection, name, pool=None, shortname=None, useDependencies = False):
         self.api = connection
         self.name = name
         self.shortname = shortname
@@ -72,7 +72,7 @@ class Job(object):
             'name': self.name,
             'constants': const_list,
             'constraints': constr_list,
-            'pool': self.poolUuid,
+            'poolUuid': self.poolUuid,
             'state': self.state,
             'useDependencies': self.useDependencies
         }

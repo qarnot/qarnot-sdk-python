@@ -89,7 +89,6 @@ class Task(object):
         self._result_object = None
         self._connection = connection
         self.constants = {}
-        self._dependentOn = []
         """
          :type: dict(str,str)
 
@@ -99,6 +98,8 @@ class Task(object):
         .. note:: See available constants for a specific profile
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
+
+        self._dependentOn = []
 
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
