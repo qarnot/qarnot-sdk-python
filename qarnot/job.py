@@ -11,6 +11,7 @@ try:
 except ImportError:
     pass
 
+
 class JobState:
     Active = "Active"
     Terminating = "Terminating"
