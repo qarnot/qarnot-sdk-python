@@ -28,7 +28,7 @@ class MaxJobException(Exception):
 
 class Job(object):
 
-    def __init__(self, connection, name, pool=None, shortname=None, useDependencies = False):
+    def __init__(self, connection, name, pool=None, shortname=None, useDependencies=False):
         self.api = connection
         self.name = name
         self.shortname = shortname
@@ -44,12 +44,10 @@ class Job(object):
         self.constants = {}
         self.constraints = {}
         self.last_cache = time.time()
+        self._max_object_exceptions_class = MaxJobException
 
     def uri(self):
         return "jobs/" + self.uuid
-
-    def Pool(self):
-        return Pool(self.api, "original_name", "", 0)
 
     def _retrieve(self, connection, uuid):
         resp = connection._get(get_url('job update', uuid=uuid))
@@ -112,9 +110,9 @@ class Job(object):
             raise NotEnoughCreditsException(resp.json()['message'])
         raise_on_error(resp)
         self.uuid = resp.json()['uuid']
-        self.update(True)
+        self.update()
 
-    def update(self, flushcache=False):
+    def update(self):
         """
         Update the job object from the REST Api.
         The flushcache parameter can be used to force the update, otherwise a cached version of the object
@@ -129,8 +127,6 @@ class Job(object):
         if self.uuid is None:
             return
 
-        now = time.time()
-
         resp = self.api._get(
             get_url('job update', uuid=self.uuid))
         if resp.status_code == 404:
@@ -140,22 +136,19 @@ class Job(object):
         self._update(resp.json())
         self.last_cache = time.time()
 
-    def delete(self, purge_resources=False):
+    def delete(self):
         """Delete this job on the server.
-
-        :param bool purge_resources: parameter value is used to determine if the disk is also deleted.
-                Defaults to False.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: job does not exist
+        :raises qarnot.exceptions.MissingJobException: job does not exist
         """
 
-        if self._uuid is None:
+        if self.uuid is None:
             return
-        resp = self.api._delete(get_url('job update', uuid=self._uuid))
+        resp = self.api._delete(get_url('job update', uuid=self.uuid))
         if resp.status_code == 404:
             raise self._max_objects_exceptions_class(resp.json()['message'])
         raise_on_error(resp)
-        self.state = JobState.Deleted
+        self.state = JobState.Deleting
         self.uuid = None
