@@ -605,12 +605,12 @@ class Connection(object):
         """
         return Pool(self, name, profile, instancecount, shortname)
 
-    def create_task(self, name, profile_or_pool, instancecount_or_range=1, shortname=None):
+    def create_task(self, name, job_or_profile_or_pool, instancecount_or_range=1, shortname=None, optional_profile=None):
         """Create a new :class:`~qarnot.task.Task`.
 
         :param str name: given name of the task
-        :param profile_or_pool: which profile to use with this task, or which Pool to run task
-        :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
+        :param job_or_profile_or_pool: which profile to use with this task, or which Pool to run task, or which job to attach it to
+        :type job_or_profile_or_pool: str or :class:`~qarnot.pool.Pool` or :class: `~qarnot.job.Job`
         :param instancecount_or_range: number of instances, or ranges on which to run task. Defaults to 1.
         :type instancecount_or_range: int or str
         :param str shortname: optional unique friendly shortname of the task
@@ -619,7 +619,7 @@ class Connection(object):
 
         .. note:: See available profiles with :meth:`profiles`.
         """
-        return Task(self, name, profile_or_pool, instancecount_or_range, shortname)
+        return Task(self, name, job_or_profile_or_pool, instancecount_or_range, shortname, optional_profile)
 
     def submit_tasks(self, tasks):
         """Submit a list of :class:`~qarnot.task.Task`.

@@ -47,15 +47,15 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile_or_pool, instancecount_or_range, job = None, shortname=None):
+    def __init__(self, connection, name, job_or_profile_or_pool, instancecount_or_range, shortname=None, optional_profile=None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
         :type connection: :class:`qarnot.connection.Connection`
         :param name: given name of the task
         :type name: :class:`str`
-        :param profile_or_pool: which profile to use with this task, or which Pool to run task
-        :type profile_or_pool: str or :class:`~qarnot.pool.Pool`
+        :param job_or_profile_or_pool: which profile to use with this task, or which Pool to run task, or which job to attach it to
+        :type job_or_profile_or_pool: str or :class:`~qarnot.pool.Pool` or `~qarnot.job.Job`
 
         :param instancecount_or_range: number of instances or ranges on which to run task
         :type instancecount_or_range: int or str
@@ -64,16 +64,18 @@ class Task(object):
         """
         self._name = name
         self._shortname = shortname
-        if isinstance(profile_or_pool, Pool):
-            self._pooluuid = profile_or_pool.uuid
+        if isinstance(job_or_profile_or_pool, Pool):
+            self._pooluuid = job_or_profile_or_pool.uuid
+            self._jobuuid = None
             self._profile = None
-        else:
-            self._profile = profile_or_pool
+        elif isinstance(job_or_profile_or_pool, Job):
+            self._jobuuid = job_or_profile_or_pool.uuid
             self._pooluuid = None
-
-        self._jobuuid = None
-        if job is not None:
-            self._jobuuid = job.uuid
+            self._profile = optional_profile
+        else:
+            self._profile = job_or_profile_or_pool
+            self._pooluuid = None
+            self._jobuuid = None
 
         if isinstance(instancecount_or_range, int):
             self._instancecount = instancecount_or_range
@@ -1141,6 +1143,12 @@ class Task(object):
         """
         self._update_cache_time = value
 
+    def set_task_dependencies_from_uuids(self, uuids):
+        self._dependentOn += uuids
+
+    def set_task_dependencies_from_tasks(self, tasks):
+        self._dependentOn += [task._uuid for task in tasks]
+
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
         const_list = [
@@ -1155,12 +1163,13 @@ class Task(object):
         json_task = {
             'name': self._name,
             'profile': self._profile,
-            'pooluuid': self._pooluuid,
-            'jobuuid': None if self._jobuuid == "" else self._jobuuid,
+            'poolUuid': self._pooluuid,
+            'jobUuid': None if self._jobuuid == "" else self._jobuuid,
             'constants': const_list,
             'constraints': constr_list,
-            'dependsOn': self._dependentOn
+            'dependencies': {}
         }
+        json_task['dependencies']["dependsOn"] = self._dependentOn
 
         if self._shortname is not None:
             json_task['shortname'] = self._shortname

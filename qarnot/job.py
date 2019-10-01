@@ -1,16 +1,10 @@
-from os import makedirs, path
 import time
 import datetime
-import warnings
-import sys
 
 from . import get_url, raise_on_error, _util
-from .status import Status
-from .disk import Disk
-from .bucket import Bucket
 from .pool import Pool
-from .exceptions import MissingTaskException, MaxTaskException, MaxDiskException, NotEnoughCreditsException, \
-    MissingDiskException, LockedDiskException, BucketStorageUnavailableException
+from .exceptions import MaxDiskException, NotEnoughCreditsException, \
+    MissingDiskException
 
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar
@@ -38,8 +32,9 @@ class Job(object):
         self.api = connection
         self.name = name
         self.shortname = shortname
-        self.pool = pool
-        self.poolUuid = ""
+        self.poolUuid = None
+        if pool is not None:
+            self.poolUuid = pool.uuid
         self.state = ""
         self.uuid = ""
         self.creationDate = datetime.datetime.now()
@@ -77,7 +72,7 @@ class Job(object):
             'name': self.name,
             'constants': const_list,
             'constraints': constr_list,
-            'pool': self.pool,
+            'pool': self.poolUuid,
             'state': self.state,
             'useDependencies': self.useDependencies
         }
@@ -121,7 +116,7 @@ class Job(object):
 
     def update(self, flushcache=False):
         """
-        Update the pool object from the REST Api.
+        Update the job object from the REST Api.
         The flushcache parameter can be used to force the update, otherwise a cached version of the object
         will be served when accessing properties of the object.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
@@ -146,14 +141,14 @@ class Job(object):
         self.last_cache = time.time()
 
     def delete(self, purge_resources=False):
-        """Delete this pool on the server.
+        """Delete this job on the server.
 
         :param bool purge_resources: parameter value is used to determine if the disk is also deleted.
                 Defaults to False.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: pool does not exist
+        :raises qarnot.exceptions.MissingTaskException: job does not exist
         """
 
         if self._uuid is None:
@@ -164,90 +159,3 @@ class Job(object):
         raise_on_error(resp)
         self.state = JobState.Deleted
         self.uuid = None
-
-        #public QJob(Connection connection, string name, QPool pool=null, string shortname=default(string), bool UseTaskDependencies=false)
-            # : this (connection, new JobApi())
-        #{
-        #     _jobApi.Name = name;
-        #     _jobApi.ShortName = shortname;
-        #     if (pool != null)
-        #         _jobApi.PoolUuid = pool.Uuid.ToString();
-        #     _jobApi.UseDependencies = UseTaskDependencies;
-        #     _uri = "jobs/" + _jobApi.ShortName;
-        # }
-
-
-        # public QJob(Connection connection, Guid uuid) : this(connection, new JobApi())
-        # {
-        #     _uri = "jobs/" + uuid.ToString();
-        #     _jobApi.Uuid = uuid;
-        # }
-
-        # /// <summary>
-        # /// Submit this job.
-        # /// </summary>
-        # /// <param name="cancellationToken">Optional token to cancel the request.</param>
-        # /// <returns></returns>
-        # public async Task SubmitAsync(CancellationToken cancellationToken=default(CancellationToken))
-        # {
-        #     if (_api.IsReadOnly) throw new Exception("Can't submit jobs, this connection is configured in read-only mode");
-        #
-        #     using (var response = await _api._client.PostAsJsonAsync<JobApi>("jobs", _jobApi, cancellationToken))
-        #     {
-        #         await Utils.LookForErrorAndThrowAsync(_api._client, response,cancellationToken);
-        #         var result = await response.Content.ReadAsAsync<JobApi>(cancellationToken);
-        #         await PostSubmitAsync(result, cancellationToken);
-        #     }
-        # }
-
-        # /// <summary>
-        # /// Update this job.
-        # /// </summary>
-        # /// <param name="cancellationToken">Optional token to cancel the request.</param>
-        # /// <returns></returns>
-        # public async Task UpdateStatusAsync(CancellationToken cancellationToken = default(CancellationToken)) {
-        #     using (var response = await _api._client.GetAsync(_uri, cancellationToken))
-        #     {
-        #         await Utils.LookForErrorAndThrowAsync(_api._client, response, cancellationToken);
-        #         var result = await response.Content.ReadAsAsync<JobApi>(cancellationToken);
-        #         _jobApi = result;
-        #     }
-        # }
-
-        # /// <summary>
-        # /// Terminate an active job. (will cancel all remaining tasks)
-        # /// </summary>
-        # /// <param name="cancellationToken">Optional token to cancel the request.</param>
-        # /// <returns></returns>
-        # public async Task TerminateAsync(CancellationToken cancellationToken = default(CancellationToken))
-        # {
-        #     if (_api.IsReadOnly) throw new Exception("Can't terminate jobs, this connection is configured in read-only mode");
-        #     using (var response = await _api._client.PostAsync(_uri + "/terminate", null, cancellationToken))
-        #         await Utils.LookForErrorAndThrowAsync(_api._client, response, cancellationToken);
-        # }
-
-        # /// <summary>
-        # /// Delete the job. If the job is active, the job is terminated and deleted.
-        # /// </summary>
-        # /// <param name="force">Optional boolean to force inner tasks to be deleted.</param>
-        # /// <param name="cancellationToken">Optional token to cancel the request.</param>
-        # /// <returns></returns>
-        # public async Task DeleteAsync(bool force=false, CancellationToken cancellationToken = default(CancellationToken))
-        # {
-        #     if (_api.IsReadOnly) throw new Exception("Can't delete jobs, this connection is configured in read-only mode");
-        #     var deleteUri = _uri;
-        #     if (force)
-        #         deleteUri += "?force=true";
-        #     using (var response = await _api._client.DeleteAsync(deleteUri, cancellationToken))
-        #         await Utils.LookForErrorAndThrowAsync(_api._client, response, cancellationToken);
-        # }
-        #
-        # #region internals
-        #
-        # internal async Task PostSubmitAsync(JobApi result, CancellationToken cancellationToken = default(CancellationToken))
-        #  {
-        #     _jobApi.Uuid = result.Uuid;
-        #     _uri = "jobs/" + _jobApi.Uuid.ToString();
-        #     await UpdateStatusAsync(cancellationToken);
-        # }
-        # #endregion
