@@ -37,12 +37,62 @@ class TestTask:
     def test_task_run(self):
         mockconn = Mock(Connection)
         task = Task(mockconn, "name", "docker-batch", 1)
+        task.submit = MagicMock()
+        task.wait = MagicMock()
+        task.abort = MagicMock()
+        task.download_results = MagicMock()
 
-        mock = Mock(task)
-        
-        mock.run()
-        calls = [call(task.submit), call(task.wait)]
-        mock.assert_has_calls(calls)
+        task.run()
+        assert task.submit.called                   \
+               and task.wait.called                 \
+               and not task.abort.called            \
+               and not task.download_results.called
 
+    def test_task_run_abort(self):
+        mockconn = Mock(Connection)
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.submit = MagicMock()
+        task.wait = MagicMock()
+        task.abort = MagicMock()
+        task.download_results = MagicMock()
 
+        task.run(job_timeout=32)
+        assert task.submit.called                   \
+               and task.wait.called                 \
+               and task.abort.called                \
+               and not task.download_results.called
 
+    def test_task_run_download(self):
+        mockconn = Mock(Connection)
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.submit = MagicMock()
+        task.wait = MagicMock()
+        task.abort = MagicMock()
+        task.download_results = MagicMock()
+
+        task.run(output_dir=".")
+        assert task.submit.called                   \
+               and task.wait.called                 \
+               and not task.abort.called                \
+               and task.download_results.called
+
+    def test_task_resume(self):
+        mockconn = Mock(Connection)
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.wait = MagicMock()
+        task.abort = MagicMock()
+        task.download_results = MagicMock()
+
+        res = task.resume("dehors")
+        assert res == "dehors"
+
+    def test_task_resume_uuid(self):
+        mockconn = Mock(Connection)
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.wait = MagicMock()
+        task.abort = MagicMock()
+        task.download_results = MagicMock()
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+
+        res = task.resume("dehors")
+        assert res == None and task.wait.called and task.download_results.called_with("dehors")
