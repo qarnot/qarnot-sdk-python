@@ -38,6 +38,20 @@ class TestTask:
         Task.from_json.return_value = Task(mock, "name", "docker-batch", 1)
         mock._get.assert_called_with("/tasks/00000000-0000-0000-0000-123456789123")
 
+    def test_task_retreive_error_404(self):
+        response = requests.Response()
+        response.status_code = 404
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message": "problem"}')
+
+        mock = Mock(Connection)
+        mock._get.return_value = response
+
+        with pytest.raises(MissingTaskException):
+            Task._retrieve(mock, "00000000-0000-0000-0000-123456789123")
+            Task.from_json = MagicMock()
+            Task.from_json.return_value = Task(mock, "name", "docker-batch", 1)
+
     # TODO: En cas de problèmes
 
     def test_task_run(self):
@@ -267,6 +281,22 @@ class TestTask:
                and task.status == None and task.creation_date == dateutil.parser.parse("2018-06-13 09:06:20"), task.errors == [] \
                and task.constants == {"DOCKER_CMD": "sleep 39"} and task.uuid == "0000000-0000-0000-0000-000000000000" \
                and task.state == "yes"
+
+    def test_task_update_error_404(self):
+        js = json.loads('{"message":"problem"}')
+        response = requests.Response()
+        response.status_code = 404
+        response.json = MagicMock()
+        response.json.return_value = js
+
+        mockconn = Mock(Connection)
+        mockconn._get.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+
+        with pytest.raises(MissingTaskException):
+            task.update(True)
 
     def test_task_delete_with_uuid_no_resources(self):
         response = requests.Response()
