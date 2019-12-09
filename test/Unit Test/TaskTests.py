@@ -1,11 +1,15 @@
+import dateutil
 import json
 import pytest
 import requests
 
 from pytest_mock import mocker
+from qarnot.bucket import Bucket
 from qarnot.connection import Connection
+from qarnot.exceptions import MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException
 from qarnot.pool import Pool
 from qarnot.task import Task
+from qarnot.bucket import Bucket
 from unittest.mock import Mock, MagicMock, call
 
 class TestTask:
@@ -33,6 +37,8 @@ class TestTask:
         Task.from_json = MagicMock()
         Task.from_json.return_value = Task(mock, "name", "docker-batch", 1)
         mock._get.assert_called_with("/tasks/00000000-0000-0000-0000-123456789123")
+
+    # TODO: En cas de problèmes
 
     def test_task_run(self):
         mockconn = Mock(Connection)
@@ -96,3 +102,241 @@ class TestTask:
 
         res = task.resume("dehors")
         assert res == None and task.wait.called and task.download_results.called_with("dehors")
+
+    def test_task_submit_usual(self):
+        response = requests.Response()
+        response.status_code = 200
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"name": "name","profile": "docker-batch","instanceCount": 1, "uuid": "00000000-0000-0000-0000-000000000000"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.resources = [Mock(Bucket)]
+        task._resource_type = Bucket
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        task.submit()
+
+        assert task.uuid == "00000000-0000-0000-0000-000000000000" and task.resources[0].flush.called
+
+    def test_task_submit_already_submited(self):
+        mockconn = Mock(Connection)
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task._uuid = "00000000-0000-0000-0000-000000000000"
+        task._state = "yeah"
+        task.resources = [Mock(Bucket)]
+        task._resource_type = Bucket
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        res = task._pre_submit()
+        assert res == "yeah" and not task.resources[0].flush.called
+
+    def test_task_submit_error_404(self):
+        response = requests.Response()
+        response.status_code = 404
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message": "Task doesn\'t exist"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.resources = [Mock(Bucket)]
+        task._resource_type = Bucket
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        with pytest.raises(MissingDiskException):
+            task.submit()
+            assert task.uuid == None and task.resources[0].flush.called
+
+    def test_task_submit_error_403_max_disk_reached(self):
+        response = requests.Response()
+        response.status_code = 403
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message": "Maximum number of disks reached :)"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.resources = [Mock(Bucket)]
+        task._resource_type = Bucket
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        with pytest.raises(MaxDiskException):
+            task.submit()
+            assert task.uuid == None and task.resources[0].flush.called
+    
+    def test_task_submit_error_403_max_task_reached(self):
+        response = requests.Response()
+        response.status_code = 403
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message": "Maximum number of Tasks reached :)"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.resources = [Mock(Bucket)]
+        task._resource_type = Bucket
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        with pytest.raises(MaxTaskException):
+            task.submit()
+            assert task.uuid == None and task.resources[0].flush.called
+
+    def test_task_submit_error_402_not_enough_credits(self):
+        response = requests.Response()
+        response.status_code = 402
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message": "Not enough credits"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.resources = [Mock(Bucket)]
+        task._resource_type = Bucket
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        with pytest.raises(NotEnoughCreditsException):
+            task.submit()
+            assert task.uuid == None and task.resources[0].flush.called
+    
+    def test_task_abort(self):
+        response = requests.Response()
+        response.status_code = 200
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message":"OK"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.update = MagicMock()
+        task.update.return_value = True
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+
+        task.abort()
+
+        assert task.update.called and mockconn._post.called_with("/tasks/00000000-0000-0000-0000-123456789123/abort")
+
+    def test_task_abort_task_does_not_exist(self):
+        response = requests.Response()
+        response.status_code = 404
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message":"Task doesn\'t exist"}')
+
+        mockconn = Mock(Connection)
+        mockconn._post.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.update = MagicMock()
+        task.update.return_value = True
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+
+        with pytest.raises(MissingTaskException):
+            task.abort()
+            assert task.update.called and mockconn._post.called_with("/tasks/00000000-0000-0000-0000-123456789123/abort")
+
+    def test_task_update(self):
+        js = json.loads('{"name": "name","profile": "docker-batch","instanceCount": 1,"shortname":"name", "poolUuid": null, "resourceBuckets": null, "resultBucket":null, "status": null, "creationDate": "2018-06-13T09:06:20Z", "errors": [], "constants": [{"DOCKER_CMD": "sleep 39"}],"uuid": "00000000-0000-0000-0000-000000000000", "state": "yes"}')
+        response = requests.Response()
+        response.status_code = 200
+        response.json = MagicMock()
+        response.json.return_value = js
+
+        mockconn = Mock(Connection)
+        mockconn._get.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+        task.update(True)
+
+        assert task.name == "name" and task.profile == "docker-batch" and task.instancecount == 1 \
+               and task.shortname == "name" and task._pooluuid == None and task.resources == [] and task.results == None \
+               and task.status == None and task.creation_date == dateutil.parser.parse("2018-06-13 09:06:20"), task.errors == [] \
+               and task.constants == {"DOCKER_CMD": "sleep 39"} and task.uuid == "0000000-0000-0000-0000-000000000000" \
+               and task.state == "yes"
+
+    def test_task_delete_with_uuid_no_resources(self):
+        response = requests.Response()
+        response.status_code = 200
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message":"OK"}')
+        mockconn = Mock(Connection)
+        mockconn._delete.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.update = MagicMock()
+        task.update.return_value = True
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+
+        task.delete()
+        assert task.uuid == None and task.state == "Deleted" and task.resources == [] and task.results == None and mockconn._delete.called_with("/tasks/00000000-0000-0000-0000-123456789123")
+
+    def test_task_delete_with_invalid_uuid(self):
+        response = requests.Response()
+        response.status_code = 404
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message":"not found"}')
+
+        mockconn = Mock(Connection)
+        mockconn._delete.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.update = MagicMock()
+        task.update.return_value = True
+        task._uuid = "lkjwefwe"
+
+        with pytest.raises(MissingTaskException):
+            task.delete()
+
+    def test_task_delete_with_uuid_resources(self):
+        response = requests.Response()
+        response.status_code = 200
+        response.json = MagicMock()
+        response.json.return_value = json.loads('{"message":"OK"}')
+
+        mockconn = Mock(Connection)
+        mockconn._delete.return_value = response
+
+        bucket = Bucket(mockconn, "00000000-0000-0000-0000-234567891234")
+
+        mockconn.retrieve_bucket.return_value = bucket
+        mockconn.s3resource.Bucket.return_value = bucket
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task.update = MagicMock()
+        task.update.return_value = True
+        task._resource_type = Bucket
+        task._uuid = "00000000-0000-0000-0000-123456789123"
+        task.resources.append(bucket)
+        task._resource_objects_ids.append(bucket.uuid)
+
+        task.delete(purge_resources=True)
+        assert task.uuid == None and task.state == "Deleted" and task.resources == [] and task.results == None and mockconn._delete.called_with("/tasks/00000000-0000-0000-0000-123456789123")
+    
+    def test_task_delete_without_uuid(self):
+        response = requests.Response()
+        response.status_code = 200
+
+        mockconn = Mock(Connection)
+        mockconn._delete.return_value = response
+
+        task = Task(mockconn, "name", "docker-batch", 1)
+        task._state = "Active"
+        task.update = MagicMock()
+        task.update.return_value = True
+
+        task.delete()
+        assert task.uuid == None and task.state == "Active" and task.resources == [] and task.results == None and not mockconn._delete.called
