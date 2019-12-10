@@ -5,7 +5,6 @@ import json
 import pytest
 import requests
 
-from moto import mock_s3
 from qarnot.bucket import Bucket
 from qarnot.connection import Connection
 from qarnot.exceptions import MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException
@@ -14,7 +13,6 @@ from qarnot.task import Task
 from qarnot.bucket import Bucket
 from unittest.mock import Mock, MagicMock, call
 
-@mock_s3
 class TestTask:
     def test_create_task(self):
         task = Task(None, "name", "docker-batch", 1)
@@ -335,26 +333,6 @@ class TestTask:
             task.delete()
 
     def test_task_delete_with_uuid_resources(self):
-        client = boto3.client(
-            "s3",
-            region_name="eu-west-1",
-            aws_access_key_id="fake_access_key",
-            aws_secret_access_key="fake_secret_key",
-            )
-        try:
-            s3 = boto3.resource(
-                "s3",
-                region_name="eu-west-1",
-                aws_access_key_id="fake_access_key",
-                aws_secret_access_key="fake_secret_key",
-                )
-            s3.meta.client.head_bucket(Bucket="random-bucket")
-        except botocore.exceptions.ClientError:
-            pass
-        else:
-            err = "{bucket} should not exist.".format(bucket="random-bucket")
-            raise EnvironmentError(err)
-        client.create_bucket(Bucket="random-bucket")
 
         response = requests.Response()
         response.status_code = 200
