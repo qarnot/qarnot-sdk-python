@@ -4,6 +4,7 @@ import dateutil
 import json
 import pytest
 import requests
+import time
 
 from qarnot.bucket import Bucket
 from qarnot.connection import Connection
@@ -35,8 +36,6 @@ class TestTask:
         mock._get.return_value = response
 
         Task._retrieve(mock, "00000000-0000-0000-0000-123456789123")
-        Task.from_json = MagicMock()
-        Task.from_json.return_value = Task(mock, "name", "docker-batch", 1)
         mock._get.assert_called_with("/tasks/00000000-0000-0000-0000-123456789123")
 
     def test_task_retrieve_error_404(self):
@@ -52,8 +51,17 @@ class TestTask:
             Task._retrieve(mock, "00000000-0000-0000-0000-123456789123")
             Task.from_json = MagicMock()
             Task.from_json.return_value = Task(mock, "name", "docker-batch", 1)
+    
+    def test_task_from_json_create_new_task(self):
+        mock = Mock(Connection)
 
-    # TODO: En cas de problèmes
+        task = Task.from_json(mock, json.loads('{"name": "name","profile": "docker-batch","instanceCount": 1,"shortname":"name", "poolUuid": null, "resourceBuckets": null, "resultBucket":null, "status": null, "creationDate": "2018-06-13T09:06:20Z", "errors": [], "constants": [],"uuid": "00000000-0000-0000-0000-000000000000", "state": "yes"}'))
+
+        assert task.name == "name" and task.profile == "docker-batch" and task.instancecount == 1 \
+               and task._shortname == "name" and task._pooluuid == None and task.resources == [] and task.results == None \
+               and task.status == None and task.creation_date == dateutil.parser.parse("2018-06-13 09:06:20"), task.errors == [] \
+               and task.constants == {"DOCKER_CMD": "sleep 39"} and task.uuid == "0000000-0000-0000-0000-000000000000" \
+               and task.state == "yes"
 
     def test_task_run(self):
         mockconn = Mock(Connection)
@@ -353,6 +361,7 @@ class TestTask:
         task._resource_objects_ids.append(bucket.uuid)
 
         task.delete(purge_resources=True)
+        time.sleep(1)
         assert task.uuid == None and task.state == "Deleted" and task.resources == [] and task.results == None and mockconn._delete.called_with("/tasks/00000000-0000-0000-0000-123456789123")
     
     def test_task_delete_without_uuid(self):
