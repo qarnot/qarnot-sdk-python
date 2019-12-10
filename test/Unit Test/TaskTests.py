@@ -1,8 +1,11 @@
+import boto3
+import botocore
 import dateutil
 import json
 import pytest
 import requests
 
+from moto import mock_s3
 from pytest_mock import mocker
 from qarnot.bucket import Bucket
 from qarnot.connection import Connection
@@ -12,6 +15,7 @@ from qarnot.task import Task
 from qarnot.bucket import Bucket
 from unittest.mock import Mock, MagicMock, call
 
+@mock_s3
 class TestTask:
     def test_create_task(self):
         task = Task(None, "name", "docker-batch", 1)
@@ -24,7 +28,7 @@ class TestTask:
         task = Task(None, "name", mock, 1)
         assert task.name == "name" and task._pooluuid == "00000000-0000-0000-0000-123456789123" and task.instancecount
 
-    def test_task_retreive(self):
+    def test_task_retrieve(self):
         response = requests.Response()
         response.status_code = 200
         response.json = MagicMock()
@@ -38,7 +42,7 @@ class TestTask:
         Task.from_json.return_value = Task(mock, "name", "docker-batch", 1)
         mock._get.assert_called_with("/tasks/00000000-0000-0000-0000-123456789123")
 
-    def test_task_retreive_error_404(self):
+    def test_task_retrieve_error_404(self):
         response = requests.Response()
         response.status_code = 404
         response.json = MagicMock()
@@ -332,6 +336,27 @@ class TestTask:
             task.delete()
 
     def test_task_delete_with_uuid_resources(self):
+        client = boto3.client(
+            "s3",
+            region_name="eu-west-1",
+            aws_access_key_id="fake_access_key",
+            aws_secret_access_key="fake_secret_key",
+            )
+        try:
+            s3 = boto3.resource(
+                "s3",
+                region_name="eu-west-1",
+                aws_access_key_id="fake_access_key",
+                aws_secret_access_key="fake_secret_key",
+                )
+            s3.meta.client.head_bucket(Bucket="random-bucket")
+        except botocore.exceptions.ClientError:
+            pass
+        else:
+            err = "{bucket} should not exist.".format(bucket="random-bucket")
+            raise EnvironmentError(err)
+        client.create_bucket(Bucket="random-bucket")
+
         response = requests.Response()
         response.status_code = 200
         response.json = MagicMock()
@@ -340,10 +365,7 @@ class TestTask:
         mockconn = Mock(Connection)
         mockconn._delete.return_value = response
 
-        bucket = Bucket(mockconn, "00000000-0000-0000-0000-234567891234")
-
-        mockconn.retrieve_bucket.return_value = bucket
-        mockconn.s3resource.Bucket.return_value = bucket
+        bucket = Bucket(mockconn, "00000000-0000-0000-0000-123456789123")
 
         task = Task(mockconn, "name", "docker-batch", 1)
         task.update = MagicMock()
