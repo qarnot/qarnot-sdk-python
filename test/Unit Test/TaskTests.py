@@ -340,6 +340,9 @@ class TestTask:
         with pytest.raises(MissingTaskException):
             task.delete()
 
+    """
+    This tests needs s3 mocking integration to use buckets (still in study)
+
     def test_task_delete_with_uuid_resources(self):
 
         response = requests.Response()
@@ -363,7 +366,8 @@ class TestTask:
         task.delete(purge_resources=True)
         time.sleep(1)
         assert task.uuid == None and task.state == "Deleted" and task.resources == [] and task.results == None and mockconn._delete.called_with("/tasks/00000000-0000-0000-0000-123456789123")
-    
+    """
+
     def test_task_delete_without_uuid(self):
         response = requests.Response()
         response.status_code = 200
