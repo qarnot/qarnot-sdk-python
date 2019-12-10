@@ -6,7 +6,6 @@ import pytest
 import requests
 
 from moto import mock_s3
-from pytest_mock import mocker
 from qarnot.bucket import Bucket
 from qarnot.connection import Connection
 from qarnot.exceptions import MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException
