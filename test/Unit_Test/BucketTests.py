@@ -266,6 +266,7 @@ class TestBucket:
 
     @mock_s3
     def test_add_empty_directory(self, connection):
+        os.mkdir("test/Unit_Test/Assets/empty")
         bucket = Bucket(connection, "bucket")
         bucket.add_directory("test/Unit_Test/Assets/empty")
 
@@ -274,6 +275,8 @@ class TestBucket:
         names = []
         for f in files:
             names.append((f.key, f.bucket_name))
+
+        os.rmdir("test/Unit_Test/Assets/empty")
 
         assert len(names) == 0
 
