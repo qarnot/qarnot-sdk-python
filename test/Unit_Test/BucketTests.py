@@ -400,3 +400,138 @@ class TestBucket:
         assert len(names) == 2
         assert f is not None and f[1] == "bucket"
         assert compare
+
+    @mock_s3
+    def test_copy_non_existent_file(self, connection):
+        bucket = Bucket(connection, "bucket")
+
+        with pytest.raises(botocore.exceptions.ClientError):
+            bucket.copy_file("lorem.txt", "lorem2-electric-boogaloo.txt")
+
+    @mock_s3
+    def test_list_files_from_bucket(self, connection):
+        bucket = Bucket(connection, "bucket")
+
+        with open("test/Unit_Test/Assets/lorem.txt", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "lorem.txt", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/fichier_important.asm", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "variedname", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/nested/file", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "varied/dir/variedname", Config=self.s3_multipart_config)
+
+        files = bucket.list_files()
+
+        names = []
+        for f in files:
+            names.append((f.key, f.bucket_name))
+
+        file1 = list(filter(lambda x: x[0] == "lorem.txt", names))[0]
+        file2 = list(filter(lambda x: x[0] == "variedname", names))[0]
+        file3 = list(filter(lambda x: x[0] == "varied/dir/variedname", names))[0]
+
+        assert len(names) == 3
+        assert file1 is not None and file1[1] == "bucket"
+        assert file2 is not None and file2[1] == "bucket"
+        assert file3 is not None and file3[1] == "bucket"
+
+    @mock_s3
+    def test_list_files_from_directory(self, connection):
+        bucket = Bucket(connection, "bucket")
+
+        with open("test/Unit_Test/Assets/lorem.txt", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "lorem.txt", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/fichier_important.asm", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "variedname", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/nested/file", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "varied/dir/variedname", Config=self.s3_multipart_config)
+
+        files = bucket.directory("varied")
+
+        names = []
+        for f in files:
+            names.append((f.key, f.bucket_name))
+
+        file1 = list(filter(lambda x: x[0] == "lorem.txt", names))
+        file2 = list(filter(lambda x: x[0] == "variedname", names))
+        file3 = list(filter(lambda x: x[0] == "varied/dir/variedname", names))
+
+        assert len(names) == 2
+        assert file1 == []
+        assert file2 != [] and file2[0][1] == "bucket"
+        assert file3 != [] and file3[0][1] == "bucket"
+
+    @mock_s3
+    def test_delete_a_file_from_bucket(self, connection):
+        bucket = Bucket(connection, "bucket")
+        with open("test/Unit_Test/Assets/lorem.txt", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "lorem.txt", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/fichier_important.asm", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "variedname", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/nested/file", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "varied/dir/variedname", Config=self.s3_multipart_config)
+
+        bucket.delete_file("variedname")
+
+        files = connection.s3resource.Bucket(bucket._uuid).objects.all()
+
+        names = []
+        for f in files:
+            names.append((f.key, f.bucket_name))
+
+        file1 = list(filter(lambda x: x[0] == "lorem.txt", names))
+        file2 = list(filter(lambda x: x[0] == "variedname", names))
+        file3 = list(
+            filter(lambda x: x[0] == "varied/dir/variedname", names))
+
+        assert len(names) == 2
+        assert file1 != [] and file1[0][1] == "bucket"
+        assert file2 == []
+        assert file3 != [] and file3[0][1] == "bucket"
+
+    @mock_s3
+    def test_delete_non_empty_bucket(self, connection):
+        bucket = Bucket(connection, "bucket")
+        with open("test/Unit_Test/Assets/lorem.txt", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "lorem.txt", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/fichier_important.asm", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "variedname", Config=self.s3_multipart_config)
+        with open("test/Unit_Test/Assets/nested/file", "rb") as f:
+            connection.s3client.upload_fileobj(
+                f, bucket._uuid, "varied/dir/variedname", Config=self.s3_multipart_config)
+
+        bucket.delete()
+
+        response = connection.s3client.list_buckets()
+
+        assert len(response["Buckets"]) == 0
+
+    @mock_s3
+    def test_sync_asset_directory(self, connection):
+        bucket = Bucket(connection, "syncbucket")
+        
+        bucket.sync_directory("test/Unit_Test/Assets")
+        files = connection.s3resource.Bucket(bucket._uuid).objects.all()
+
+        names = []
+        for f in files:
+            names.append((f.key, f.bucket_name))
+
+        file1 = list(filter(lambda x: x[0] == "lorem.txt", names))[0]
+        file2 = list(filter(lambda x: x[0] == "fichier_important.asm", names))[0]
+        file3 = list(filter(lambda x: x[0] == "nested/file", names))[0]
+
+        assert len(names) == 3
+        assert file1 is not None and file1[1] == "syncbucket"
+        assert file2 is not None and file2[1] == "syncbucket"
+        assert file3 is not None and file3[1] == "syncbucket"
