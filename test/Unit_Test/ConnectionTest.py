@@ -13,7 +13,7 @@ from boto3.s3.transfer import TransferConfig
 from moto import mock_s3
 from qarnot.bucket import Bucket
 from qarnot.connection import Connection
-from qarnot.exceptions import MissingPoolException, MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException, UnauthorizedException,BucketStorageUnavailableException
+from qarnot.exceptions import QarnotGenericException, MissingPoolException, MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException, UnauthorizedException,BucketStorageUnavailableException
 from qarnot.pool import Pool
 from qarnot.task import Task
 from qarnot.storage import Storage
@@ -387,9 +387,131 @@ class TestConnection:
 
         assert pool.name == "pool" and pool.profile == "docker-batch" and pool.instancecount == 1 and pool.shortname == "shortpool"
 
+
     @mock_s3
     def test_create_task(self, httpMock):
+        """
+        This test Fails!!
+        Task is created without shortname for reason unknown even after investigation
+        """
+
         conn = Connection(client_token="token")
         task = conn.create_task("task", "docker-batch", 1, shortname="shorttask")
 
         assert task.name == "task" and task.profile == "docker-batch" and task.instancecount == 1 and task.shortname == "shorttask"
+
+    @mock_s3
+    def test_submit_bulk_task(self, httpMock):
+        httpMock.post("https://api.qarnot.com/tasks",
+                        text= '['
+                            + '{"uuid":"12345678-1234-1234-1234-123456789123", "statusCode": 200, "message": "OK"},'
+                            + '{"uuid":"12345678-1234-1234-1234-234567891234", "statusCode": 200, "message": "OK"}'
+                            + ']')
+        conn = Connection(client_token="token")
+        tasks = [Task(conn,
+                    "task1",
+                    "docker-batch",
+                    1,
+                    "shortname"),
+                Task(conn,
+                    "task2",
+                    "docker-batch",
+                    1)]
+        with patch.object(Task, 'update'):
+            conn.submit_tasks(tasks)
+            assert tasks[0].uuid == "12345678-1234-1234-1234-123456789123"
+            assert tasks[1].uuid == "12345678-1234-1234-1234-234567891234"
+
+    @mock_s3
+    def test_submit_service_unavailable(self, httpMock):
+        httpMock.post("https://api.qarnot.com/tasks",
+                        text= '['
+                            + '{"uuid":"12345678-1234-1234-1234-123456789123", "statusCode": 200, "message": "OK"},'
+                            + '{"uuid":"12345678-1234-1234-1234-234567891234", "statusCode": 200, "message": "OK"}'
+                            + ']',
+                        status_code=503)
+        conn = Connection(client_token="token")
+        tasks = [Task(conn,
+                    "task1",
+                    "docker-batch",
+                    1,
+                    "shortname"),
+                Task(conn,
+                    "task2",
+                    "docker-batch",
+                    1)]
+        with pytest.raises(QarnotGenericException):
+            with patch.object(Task, 'update'):
+                conn.submit_tasks(tasks)
+                assert tasks[0].uuid == "12345678-1234-1234-1234-123456789123"
+                assert tasks[1].uuid == "12345678-1234-1234-1234-234567891234"
+
+    @mock_s3
+    def test_get_profiles(self, httpMock):
+        httpMock.get("https://api.qarnot.com/profiles",
+                     text='["docker-batch", "docker-network", "blender"]')
+        httpMock.get("https://api.qarnot.com/profiles/docker-batch",
+                     text='{"name": "docker-batch", "constants": [{"name": "DOCKER_CMD", "value": "nope"}]}')
+        httpMock.get("https://api.qarnot.com/profiles/docker-network",
+                     text='{"name": "docker-network", "constants": [{"name": "DOCKER_CMD", "value": "nope"}]}')
+        httpMock.get("https://api.qarnot.com/profiles/blender",
+                     text='{"name": "blender", "constants": [{"name": "DOCKER_CMD", "value": "nope"}]}')
+
+        conn = Connection(client_token="token")
+
+        l = conn.profiles()
+        assert len(l) == 3
+        assert l[0].name == "docker-batch" and l[0].constants[0][0] == "DOCKER_CMD" and l[0].constants[0][1] == "nope"
+        assert l[1].name == "docker-network" and l[1].constants[0][0] == "DOCKER_CMD" and l[1].constants[0][1] == "nope"
+        assert l[2].name == "blender" and l[2].constants[0][0] == "DOCKER_CMD" and l[2].constants[0][1] == "nope"
+
+    @mock_s3
+    def test_get_profiles_partialy_missing(self, httpMock):
+        httpMock.get("https://api.qarnot.com/profiles",
+                     text='["docker-batch", "docker-network", "blender"]')
+        httpMock.get("https://api.qarnot.com/profiles/docker-batch",
+                     text='{"name": "docker-batch", "constants": [{"name": "DOCKER_CMD", "value": "nope"}]}')
+        httpMock.get("https://api.qarnot.com/profiles/docker-network",
+                     text='{"message": "unknown profile"}',
+                     status_code=404)
+        httpMock.get("https://api.qarnot.com/profiles/blender",
+                     text='{"name": "blender", "constants": [{"name": "DOCKER_CMD", "value": "nope"}]}')
+
+        conn = Connection(client_token="token")
+
+        l = conn.profiles()
+        assert len(l) == 2
+        assert l[0].name == "docker-batch" and l[0].constants[0][0] == "DOCKER_CMD" and l[0].constants[0][1] == "nope"
+        assert l[1].name == "blender" and l[1].constants[0][0] == "DOCKER_CMD" and l[1].constants[0][1] == "nope"
+    
+    @mock_s3
+    def test_retrieve_profile(self, httpMock):
+        httpMock.get("https://api.qarnot.com/profiles/docker-batch",
+                     text='{"name": "docker-batch", "constants": [{"name": "DOCKER_CMD", "value": "nope"}]}')
+
+        conn = Connection(client_token="token")
+
+        prof = conn.retrieve_profile("docker-batch")
+        assert prof.name == "docker-batch" and prof.constants[0][0] == "DOCKER_CMD" and prof.constants[0][1] == "nope"
+
+    @mock_s3
+    def test_retrieve_inexistant_profile(self, httpMock):
+        httpMock.get("https://api.qarnot.com/profiles/docker-batch",
+                     text='{"message": "missing"}',
+                     status_code=404)
+
+        conn = Connection(client_token="token")
+
+        with pytest.raises(QarnotGenericException):
+            conn.retrieve_profile("docker-batch")
+
+    @mock_s3
+    def test_create_bucket(self, httpMock):
+        conn = fill_s3_connection(Connection(client_token="token"))
+
+        bucket = conn.create_bucket("bucket")
+
+        response = conn.s3client.list_buckets()
+
+        assert list(response["Buckets"]) and "bucket" in list(map(lambda x: x["Name"], response["Buckets"]))
+        assert bucket.uuid == "bucket"
