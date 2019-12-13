@@ -13,7 +13,7 @@ from boto3.s3.transfer import TransferConfig
 from moto import mock_s3
 from qarnot.bucket import Bucket
 from qarnot.connection import Connection
-from qarnot.exceptions import MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException, UnauthorizedException,BucketStorageUnavailableException
+from qarnot.exceptions import MissingPoolException, MissingDiskException, MissingTaskException, MaxDiskException, MaxTaskException, NotEnoughCreditsException, UnauthorizedException,BucketStorageUnavailableException
 from qarnot.pool import Pool
 from qarnot.task import Task
 from qarnot.storage import Storage
@@ -29,6 +29,36 @@ def create_pool():
         + '"uuid": "12345678-1234-1234-1234-123456789123",' \
         + '"state": "Success"' \
         + '}'
+
+def create_task():
+    return '{' \
+        + '"name": "name",' \
+        + '"profile": "docker-batch",' \
+        + '"instanceCount": 1,' \
+        + '"creationDate": "2018-09-22T15:45:23.0Z",' \
+        + '"uuid": "12345678-1234-1234-1234-123456789123",' \
+        + '"state": "Success"' \
+        + '}'
+
+def fill_s3_connection(connection):
+    session = boto3.session.Session()
+    client = session.client(service_name='s3',
+                            aws_access_key_id="fake.fakey@McFakey.pants",
+                            aws_secret_access_key="auth",
+                            verify=True)
+    resource = session.resource(service_name='s3',
+                                aws_access_key_id="fake.fakey@McFakey.pants",
+                                aws_secret_access_key="auth",
+                                verify=True)
+
+    with patch('qarnot.connection.Connection.s3client', new_callable=PropertyMock) as mock_client:
+        with patch('qarnot.connection.Connection.s3resource', new_callable=PropertyMock) as mock_resource:
+            with patch('qarnot.connection.Connection.user_info', new_callable=PropertyMock):
+                mock_client.return_value = client
+                mock_resource.return_value = resource
+                connection._s3client = client
+                connection._s3resource = resource
+                return connection
 
 @pytest.fixture(name="httpMock")
 def create_http_mocker():
@@ -268,11 +298,98 @@ class TestConnection:
         assert httpMock.last_request.url == "https://api.qarnot.com/tasks/summaries"
 
     @mock_s3
-    def test_connection_retieve_pool(self, httpMock):
+    def test_connection_retrieve_pool(self, httpMock):
         httpMock.get(
             "https://api.qarnot.com/pools/12345678-1234-1234-1234-123456789123",
             text=create_pool())
         conn = Connection(client_token="token")
-        conn.retrieve_pool("12345678-1234-1234-1234-123456789123")
+        with patch.object(Pool, 'from_json') as pool_from_json:
+            conn.retrieve_pool("12345678-1234-1234-1234-123456789123")
 
-        assert httpMock.last_request.url == "https://api.qarnot.com/pools/12345678-1234-1234-1234-123456789123"
+            assert httpMock.last_request.url == "https://api.qarnot.com/pools/12345678-1234-1234-1234-123456789123"
+            pool_from_json.assert_called_with(conn, json.loads(create_pool()))
+
+    @mock_s3
+    def test_connection_retrieve_pool_404(self, httpMock):
+        httpMock.get(
+            "https://api.qarnot.com/pools/12345678-1234-1234-1234-123456789123",
+            text='{"message":"missing pool"}',
+            status_code=404)
+        conn = Connection(client_token="token")
+        with pytest.raises(MissingPoolException):
+            conn.retrieve_pool("12345678-1234-1234-1234-123456789123")
+
+    @mock_s3
+    def test_connection_retrieve_task(self, httpMock):
+        httpMock.get(
+            "https://api.qarnot.com/tasks/12345678-1234-1234-1234-123456789123",
+            text=create_task())
+        conn = Connection(client_token="token")
+
+        with patch.object(Task, 'from_json') as task_from_json:
+            conn.retrieve_task("12345678-1234-1234-1234-123456789123")
+            assert httpMock.last_request.url == "https://api.qarnot.com/tasks/12345678-1234-1234-1234-123456789123"
+            task_from_json.assert_called_with(conn, json.loads(create_task()))
+
+    @mock_s3
+    def test_connection_retrieve_task_404(self, httpMock):
+        httpMock.get(
+            "https://api.qarnot.com/tasks/12345678-1234-1234-1234-123456789123",
+            text='{"message": "missing task"}',
+            status_code=404)
+        conn = Connection(client_token="token")
+        with pytest.raises(MissingTaskException):
+            conn.retrieve_task("12345678-1234-1234-1234-123456789123")
+
+    @mock_s3
+    def test_create_bucket(self, httpMock):
+        conn = fill_s3_connection(Connection(client_token="token"))
+
+        conn.retrieve_or_create_bucket("bucket")
+        response = conn.s3client.list_buckets()
+
+        assert "bucket" in list(map(lambda x: x["Name"], response["Buckets"]))
+
+    @mock_s3
+    def test_retrieve_or_create_bucket_retrieve_mode(self, httpMock):
+        conn = fill_s3_connection(Connection(client_token="token"))
+
+        conn.s3client.create_bucket(Bucket="bucket")
+
+        bucket = conn.retrieve_or_create_bucket("bucket")
+        response = conn.s3client.list_buckets()
+
+        assert list(response["Buckets"]) and "bucket" in list(map(lambda x: x["Name"], response["Buckets"]))
+        assert bucket.uuid == "bucket"
+    
+    @mock_s3
+    def test_retrieve_bucket_bucket_exists(self, httpMock):
+        conn = fill_s3_connection(Connection(client_token="token"))
+
+        conn.s3client.create_bucket(Bucket="bucket")
+        bucket = conn.retrieve_bucket("bucket")
+        response = conn.s3client.list_buckets()
+
+        assert "bucket" in list(map(lambda x: x["Name"], response["Buckets"]))
+        assert bucket.uuid == "bucket"
+
+    @mock_s3
+    def test_retrieve_bucket_buckets_does_not_exist(self, httpMock):
+        conn = fill_s3_connection(Connection(client_token="token"))
+
+        with pytest.raises(botocore.exceptions.ClientError):
+            conn.retrieve_bucket("bucket")
+
+    @mock_s3
+    def test_create_pool(self, httpMock):
+        conn = Connection(client_token="token")
+        pool = conn.create_pool("pool", "docker-batch", 1, "shortpool")
+
+        assert pool.name == "pool" and pool.profile == "docker-batch" and pool.instancecount == 1 and pool.shortname == "shortpool"
+
+    @mock_s3
+    def test_create_task(self, httpMock):
+        conn = Connection(client_token="token")
+        task = conn.create_task("task", "docker-batch", 1, shortname="shorttask")
+
+        assert task.name == "task" and task.profile == "docker-batch" and task.instancecount == 1 and task.shortname == "shorttask"
