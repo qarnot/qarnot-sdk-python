@@ -506,7 +506,7 @@ class TestConnection:
             conn.retrieve_profile("docker-batch")
 
     @mock_s3
-    def test_create_bucket(self, httpMock):
+    def test_connection_create_bucket(self, httpMock):
         conn = fill_s3_connection(Connection(client_token="token"))
 
         bucket = conn.create_bucket("bucket")
