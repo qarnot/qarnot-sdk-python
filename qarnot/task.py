@@ -291,7 +291,7 @@ class Task(object):
         :raises qarnot.exceptions.MissingTaskException: task does not exist
         """
         if purge_resources or purge_results:
-            self._update_if_summmary()
+            self._update_if_summary()
 
         if self._uuid is None:
             return
@@ -602,7 +602,7 @@ class Task(object):
 
         Represents resource files.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
         if not self._resource_objects:
@@ -624,7 +624,7 @@ class Task(object):
         :setter: Sets this task's results bucket
 
         Represents results files."""
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._result_object is None and self._result_object_id is not None:
             self._result_object = Bucket(self._connection, self._result_object_id)
 
@@ -815,7 +815,7 @@ class Task(object):
 
         Custom tags.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
 
@@ -940,7 +940,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         return self._snapshot_whitelist
 
     @snapshot_whitelist.setter
@@ -961,7 +961,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         return self._snapshot_blacklist
 
     @snapshot_blacklist.setter
@@ -982,7 +982,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         return self._results_whitelist
 
     @results_whitelist.setter
@@ -1003,7 +1003,7 @@ class Task(object):
 
         Can be set until task is submitted.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
 
@@ -1024,7 +1024,7 @@ class Task(object):
 
         Status of the task
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
 
@@ -1037,7 +1037,7 @@ class Task(object):
         """:type: list(:class:`CompletedInstance`)
         :getter: Return this task's completed instances
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
         return self._completed_instances
@@ -1059,7 +1059,7 @@ class Task(object):
 
         Error reason if any, empty string if none
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
 
@@ -1156,7 +1156,7 @@ class Task(object):
             json_task['resultsBlacklist'] = self._results_blacklist
         return json_task
 
-    def _update_if_summmary(self):
+    def _update_if_summary(self):
         """Trigger flush update if the task is made from a summary.
 
         This should be called before accessing any fields not contained in a summary task

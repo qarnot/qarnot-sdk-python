@@ -79,12 +79,12 @@ class Pool(object):
         self._is_summary = False
 
         self._is_elastic = False
-        self._elastic_min_total_slots = 0
-        self._elastic_max_total_slots = 1
-        self._elastic_min_idle_slots = 0
+        self._elastic_minimum_slots = 0
+        self._elastic_maximum_slots = 1
+        self._elastic_minimum_idle_slots = 0
         self._elastic_resize_period = 90
         self._elastic_resize_factor = 1
-        self._elastic_min_idle_time_seconds = 0
+        self._elastic_minimum_idle_time = 0
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -147,10 +147,10 @@ class Pool(object):
         if 'elasticProperty' in json_pool:
             elasticProperty = json_pool["elasticProperty"]
             self._is_elastic = elasticProperty["isElastic"]
-            self._elastic_max_total_slots = elasticProperty["maxTotalSlots"]
-            self._elastic_min_total_slots = elasticProperty["minTotalSlots"]
-            self._elastic_min_idle_slots = elasticProperty["minIdleSlots"]
-            self._elastic_min_idle_time_seconds = elasticProperty["minIdleTimeSeconds"]
+            self._elastic_maximum_slots = elasticProperty["maxTotalSlots"]
+            self._elastic_minimum_slots = elasticProperty["minTotalSlots"]
+            self._elastic_minimum_idle_slots = elasticProperty["minIdleSlots"]
+            self._elastic_minimum_idle_time = elasticProperty["minIdleTimeSeconds"]
             self._elastic_resize_factor = elasticProperty["rampResizeFactor"]
             self._elastic_resize_period = elasticProperty["resizePeriod"]
 
@@ -167,12 +167,12 @@ class Pool(object):
 
         elastic_dict = {
             "isElastic": self._is_elastic,
-            "minTotalSlots": self._elastic_min_total_slots,
-            "maxTotalSlots": self._elastic_max_total_slots,
-            "minIdleSlots": self._elastic_min_idle_slots,
+            "minTotalSlots": self._elastic_minimum_slots,
+            "maxTotalSlots": self._elastic_maximum_slots,
+            "minIdleSlots": self._elastic_minimum_idle_slots,
             "resizePeriod": self._elastic_resize_period,
             "rampResizeFactor": self._elastic_resize_factor,
-            "minIdleTimeSeconds": self._elastic_min_idle_time_seconds
+            "minIdleTimeSeconds": self._elastic_minimum_idle_time
         }
 
         json_pool = {
@@ -259,12 +259,12 @@ class Pool(object):
 
     def setup_elastic(self, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=1, resize_period=90):
         self._is_elastic = True
-        self.elastic_max_total_slots = maximum_total_slots
-        self.elastic_min_total_slots = minimum_total_slots
-        self.elastic_min_idle_slots = minimum_idle_slots
-        self.elastic_min_idle_time_seconds = minimum_idle_time_seconds
-        self.elastic_resize_factor = resize_factor
-        self.elastic_resize_period = resize_period
+        self._elastic_maximum_slots = maximum_total_slots
+        self._elastic_minimum_slots = minimum_total_slots
+        self._elastic_minimum_idle_slots = minimum_idle_slots
+        self._elastic_minimum_idle_time = minimum_idle_time_seconds
+        self._elastic_resize_factor = resize_factor
+        self._elastic_resize_period = resize_period
 
     def delete(self, purge_resources=False):
         """Delete this pool on the server.
@@ -277,7 +277,7 @@ class Pool(object):
         :raises qarnot.exceptions.MissingTaskException: pool does not exist
         """
         if purge_resources:
-            self._update_if_summmary()
+            self._update_if_summary()
         if self._uuid is None:
             return
 
@@ -410,7 +410,7 @@ class Pool(object):
 
         Custom tags.
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
 
@@ -477,7 +477,7 @@ class Pool(object):
 
         Status of the task
         """
-        self._update_if_summmary()
+        self._update_if_summary()
         if self._auto_update:
             self.update()
 
@@ -522,7 +522,7 @@ class Pool(object):
         """
         self._update_cache_time = value
 
-    def _update_if_summmary(self):
+    def _update_if_summary(self):
         """Trigger flush update if the task is made from a summary.
 
         This should be called before accessing any fields not contained in a summary task
@@ -540,35 +540,35 @@ class Pool(object):
 
     @property
     def elastic_minimum_slots(self):
-        return self._elastic_min_total_slots
+        return self._elastic_minimum_slots
 
     @elastic_minimum_slots.setter
     def elastic_minimum_slots(self, value):
-        self._elastic_min_total_slots = value
+        self._elastic_minimum_slots = value
 
     @property
     def elastic_maximum_slots(self):
-        return self._elastic_max_total_slots
+        return self._elastic_maximum_slots
 
     @elastic_maximum_slots.setter
     def elastic_maximum_slots(self, value):
-        self._elastic_max_total_slots = value
+        self._elastic_maximum_slots = value
 
     @property
     def elastic_minimum_idle_slots(self):
-        return self._elastic_min_idle_slots
+        return self._elastic_minimum_idle_slots
 
     @elastic_minimum_idle_slots.setter
     def elastic_minimum_idle_slots(self, value):
-        self._elastic_min_idle_slots = value
+        self._elastic_minimum_idle_slots = value
 
     @property
     def elastic_minimum_idle_time(self):
-        return self._elastic_min_idle_time_seconds
+        return self._elastic_minimum_idle_time
 
     @elastic_minimum_idle_time.setter
     def elastic_minimum_idle_time(self, value):
-        self._elastic_min_idle_time_seconds = value
+        self._elastic_minimum_idle_time = value
 
     @property
     def elastic_resize_factor(self):
@@ -603,9 +603,9 @@ class Pool(object):
                     (self._resource_object_ids if self._resource_objects is not None else ""),
                     self._tags,
                     self._is_elastic,
-                    self._elastic_min_total_slots,
-                    self._elastic_max_total_slots,
-                    self._elastic_min_idle_slots,
+                    self._elastic_minimum_slots,
+                    self._elastic_maximum_slots,
+                    self._elastic_minimum_idle_slots,
                     self._elastic_resize_period,
                     self._elastic_resize_factor,
-                    self._elastic_min_idle_time_seconds)
+                    self._elastic_minimum_idle_time)
