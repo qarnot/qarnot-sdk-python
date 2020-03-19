@@ -89,15 +89,27 @@ class Bucket(Storage):
 
     def delete(self):
         """ Delete the bucket represented by this :class:`Bucket`."""
-        bucket = self._connection.s3resource.Bucket(self._uuid)
-        objectlist = list(bucket.objects.all())
+
         n = 1000  # delete object count max request
 
-        if sys.version_info >= (3, 0):
-            listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
+        bucket = self._connection.s3resource.Bucket(self._uuid)
+        versioned_bucket = self._connection.s3resource.BucketVersioning(self._uuid)
+
+        if versioned_bucket.status == 'None':
+            objectlist = list(bucket.objects.all())
+            if sys.version_info >= (3, 0):
+                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
+            else:
+                # noinspection PyUnresolvedReferences
+                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
         else:
-            # noinspection PyUnresolvedReferences
-            listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
+            objectlist = list(bucket.object_versions.all())
+            if sys.version_info >= (3, 0):
+                listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
+            else:
+                # noinspection PyUnresolvedReferences
+                listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
+
         for item in listofobjectlist:
             bucket.delete_objects(
                 Delete={

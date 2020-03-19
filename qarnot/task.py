@@ -293,6 +293,9 @@ class Task(object):
         if purge_resources or purge_results:
             self._update_if_summary()
 
+        if self._auto_update:
+            self._auto_update = False
+
         if self._uuid is None:
             return
 

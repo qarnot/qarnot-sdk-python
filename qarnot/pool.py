@@ -278,6 +278,10 @@ class Pool(object):
         """
         if purge_resources:
             self._update_if_summary()
+
+        if self._auto_update:
+            self._auto_update = False
+
         if self._uuid is None:
             return
 

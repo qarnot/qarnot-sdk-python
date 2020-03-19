@@ -561,7 +561,7 @@ class Connection(object):
         """
         return Pool(self, name, profile, instancecount, shortname)
 
-    def create_elastic_pool(self, name, profile, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=0, resize_period=0, shortname=None):
+    def create_elastic_pool(self, name, profile, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=1, resize_period=90, shortname=None):
         """Create a new :class:`~qarnot.pool.Pool`.
 
         :param str name: given name of the pool
