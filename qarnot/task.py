@@ -24,6 +24,7 @@ from . import get_url, raise_on_error, _util
 from .status import Status
 from .bucket import Bucket
 from .pool import Pool
+from .error import Error
 from .exceptions import MissingTaskException, MaxTaskException, NotEnoughCreditsException, \
     MissingBucketException, BucketStorageUnavailableException
 
@@ -826,6 +827,7 @@ class Task(object):
 
     @tags.setter
     def tags(self, value):
+        """setter for tags"""
         self._tags = value
         self._auto_update = False
 
@@ -1106,9 +1108,13 @@ class Task(object):
         self._update_cache_time = value
 
     def set_task_dependencies_from_uuids(self, uuids):
+        """Setter for the task dependencies using uuid
+        """
         self._dependentOn += uuids
 
     def set_task_dependencies_from_tasks(self, tasks):
+        """Setter for the task dependencies using tasks
+        """
         self._dependentOn += [task._uuid for task in tasks]
 
     def _to_json(self):
@@ -1186,34 +1192,6 @@ class Task(object):
         if (exc_type is None) or exc_type != MissingTaskException:
             self.delete()
         return False
-
-
-class Error(object):
-    """Task error
-
-    .. note:: Read-only class
-    """
-    def __init__(self, json):
-        self.code = json['code']
-        """:type: :class:`str`
-
-        Error code."""
-
-        self.message = json['message']
-        """:type: :class:`str`
-
-        Error message."""
-
-        self.debug = json['debug']
-        """:type: :class:`str`
-
-        Optional extra debug information"""
-
-    def __repr__(self):
-        if sys.version_info > (3, 0):
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
-        else:
-            return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
 
 
 class CompletedInstance(object):

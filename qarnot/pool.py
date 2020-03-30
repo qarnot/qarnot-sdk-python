@@ -19,6 +19,7 @@ import warnings
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
 from .status import Status
+from .error import Error
 from .exceptions import MissingPoolException, MaxPoolException, NotEnoughCreditsException, \
     BucketStorageUnavailableException, MissingBucketException
 
@@ -73,6 +74,7 @@ class Pool(object):
         self._resource_object_ids = []
         self._resource_objects = []
         self._tags = []
+        self._errors = None
         self._creation_date = None
         self._uuid = None
         self._max_objects_exceptions_class = MaxPoolException
@@ -129,6 +131,10 @@ class Pool(object):
         self._shortname = json_pool.get('shortname')
         self._profile = json_pool['profile']
         self._instancecount = json_pool['instanceCount']
+        if 'errors' in json_pool:
+            self._errors = [Error(d) for d in json_pool['errors']]
+        else:
+            self._errors = []
 
         if 'resourceBuckets' in json_pool and json_pool['resourceBuckets'] is not None:
             self._resource_object_ids = json_pool['resourceBuckets']
@@ -188,6 +194,7 @@ class Pool(object):
         if self._shortname is not None:
             json_pool['shortname'] = self._shortname
 
+        self._resource_object_ids = [x.uuid for x in self._resource_objects]
         json_pool['resourceBuckets'] = self._resource_object_ids
 
         return json_pool
@@ -249,15 +256,38 @@ class Pool(object):
         self._is_summary = False
         self._last_cache = time.time()
 
-    def apply_elastic_settings(self):
-        response = self._connection._put('pool update', json=self._to_json())
+    def commit(self):
+        """Replicate local changes on the current object instance to the REST API
+
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+
+        This function need to be call to apply the local elastic pool setting modifications.
+        .. note:: When updating buckets' properties, auto update will be disabled until commit is called.
+        """
+        response = self._connection._put(get_url('pool update', uuid=self._uuid), json=self._to_json())
+        self._auto_update = self._last_auto_update_state
+
         if response.status_code == 404:
             raise MissingPoolException(response.json()['message'])
-
         raise_on_error(response)
-        self.update()
 
     def setup_elastic(self, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=1, resize_period=90):
+        """Setup the pool elastic properties
+
+        :param int minimum_total_slots: Minimum slot number for the pool in elastic mode.
+                Defaults to 0.
+        :param int maximum_total_slots: Maximum slot number for the pool in elastic mode.
+                Defaults to 1.
+        :param int minimum_idle_slots: Minimum idling slot number.
+                Defaults to 0.
+        :param int minimum_idle_time_seconds: Wait time in seconds before closing an unused slot if the number of unused slots are upper than the minimum_idle_slots.
+                Defaults to 0.
+        :param float resize_factor: Growing factor of the pool. It must be a number between 0 and 1.
+                Defaults to 1.
+        :param int resize_period: Refresh rate of resizing the pool in elastic mode.
+                Defaults to 90.
+        """
         self._is_elastic = True
         self._elastic_maximum_slots = maximum_total_slots
         self._elastic_minimum_slots = minimum_total_slots
@@ -422,6 +452,7 @@ class Pool(object):
 
     @tags.setter
     def tags(self, value):
+        """Setter for tags"""
         self._tags = value
         self._auto_update = False
 
@@ -463,6 +494,19 @@ class Pool(object):
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched pool")
         self._instancecount = value
+
+    @property
+    def errors(self):
+        """:type: list(:class:`str`)
+        :getter: Returns this pool's error list
+
+        Error reason if any, empty string if none
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._errors
 
     @property
     def creation_date(self):
@@ -536,6 +580,12 @@ class Pool(object):
 
     @property
     def is_elastic(self):
+        """:type: :class:`bool`
+        :getter: Returns this pool's is_elastic
+        :setter: Sets this pool's is_elastic
+
+        Define if you use a static or an elastic pool.
+        """
         return self._is_elastic
 
     @is_elastic.setter
@@ -544,42 +594,87 @@ class Pool(object):
 
     @property
     def elastic_minimum_slots(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's elastic_minimum_slots
+        :setter: Sets this pool's elastic_minimum_slots
+
+        The minimum slot number of the elastic pool.
+        Define the minimum number of pool instances stay open during the pool execution.
+        """
         return self._elastic_minimum_slots
 
     @elastic_minimum_slots.setter
     def elastic_minimum_slots(self, value):
+        """Setter for elastic_minimum_slots"""
         self._elastic_minimum_slots = value
 
     @property
     def elastic_maximum_slots(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's elastic_maximum_slots
+        :setter: Sets this pool's elastic_maximum_slots
+
+        The maximum slot number of the elastic pool.
+        Define the maximum number of pool instances opened during the pool execution.
+        """
         return self._elastic_maximum_slots
 
     @elastic_maximum_slots.setter
     def elastic_maximum_slots(self, value):
+        """Setter for elastic_maximum_slots"""
         self._elastic_maximum_slots = value
 
     @property
     def elastic_minimum_idle_slots(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's elastic_minimum_idle_slots
+        :setter: Sets this pool's elastic_minimum_idle_slots
+
+        The minimum idle number of the elastic pool.
+        Define the minimum number of the idle pool instances stay opened during the pool execution.
+        It should be lower to elastic_minimum_slots to be usefull
+        """
         return self._elastic_minimum_idle_slots
 
     @elastic_minimum_idle_slots.setter
     def elastic_minimum_idle_slots(self, value):
+        """Setter for elastic_minimum_idle_slots"""
         self._elastic_minimum_idle_slots = value
 
     @property
     def elastic_minimum_idle_time(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's elastic_minimum_idle_time
+        :setter: Sets this pool's elastic_minimum_idle_time
+
+        Wait time in seconds before closing an unused slot if the number of unused slots are upper than the minimum_idle_slots.
+        """
         return self._elastic_minimum_idle_time
 
     @elastic_minimum_idle_time.setter
     def elastic_minimum_idle_time(self, value):
+        """Setter for elastic_minimum_idle_time"""
         self._elastic_minimum_idle_time = value
 
     @property
     def elastic_resize_factor(self):
+        """:type: :class:`float`
+        :getter: Returns this pool's elastic_resize_factor
+        :setter: Sets this pool's elastic_resize_factor
+
+        The resize factor of the pool.
+        It represent the resize factor of the slots.
+        It's a decimal number upper than 0 and and equal or lower the 1
+        """
         return self._elastic_resize_factor
 
     @elastic_resize_factor.setter
     def elastic_resize_factor(self, value):
+        """Setter for elastic_resize_factor
+
+        :raises Exception: resize factor must be > 0
+        :raises Exception: resize factor must be <= 1
+        """
         if value <= 0:
             raise Exception("resize factor must be > 0")
         elif value > 1:
@@ -588,16 +683,25 @@ class Pool(object):
 
     @property
     def elastic_resize_period(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's elastic_resize_period
+        :setter: Sets this pool's elastic_resize_period
+
+        The resize period of the elastic pool in second.
+        This is the refresh rate of resizing the elastic pool.
+        """
         return self._elastic_resize_period
 
     @elastic_resize_period.setter
     def elastic_resize_period(self, value):
+        """Setter for elastic_resize_period"""
         self._elastic_resize_period = value
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\
             'Tag {7} - IsElastic {8} - ElasticMin {9} - ElasticMax {10} - ElasticMinIdle {11} -'\
-            ' ElasticResizePeriod {12} - ElasticResizeFactor {13} - ElasticMinIdleTimeSeconds {14}'\
+            ' ElasticResizePeriod {12} - ElasticResizeFactor {13} - ElasticMinIdleTimeSeconds {14} - '\
+            'Errors {15}'\
             .format(self.name,
                     self.shortname,
                     self._uuid,
@@ -612,4 +716,5 @@ class Pool(object):
                     self._elastic_minimum_idle_slots,
                     self._elastic_resize_period,
                     self._elastic_resize_factor,
-                    self._elastic_minimum_idle_time)
+                    self._elastic_minimum_idle_time,
+                    self._errors)

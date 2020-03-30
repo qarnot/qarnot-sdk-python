@@ -24,7 +24,7 @@ __all__ = ["task", "connection", "bucket", "pool", "storage", "status", "job"]
 def raise_on_error(response):
     if response.status_code == 503:
         raise QarnotGenericException("Service Unavailable")
-    if response.status_code != 200:
+    if response.status_code < 200 or response.status_code >= 300:
         try:
             raise QarnotGenericException(response.json()['message'])
         except ValueError:

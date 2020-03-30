@@ -331,7 +331,7 @@ class Bucket(Storage):
     def add_directory(self, local, remote=""):
         if not os.path.isdir(local):
             raise IOError("Not a valid directory")
-        if not remote.endswith('/'):
+        if remote and not remote.endswith('/'):
             remote += '/'
         for dirpath, _, files in os.walk(local):
             dirpath = _util.decode(dirpath)
