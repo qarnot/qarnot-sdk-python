@@ -49,7 +49,7 @@ class Connection(object):
     def __init__(self, fileconf=None, client_token=None,
                  cluster_url=None, cluster_unsafe=False, cluster_timeout=None,
                  storage_url=None, storage_unsafe=False,
-                 retry_count=5, retry_wait=1.0):
+                 retry_count=5, retry_wait=1.0, cluster_custom_certificate=None, storage_custom_certificate=None):
         """Create a connection to a cluster with given config file, options or environment variables.
         Available environment variable are
         `QARNOT_CLUSTER_URL`, `QARNOT_CLUSTER_UNSAFE`, `QARNOT_CLUSTER_TIMEOUT` and `QARNOT_CLIENT_TOKEN`.
@@ -97,6 +97,8 @@ class Connection(object):
                 self.timeout = fileconf.get('cluster_timeout')
                 if fileconf.get('cluster_unsafe'):
                     self._http.verify = False
+                elif fileconf.get('cluster_custom_certificate'):
+                    self._http.verify = fileconf.get('cluster_custom_certificate')
             else:
                 cfg = config.ConfigParser()
                 with open(fileconf) as cfgfile:
@@ -120,13 +122,19 @@ class Connection(object):
                     if cfg.has_option('cluster', 'unsafe') \
                        and cfg.getboolean('cluster', 'unsafe'):
                         self._http.verify = False
+                    elif cfg.has_option('cluster', 'custom_certificate'):
+                        self._http.verify = cfg.get('cluster', 'custom_certificate')
                     if cfg.has_option('storage', 'unsafe') \
                        and cfg.getboolean('storage', 'unsafe'):
                         storage_unsafe = True
+                    if cfg.has_option('storage', 'custom_certificate'):
+                        storage_custom_certificate = cfg.get('storage', 'custom_certificate')
         else:
             self.cluster = cluster_url
             self.timeout = cluster_timeout
             self._http.verify = not cluster_unsafe
+            if not cluster_unsafe:
+                self._http.verify = cluster_custom_certificate
             self.storage = storage_url
             auth = client_token
 
@@ -171,16 +179,22 @@ class Connection(object):
         session = boto3.session.Session()
         conf = botocore.config.Config(user_agent=self._version)
 
+        should_verify_or_certificate_path = True
+        if storage_unsafe:
+            should_verify_or_certificate_path = not storage_unsafe
+        elif storage_custom_certificate is not None:
+            should_verify_or_certificate_path = storage_custom_certificate
+
         self._s3client = session.client(service_name='s3',
                                         aws_access_key_id=user.email,
                                         aws_secret_access_key=auth,
-                                        verify=(not storage_unsafe),
+                                        verify=should_verify_or_certificate_path,
                                         endpoint_url=self.storage,
                                         config=conf)
         self._s3resource = session.resource(service_name='s3',
                                             aws_access_key_id=user.email,
                                             aws_secret_access_key=auth,
-                                            verify=(not storage_unsafe),
+                                            verify=should_verify_or_certificate_path,
                                             endpoint_url=self.storage,
                                             config=conf)
 
