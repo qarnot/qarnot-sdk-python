@@ -61,7 +61,7 @@ class Job(object):
             else:
                 self._pool_uuid = pool.uuid
         self._state = ""
-        self._uuid = ""
+        self._uuid = None
         self._creation_date = datetime.datetime.now()
         self._use_dependencies = use_dependencies
         self._max_wall_time = None
@@ -141,11 +141,9 @@ class Job(object):
 
     @property
     def use_dependencies(self):
-        """:type: :class:`~qarnot.job.Job`
-        :getter: Returns this task's job
-        :setter: Sets this task's job
-
-        The job to submit the task in.
+        """:type: :class:`bool`
+        :getter: task's job can have dependencies
+        :setter: Set if there is task's job dependencies
 
         Can be set until :meth:`submit` is called.
         """
@@ -157,7 +155,7 @@ class Job(object):
         if self._uuid is not None:
             raise AttributeError("can't set attribute on a submitted job")
         else:
-            self._use_dependencies = value.uuid
+            self._use_dependencies = value
 
     @property
     def uuid(self):
@@ -227,6 +225,8 @@ class Job(object):
         :setter: Sets this job's maximum wall time
 
         The job's maximum wall time.
+        It is a time span string.
+        Format example: 'd.hh:mm:ss' or 'hh:mm:ss'
 
         Can be set until job is submitted.
         """
@@ -234,11 +234,22 @@ class Job(object):
 
     @max_wall_time.setter
     def max_wall_time(self, value):
-        """Setter for maximum wall time."""
+        """Setter for maximum wall time. In time span format example : 'd.hh:mm:ss' or 'hh:mm:ss' """
         if self._uuid is not None:
             raise AttributeError("can't set attribute on a submitted job")
-        else:
+        elif isinstance(value, str):
             self._max_wall_time = value
+        elif isinstance(value, datetime.timedelta):
+            self._max_wall_time = self.convert_timedelta_to_timespan_string(value)
+        else:
+            raise TypeError("Maximum wall time must be a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')")
+
+    def convert_timedelta_to_timespan_string(self, duration):
+        days, seconds = duration.days, duration.seconds
+        hours = (seconds // 3600) % 24
+        minutes = (seconds // 60) % 60
+        seconds = seconds % 60
+        return "{}.{:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds)
 
     @property
     def pool(self):
