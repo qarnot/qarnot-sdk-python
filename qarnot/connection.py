@@ -133,7 +133,7 @@ class Connection(object):
             self.cluster = cluster_url
             self.timeout = cluster_timeout
             self._http.verify = not cluster_unsafe
-            if not cluster_unsafe:
+            if not cluster_unsafe and cluster_custom_certificate:
                 self._http.verify = cluster_custom_certificate
             self.storage = storage_url
             auth = client_token
