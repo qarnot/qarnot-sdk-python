@@ -111,7 +111,6 @@ class Task(object):
         self.constraints = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
-        self._shortname = None
         self._snapshots = False
         self._dirty = False
         self._rescount = -1
