@@ -43,6 +43,7 @@ def get_url(key, **kwargs):
         'job tasks': u'/jobs/{uuid}/tasks',  # GET -> tasks in job
         'tasks': u'/tasks',  # GET -> running tasks; POST -> submit task
         'tasks summaries': u'/tasks/summaries',  # GET -> running tasks summaries;
+        'tasks search': u'/tasks/search',  # POST -> make a custom search on tasks
         'task force': u'/tasks/force',  # POST -> force add
         'task update': u'/tasks/{uuid}',  # GET->result; DELETE -> abort, PATCH -> update resources
         'task snapshot': u'/tasks/{uuid}/snapshot/periodic',  # POST -> snapshots
@@ -52,6 +53,7 @@ def get_url(key, **kwargs):
         'task abort': u'/tasks/{uuid}/abort',  # GET -> task
         'pools': u'/pools',  # GET -> pools, POST -> submit pool
         'pools summaries': u'/pools/summaries',  # GET -> pools summaries
+        'pools search': u'/pools/search',  # POST -> make a custom search on pools
         'pool close': u'/pools/{uuid}/close',  # POST -> close pool
         'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete
         'user': u'/info',  # GET -> user info

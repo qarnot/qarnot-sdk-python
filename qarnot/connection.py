@@ -21,6 +21,7 @@ from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .bucket import Bucket
 from .job import Job
+from ._filter import all_tag_filter
 from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
                          MissingTaskException, MissingPoolException, MissingJobException)
 import requests
@@ -425,7 +426,7 @@ class Connection(object):
         buckets = [Bucket(self, x.name, create=False) for x in self._s3resource.buckets.all()]
         return buckets
 
-    def pools(self, summary=True):
+    def pools(self, summary=True, tags_intersect=None):
         """Get the list of pools stored on this cluster for this user.
 
         :rtype: List of :class:`~qarnot.pool.Pool`.
@@ -435,11 +436,16 @@ class Connection(object):
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         url = get_url('pools summaries') if summary else get_url('pools')
-        response = self._get(url)
+
+        if tags_intersect:
+            tag_filter = all_tag_filter(tags_intersect)
+            response = self._post(get_url('pools search'), tag_filter)
+        else:
+            response = self._get(url)
         raise_on_error(response)
         return [Pool.from_json(self, pool, summary) for pool in response.json()]
 
-    def tasks(self, tags=None, summary=True):
+    def tasks(self, tags=None, summary=True, tags_intersect=None):
         """Get the list of tasks stored on this cluster for this user.
 
         :param List of :class:`str` tags: Desired filtering tags
@@ -451,7 +457,10 @@ class Connection(object):
         """
 
         url = get_url('tasks summaries') if summary else get_url('tasks')
-        if tags:
+        if tags_intersect:
+            tag_filter = all_tag_filter(tags_intersect)
+            response = self._post(get_url('tasks search'), tag_filter)
+        elif tags:
             response = self._get(url, params={'tag': tags})
         else:
             response = self._get(url)

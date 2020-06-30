@@ -56,7 +56,10 @@ class Job(object):
         self._shortname = shortname
         self._pool_uuid = None
         if pool is not None:
-            self._pool_uuid = pool.uuid
+            if isinstance(pool, str):
+                self._pool_uuid = pool
+            else:
+                self._pool_uuid = pool.uuid
         self._state = ""
         self._uuid = ""
         self._creation_date = datetime.datetime.now()
