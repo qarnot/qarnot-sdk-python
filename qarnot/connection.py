@@ -443,6 +443,10 @@ class Connection(object):
     def pools(self, summary=True, tags_intersect=None):
         """Get the list of pools stored on this cluster for this user.
 
+        :param bool summary: only get the summaries.
+        :param tags_intersect: Desired filtering tags, all of them
+        :type tags_intersect: list of :class:`str`, optional
+
         :rtype: List of :class:`~qarnot.pool.Pool`.
         :returns: Pools stored on the cluster owned by the user.
 
@@ -462,7 +466,12 @@ class Connection(object):
     def tasks(self, tags=None, summary=True, tags_intersect=None):
         """Get the list of tasks stored on this cluster for this user.
 
-        :param List of :class:`str` tags: Desired filtering tags
+        :param tags: Desired filtering tags, any of them
+        :type tags: list of :class:`str`, optional
+        :param bool summary: only get the summaries.
+        :param tags_intersect: Desired filtering tags, all of them
+        :type tags_intersect: list of :class:`str`, optional
+
         :rtype: List of :class:`~qarnot.task.Task`.
         :returns: Tasks stored on the cluster owned by the user.
 
