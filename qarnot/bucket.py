@@ -321,7 +321,8 @@ class Bucket(Storage):
                 directory = os.path.dirname(local)
                 if not os.path.exists(directory):
                     os.makedirs(directory)
-                shutil.copy(first_file, local)
+                if (os.path.abspath(os.path.realpath(local)) is not os.path.abspath(os.path.realpath(first_file.name))):
+                    shutil.copy(first_file, local)
 
     @_util.copy_docs(Storage.get_file)
     def get_file(self, remote, local=None, progress=None):
