@@ -22,6 +22,7 @@ import sys
 import os
 import os.path as p
 import sphinx_rtd_theme
+import datetime
 
 sys.path.append(p.dirname(os.getcwd()))
 sys.path.insert(0, os.path.abspath('../..'))
@@ -57,7 +58,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'qarnot'
-copyright = u'2017, Qarnot Computing'
+copyright = u'2017-' + str(datetime.datetime.now().year) + u', Qarnot Computing'
 author = u'Qarnot Computing'
 
 # The version info for the project you're documenting, acts as replacement for
