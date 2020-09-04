@@ -54,7 +54,7 @@ class Pool(object):
         self._state = 'UnSubmitted'  # RO property same for below
         self._profile = profile
         self._connection = connection
-        self.constants = {}
+        self._constants = {}
         """
          :type: dict(str, str)
 
@@ -64,7 +64,7 @@ class Pool(object):
         .. note:: See available constants for a specific profile
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
-        self.constraints = {}
+        self._constraints = {}
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
@@ -145,7 +145,7 @@ class Pool(object):
 
         if 'constants' in json_pool:
             for constant in json_pool['constants']:
-                self.constants[constant.get('key')] = constant.get('value')
+                self._constants[constant.get('key')] = constant.get('value')
         self._uuid = json_pool['uuid']
         self._state = json_pool['state']
         self._tags = json_pool.get('tags', None)
@@ -164,11 +164,11 @@ class Pool(object):
         """Get a dict ready to be json packed from this pool."""
         const_list = [
             {'key': key, 'value': value}
-            for key, value in self.constants.items()
+            for key, value in self._constants.items()
         ]
         constr_list = [
             {'key': key, 'value': value}
-            for key, value in self.constraints.items()
+            for key, value in self._constraints.items()
         ]
 
         elastic_dict = {
@@ -696,6 +696,57 @@ class Pool(object):
     def elastic_resize_period(self, value):
         """Setter for elastic_resize_period"""
         self._elastic_resize_period = value
+
+    @property
+    def constants(self):
+        """:type: dictionary{:class:`str` : :class:`str`}
+        :getter: Returns this pool's constants dictionary.
+        :setter: set the pool's constants dictionary.
+
+        Update the constants if needed
+        Constants are the parametrazer of the profils.
+        Use them to adjust your profile parametter.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._constants
+
+    @constants.setter
+    def constants(self, value):
+        """Setter for constants
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        self._constants = value
+
+    @property
+    def constraints(self):
+        """:type: dictionary{:class:`str` : :class:`str`}
+        :getter: Returns this pool's constraints dictionary.
+        :setter: set the pool's constraints dictionary.
+
+        Update the constraints if needed
+        advance usage
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._constraints
+
+    @constraints.setter
+    def constraints(self, value):
+        """Setter for constraints
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        self._constraints = value
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

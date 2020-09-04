@@ -90,7 +90,7 @@ class Task(object):
 
         self._result_object = None
         self._connection = connection
-        self.constants = {}
+        self._constants = {}
         """
          :type: dict(str,str)
 
@@ -108,7 +108,7 @@ class Task(object):
         self._update_cache_time = 5
 
         self._last_cache = time.time()
-        self.constraints = {}
+        self._constraints = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
         self._snapshots = False
@@ -389,7 +389,7 @@ class Task(object):
 
         if 'constants' in json_task:
             for constant in json_task['constants']:
-                self.constants[constant.get('key')] = constant.get('value')
+                self._constants[constant.get('key')] = constant.get('value')
 
         self._uuid = json_task['uuid']
         self._state = json_task['state']
@@ -1070,6 +1070,57 @@ class Task(object):
         return self._errors
 
     @property
+    def constants(self):
+        """:type: dictionary{:class:`str` : :class:`str`}
+        :getter: Returns this task's constants dictionary.
+        :setter: set the task's constants dictionary.
+
+        Update the constants if needed
+        Constants are the parametrazer of the profils.
+        Use them to adjust your profile parametter.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._constants
+
+    @constants.setter
+    def constants(self, value):
+        """Setter for constants
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        self._constants = value
+
+    @property
+    def constraints(self):
+        """:type: dictionary{:class:`str` : :class:`str`}
+        :getter: Returns this task's constraints dictionary.
+        :setter: set the task's constraints dictionary.
+
+        Update the constraints if needed
+        advance usage
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._constraints
+
+    @constraints.setter
+    def constraints(self, value):
+        """Setter for constraints
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        self._constraints = value
+
+    @property
     def auto_update(self):
         """:type: :class:`bool`
 
@@ -1120,11 +1171,11 @@ class Task(object):
         """Get a dict ready to be json packed from this task."""
         const_list = [
             {'key': key, 'value': value}
-            for key, value in self.constants.items()
+            for key, value in self._constants.items()
         ]
         constr_list = [
             {'key': key, 'value': value}
-            for key, value in self.constraints.items()
+            for key, value in self._constraints.items()
         ]
 
         json_task = {
