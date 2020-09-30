@@ -84,3 +84,34 @@ class TestJobProperties:
         pool = Pool(self.conn, "pool-name", "profile", 2, "shortname")
         with pytest.raises(AttributeError):
             job.pool = pool
+
+    def test_job_autodelete_default_value(self):
+        job = Job(self.conn, "job-name")
+        assert False == job.auto_delete
+
+    def test_job_completion_ttl_default_value(self):
+        job = Job(self.conn, "job-name")
+        assert "00:00:00" == job.completion_ttl
+
+    def test_job_autodelete_set_get(self):
+        job = Job(self.conn, "job-name")
+        job.auto_delete = False
+        assert False == job.auto_delete
+        job.auto_delete = True
+        assert True == job.auto_delete
+
+    def test_job_completion_ttl_set_get(self):
+        job = Job(self.conn, "job-name")
+        job.completion_ttl = datetime.timedelta(days=2, hours=33, minutes=66, seconds=66)
+        assert "3.10:07:06" == job.completion_ttl
+        job.completion_ttl = "4.11:08:06"
+        assert "4.11:08:06" == job.completion_ttl
+
+    def test_job_are_in_job_to_json(self):
+        job = Job(self.conn, "job-name")
+        job.completion_ttl = "4.11:08:06"
+        job.auto_delete = True
+        json_job = job._to_json()
+
+        assert json_job['completionTimeToLive'] == '4.11:08:06'
+        assert json_job['autoDeleteOnCompletion'] == True

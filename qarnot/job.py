@@ -70,6 +70,8 @@ class Job(object):
         self._last_auto_update_state = self._auto_update
 
         self._last_cache = time.time()
+        self._completion_time_to_live = "00:00:00"
+        self._auto_delete = False
 
     @property
     def auto_update(self):
@@ -240,16 +242,9 @@ class Job(object):
         elif isinstance(value, str):
             self._max_wall_time = value
         elif isinstance(value, datetime.timedelta):
-            self._max_wall_time = self.convert_timedelta_to_timespan_string(value)
+            self._max_wall_time = _util.convert_timedelta_to_timespan_string(value)
         else:
             raise TypeError("Maximum wall time must be a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')")
-
-    def convert_timedelta_to_timespan_string(self, duration):
-        days, seconds = duration.days, duration.seconds
-        hours = (seconds // 3600) % 24
-        minutes = (seconds // 60) % 60
-        seconds = seconds % 60
-        return "{}.{:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds)
 
     @property
     def pool(self):
@@ -311,6 +306,9 @@ class Job(object):
         job._creation_date = payload["creationDate"]
         job._last_modified = payload["lastModified"]
         job._max_wall_time = _util.parse_timedelta(payload["maxWallTime"])
+
+        job._auto_delete = payload["autoDeleteOnCompletion"]
+        job._completion_time_to_live = payload["completionTimeToLive"]
         return job
 
     def _to_json(self):
@@ -321,7 +319,9 @@ class Job(object):
             'shortname': self._shortname,
             'state': self._state,
             'useDependencies': self._use_dependencies,
-            'maxWallTime': self._max_wall_time
+            'maxWallTime': self._max_wall_time,
+            'autoDeleteOnCompletion': self._auto_delete,
+            'completionTimeToLive': self._completion_time_to_live
         }
 
         return json_job
@@ -426,6 +426,54 @@ class Job(object):
         raise_on_error(resp)
         self._state = JobState.Deleting
         self._uuid = None
+
+    @property
+    def auto_delete(self):
+        """Autodelete this job if it is finished and your max number of job is reach
+
+        Can be set until :meth:`submit` is called.
+
+        :type: :class:`bool`
+        :getter: Returns is this job must autodelete
+        :setter: Sets this job's autodelete
+        :default_value: "False"
+
+        :raises AttributeError: if you try to reset the auto_delete after the job is submit
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched job")
+        return self._auto_delete
+
+    @auto_delete.setter
+    def auto_delete(self, value):
+        """Setter for auto_delete, this can only be set before job's submission
+        """
+        self._auto_delete = value
+
+    @property
+    def completion_ttl(self):
+        """The job will be auto delete `completion_ttl` after it is finished
+
+        Can be set until :meth:`submit` is called.
+
+        :getter:  Returns this job's completed time to live.
+        :type: :class:`str`
+        :setter: Sets this job's this job's completed time to live.
+        :type: :class:`str` or :class:`datetime.timedelta`
+        :default_value: ""
+
+        :raises AttributeError: if you try to set it after the job is submitted
+
+        The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
+        """
+        return self._completion_time_to_live
+
+    @completion_ttl.setter
+    def completion_ttl(self, value):
+        """Setter for completion_ttl, this can only be set before job's submission"""
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a submitted job")
+        self._completion_time_to_live = _util.parse_to_timespan_string(value)
 
     def __repr__(self):
         return '{0} - {1} - {2} - Pool : {3} - {4} - UseDependencies : {5} '\

@@ -88,6 +88,9 @@ class Pool(object):
         self._elastic_resize_factor = 1
         self._elastic_minimum_idle_time = 0
 
+        self._completion_time_to_live = "00:00:00"
+        self._auto_delete = False
+
     @classmethod
     def _retrieve(cls, connection, uuid):
         """Retrieve a submitted pool given its uuid.
@@ -150,6 +153,9 @@ class Pool(object):
         self._state = json_pool['state']
         self._tags = json_pool.get('tags', None)
 
+        self._auto_delete = json_pool["autoDeleteOnCompletion"]
+        self._completion_time_to_live = json_pool["completionTimeToLive"]
+
         if 'elasticProperty' in json_pool:
             elasticProperty = json_pool["elasticProperty"]
             self._is_elastic = elasticProperty["isElastic"]
@@ -196,6 +202,9 @@ class Pool(object):
 
         self._resource_object_ids = [x.uuid for x in self._resource_objects]
         json_pool['resourceBuckets'] = self._resource_object_ids
+
+        json_pool['autoDeleteOnCompletion'] = self._auto_delete
+        json_pool['completionTimeToLive'] = self._completion_time_to_live
 
         return json_pool
 
@@ -747,6 +756,54 @@ class Pool(object):
             self.update()
 
         self._constraints = value
+
+    @property
+    def auto_delete(self):
+        """Autodelete this pool if it is finished and your max number of pool is reach
+
+        Can be set until :meth:`submit` is called.
+
+        :type: :class:`bool`
+        :getter: Returns is this pool must autodelete
+        :setter: Sets this pool's autodelete
+        :default_value: "False"
+
+        :raises AttributeError: if you try to reset the auto_delete after the pool is submit
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+        return self._auto_delete
+
+    @auto_delete.setter
+    def auto_delete(self, value):
+        """Setter for auto_delete, this can only be set before pool's submission
+        """
+        self._auto_delete = value
+
+    @property
+    def completion_ttl(self):
+        """The pool will be auto delete `completion_ttl` after it is finished
+
+        Can be set until :meth:`submit` is called.
+
+        :getter:  Returns this pool's completed time to live.
+        :type: :class:`str`
+        :setter: Sets this pool's this pool's completed time to live.
+        :type: :class:`str` or :class:`datetime.timedelta`
+        :default_value: ""
+
+        :raises AttributeError: if you try to set it after the pool is submitted
+
+        The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
+        """
+        return self._completion_time_to_live
+
+    @completion_ttl.setter
+    def completion_ttl(self, value):
+        """Setter for completion_ttl, this can only be set before pool's submission"""
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a submitted job")
+        self._completion_time_to_live = _util.parse_to_timespan_string(value)
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

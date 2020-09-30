@@ -126,6 +126,8 @@ class Task(object):
         self._resource_object_ids = []
         self._result_object_id = None
         self._is_summary = False
+        self._completion_time_to_live = "00:00:00"
+        self._auto_delete = False
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -412,6 +414,9 @@ class Task(object):
             self._completed_instances = [CompletedInstance(x) for x in json_task['completedInstances']]
         else:
             self._completed_instances = []
+
+        self._auto_delete = json_task["autoDeleteOnCompletion"]
+        self._completion_time_to_live = json_task["completionTimeToLive"]
 
     @classmethod
     def from_json(cls, connection, json_task, is_summary=False):
@@ -1167,6 +1172,54 @@ class Task(object):
         """
         self._dependentOn += [task._uuid for task in tasks]
 
+    @property
+    def auto_delete(self):
+        """Autodelete this Task if it is finished and your max number of task is reach
+
+        Can be set until :meth:`run` or :meth:`submit` is called.
+
+        :type: :class:`bool`
+        :getter: Returns is this task must autodelete
+        :setter: Sets this task's autodelete
+        :default_value: "False"
+
+        :raises AttributeError: if you try to reset the auto_delete after the task is submit
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        return self._auto_delete
+
+    @auto_delete.setter
+    def auto_delete(self, value):
+        """Setter for auto_delete, this can only be set before tasks submission
+        """
+        self._auto_delete = value
+
+    @property
+    def completion_ttl(self):
+        """The task will be auto delete `completion_ttl` after it is finished
+
+        Can be set until :meth:`run` or :meth:`submit` is called.
+
+        :getter:  Returns this task's completed time to live.
+        :type: :class:`str`
+        :setter: Sets this task's this task's completed time to live.
+        :type: :class:`str` or :class:`datetime.timedelta`
+        :default_value: ""
+
+        :raises AttributeError: if you try to set it after the task is submitted
+
+        The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
+        """
+        return self._completion_time_to_live
+
+    @completion_ttl.setter
+    def completion_ttl(self, value):
+        """Setter for completion_ttl, this can only be set before tasks submission"""
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a submitted job")
+        self._completion_time_to_live = _util.parse_to_timespan_string(value)
+
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
         const_list = [
@@ -1213,6 +1266,9 @@ class Task(object):
             json_task['resultsWhitelist'] = self._results_whitelist
         if self._results_blacklist is not None:
             json_task['resultsBlacklist'] = self._results_blacklist
+
+        json_task['autoDeleteOnCompletion'] = self._auto_delete
+        json_task['completionTimeToLive'] = self._completion_time_to_live
         return json_task
 
     def _update_if_summary(self):

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from datetime import datetime, timedelta
+import re
 
 _IS_PY2 = bytes is str
 
@@ -38,6 +39,31 @@ def decode(string, encoding='utf-8'):
 def is_string(x):
     """Check if x is a string (bytes or unicode)."""
     return isinstance(x, (str, unicode))
+
+
+def parse_to_timespan_string(value):
+    """parse the value and return a timespan string
+
+    :param value: Value to be parse
+    :type value: :class:`str` or :class:`timedelta`
+    :raises TypeError: The value can't be transform to a valid timespan, wrong type or wrong format
+    :return: the valid timespan parsed
+    :rtype: :class:`str`
+    """
+    if isinstance(value, str) and re.match(r'([0-9]\.)?[0-9]{2}:[0-9]{2}:[0-9]{2}', value):
+        return value
+    elif isinstance(value, timedelta):
+        return convert_timedelta_to_timespan_string(value)
+    raise TypeError("value must be a timedelta or time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')")
+
+
+def convert_timedelta_to_timespan_string(duration):
+    """Convert a timedelta python object to a timespan C sharp foramt string"""
+    days, seconds = duration.days, duration.seconds
+    hours = (seconds // 3600) % 24
+    minutes = (seconds // 60) % 60
+    seconds = seconds % 60
+    return "{}.{:02d}:{:02d}:{:02d}".format(days, hours, minutes, seconds)
 
 
 def parse_datetime(string):
