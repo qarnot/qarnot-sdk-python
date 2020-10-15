@@ -440,14 +440,14 @@ class Job(object):
 
         :raises AttributeError: if you try to reset the auto_delete after the job is submit
         """
-        if self.uuid is not None:
-            raise AttributeError("can't set attribute on a launched job")
         return self._auto_delete
 
     @auto_delete.setter
     def auto_delete(self, value):
         """Setter for auto_delete, this can only be set before job's submission
         """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched job")
         self._auto_delete = value
 
     @property

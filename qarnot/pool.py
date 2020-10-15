@@ -153,8 +153,11 @@ class Pool(object):
         self._state = json_pool['state']
         self._tags = json_pool.get('tags', None)
 
-        self._auto_delete = json_pool["autoDeleteOnCompletion"]
-        self._completion_time_to_live = json_pool["completionTimeToLive"]
+        if 'autoDeleteOnCompletion' in json_pool:
+            self._auto_delete = json_pool["autoDeleteOnCompletion"]
+
+        if 'completionTimeToLive' in json_pool:
+            self._completion_time_to_live = json_pool["completionTimeToLive"]
 
         if 'elasticProperty' in json_pool:
             elasticProperty = json_pool["elasticProperty"]
@@ -770,14 +773,16 @@ class Pool(object):
 
         :raises AttributeError: if you try to reset the auto_delete after the pool is submit
         """
-        if self.uuid is not None:
-            raise AttributeError("can't set attribute on a launched pool")
+        self._update_if_summary()
         return self._auto_delete
 
     @auto_delete.setter
     def auto_delete(self, value):
         """Setter for auto_delete, this can only be set before pool's submission
         """
+        self._update_if_summary()
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
         self._auto_delete = value
 
     @property
@@ -796,11 +801,13 @@ class Pool(object):
 
         The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
         """
+        self._update_if_summary()
         return self._completion_time_to_live
 
     @completion_ttl.setter
     def completion_ttl(self, value):
         """Setter for completion_ttl, this can only be set before pool's submission"""
+        self._update_if_summary()
         if self._uuid is not None:
             raise AttributeError("can't set attribute on a submitted job")
         self._completion_time_to_live = _util.parse_to_timespan_string(value)
