@@ -17,6 +17,7 @@
 import time
 import datetime
 
+
 from .task import Task
 from . import get_url, raise_on_error, _util
 from .exceptions import MaxJobException, NotEnoughCreditsException, MissingJobException, UnauthorizedException
@@ -56,7 +57,7 @@ class Job(object):
         self._shortname = shortname
         self._pool_uuid = None
         if pool is not None:
-            if isinstance(pool, str):
+            if _util.is_string(pool):
                 self._pool_uuid = pool
             else:
                 self._pool_uuid = pool.uuid
@@ -239,7 +240,7 @@ class Job(object):
         """Setter for maximum wall time. In time span format example : 'd.hh:mm:ss' or 'hh:mm:ss' """
         if self._uuid is not None:
             raise AttributeError("can't set attribute on a submitted job")
-        elif isinstance(value, str):
+        elif _util.is_string(value):
             self._max_wall_time = value
         elif isinstance(value, datetime.timedelta):
             self._max_wall_time = _util.convert_timedelta_to_timespan_string(value)
