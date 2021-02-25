@@ -158,8 +158,8 @@ class Bucket(Storage):
               * size
               * sha1sum
         """
-        if not directory.endswith('/'):
-            directory += '/'
+        if not directory.endswith(os.sep):
+            directory += os.sep
 
         filesdict = {}
         for root, _, files in os.walk(directory):
@@ -169,6 +169,7 @@ class Bucket(Storage):
             for file_ in files:
                 filepath = os.path.join(root, file_)
                 name = filepath[len(directory):]
+                name = name.replace(os.sep, '/')
                 filesdict[name] = filepath
 
         self.sync_files(filesdict, verbose, remote)
@@ -240,7 +241,7 @@ class Bucket(Storage):
         def localtocomparable(name_, filepath_, remote):
             if remote is not None:
                 name_ = os.path.join(remote, name_.lstrip('/'))
-            return Comparable(name_, aws_md5sum(filepath_), filepath_)
+            return Comparable(name_.replace(os.sep, '/'), aws_md5sum(filepath_), filepath_)
 
         def objectsummarytocomparable(object_):
             return Comparable(object_.key, object_.e_tag, None)
@@ -281,7 +282,7 @@ class Bucket(Storage):
                 self.copy_file(rem.name, entry[0].name)
             except StopIteration:
                 if verbose:
-                    print("Upload:", entry[0].name)
+                    print("Upload:", entry[0].filepath, '->', entry[0].name)
                 self.add_file(entry[0].filepath, entry[0].name)
             for link in entry[1:]:  # duplicate files
                 if verbose:
