@@ -86,6 +86,9 @@ class Task(object):
             self._advanced_range = instancecount_or_range
             self._instancecount = 0
 
+        self._running_core_count = 0
+        self._running_instance_count = 0
+
         self._resource_objects = []
 
         self._result_object = None
@@ -128,6 +131,7 @@ class Task(object):
         self._is_summary = False
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
+        self._wait_for_pool_resources_synchronization = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -262,7 +266,14 @@ class Task(object):
         self.update(True)
 
     def update_resources(self):
-        """Update resources for a running task. Be sure to add new resources first.
+        """ Update resources for a running task.
+
+        The typical workflow is as follows:
+           1. Upload new files on your resource bucket,
+           2. Call this method,
+           3. The new files will appear on all the compute nodes in the $DOCKER_WORKDIR folder
+        Note: There is no way to know when the files are effectively transfered. This information is available on the compute node only.
+        Note: The update is additive only: files deleted from the bucket will NOT be deleted from the task's resources directory.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
@@ -374,6 +385,12 @@ class Task(object):
         self._job_uuid = json_task.get('jobUuid')
         self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
+        self._wait_for_pool_resources_synchronization = json_task.get('waitForPoolResourcesSynchronization', None)
+
+        if json_task['runningCoreCount'] is not None:
+            self._running_core_count = json_task['runningCoreCount']
+        if json_task['runningInstanceCount'] is not None:
+            self._running_instance_count = json_task['runningInstanceCount']
 
         if 'resourceBuckets' in json_task and json_task['resourceBuckets']:
             self._resource_object_ids = json_task['resourceBuckets']
@@ -912,6 +929,24 @@ class Task(object):
         self._instancecount = value
 
     @property
+    def running_core_count(self):
+        """:type: :class:`int`
+        :getter: Returns this task's running core count
+
+        Number of core running inside the task.
+        """
+        return self._running_core_count
+
+    @property
+    def running_instance_count(self):
+        """:type: :class:`int`
+        :getter: Returns this task's running instance count
+
+        Number of instances running inside the task.
+        """
+        return self._running_instance_count
+
+    @property
     def advanced_range(self):
         """:type: :class:`str`
         :getter: Returns this task's advanced range
@@ -1128,6 +1163,24 @@ class Task(object):
         self._constraints = value
 
     @property
+    def wait_for_pool_resources_synchronization(self):
+        """:type: :class:`bool` or None
+        :getter: Returns this task's wait_for_pool_resources_synchronization.
+        :setter: set the task's wait_for_pool_resources_synchronization.
+
+        :raises qarnot.exceptions.AttributeError: can't set this attribute on a launched task
+        """
+        return self._wait_for_pool_resources_synchronization
+
+    @wait_for_pool_resources_synchronization.setter
+    def wait_for_pool_resources_synchronization(self, value):
+        """Setter for wait_for_pool_resources_synchronization
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._wait_for_pool_resources_synchronization = value
+
+    @property
     def auto_update(self):
         """:type: :class:`bool`
 
@@ -1244,7 +1297,8 @@ class Task(object):
             'jobUuid': None if self._job_uuid == "" else self._job_uuid,
             'constants': const_list,
             'constraints': constr_list,
-            'dependencies': {}
+            'dependencies': {},
+            'waitForPoolResourcesSynchronization': self._wait_for_pool_resources_synchronization
         }
         json_task['dependencies']["dependsOn"] = self._dependentOn
 

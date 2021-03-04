@@ -79,6 +79,7 @@ class Pool(object):
         self._uuid = None
         self._max_objects_exceptions_class = MaxPoolException
         self._is_summary = False
+        self._preparation_task = None
 
         self._is_elastic = False
         self._elastic_minimum_slots = 0
@@ -87,9 +88,12 @@ class Pool(object):
         self._elastic_resize_period = 90
         self._elastic_resize_factor = 1
         self._elastic_minimum_idle_time = 0
+        self._running_core_count = 0
+        self._running_instance_count = 0
 
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
+        self._tasks_wait_for_synchronization = False
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -134,6 +138,12 @@ class Pool(object):
         self._shortname = json_pool.get('shortname')
         self._profile = json_pool['profile']
         self._instancecount = json_pool['instanceCount']
+
+        if json_pool['runningCoreCount'] is not None:
+            self._running_core_count = json_pool['runningCoreCount']
+        if json_pool['runningInstanceCount'] is not None:
+            self._running_instance_count = json_pool['runningInstanceCount']
+
         if 'errors' in json_pool:
             self._errors = [Error(d) for d in json_pool['errors']]
         else:
@@ -151,7 +161,9 @@ class Pool(object):
                 self._constants[constant.get('key')] = constant.get('value')
         self._uuid = json_pool['uuid']
         self._state = json_pool['state']
+        self._preparation_task = json_pool.get('preparationTask')
         self._tags = json_pool.get('tags', None)
+        self._tasks_wait_for_synchronization = json_pool.get('tasksDefaultWaitForPoolResourcesSynchronization', False)
 
         if 'autoDeleteOnCompletion' in json_pool:
             self._auto_delete = json_pool["autoDeleteOnCompletion"]
@@ -197,7 +209,9 @@ class Pool(object):
             'constraints': constr_list,
             'instanceCount': self._instancecount,
             'tags': self._tags,
-            'elasticProperty': elastic_dict
+            'preparationTask': self._preparation_task,
+            'elasticProperty': elastic_dict,
+            'tasksDefaultWaitForPoolResourcesSynchronization': self._tasks_wait_for_synchronization
         }
 
         if self._shortname is not None:
@@ -381,6 +395,23 @@ class Pool(object):
         """:type: :class:`str`
         :getter: return this pool's state
 
+        State of the pool.
+
+        Value is in
+           * UnSubmitted
+           * Submitted
+           * PartiallyDispatched
+           * FullyDispatched
+           * PartiallyExecuting
+           * FullyExecuting
+           * Closing
+           * Closed
+           * Failure
+           * PendingDelete
+
+        .. warning::
+           this is the state of the pool when the object was retrieved,
+           call :meth:`update` for up to date value.
         """
         if self._auto_update:
             self.update()
@@ -506,6 +537,24 @@ class Pool(object):
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched pool")
         self._instancecount = value
+
+    @property
+    def running_core_count(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's running core count
+
+        Number of core running inside the pool.
+        """
+        return self._running_core_count
+
+    @property
+    def running_instance_count(self):
+        """:type: :class:`int`
+        :getter: Returns this pool's running instance count
+
+        Number of instances running inside the pool.
+        """
+        return self._running_instance_count
 
     @property
     def errors(self):
@@ -710,6 +759,37 @@ class Pool(object):
         self._elastic_resize_period = value
 
     @property
+    def preparation_command_line(self):
+        """:type: :class:`str`:
+        :getter: Returns this pool's command line.
+        :setter: set the pool's command line.
+
+        Update the pool command line if needed
+        The command line is a command running before each task execution.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        if self._preparation_task:
+            return self._preparation_task["commandLine"]
+        return None
+
+    @preparation_command_line.setter
+    def preparation_command_line(self, value):
+        """Setter for command line
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+        if self._preparation_task:
+            self._preparation_task["commandLine"] = value
+        else:
+            self._preparation_task = {"commandLine": value}
+
+    @property
     def constants(self):
         """:type: dictionary{:class:`str` : :class:`str`}
         :getter: Returns this pool's constants dictionary.
@@ -759,6 +839,24 @@ class Pool(object):
             self.update()
 
         self._constraints = value
+
+    @property
+    def tasks_default_wait_for_pool_resources_synchronization(self):
+        """:type: :class:`bool`
+        :getter: Returns this task's tasks_default_wait_for_pool_resources_synchronization.
+        :setter: set the task's tasks_default_wait_for_pool_resources_synchronization.
+
+        :raises qarnot.exceptions.AttributeError: can't set this attribute on a launched task
+        """
+        return self._tasks_wait_for_synchronization
+
+    @tasks_default_wait_for_pool_resources_synchronization.setter
+    def tasks_default_wait_for_pool_resources_synchronization(self, value):
+        """Setter for tasks_default_wait_for_pool_resources_synchronization
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._tasks_wait_for_synchronization = value
 
     @property
     def auto_delete(self):

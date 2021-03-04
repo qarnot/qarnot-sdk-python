@@ -2,7 +2,7 @@
 """Setuptools file."""
 
 # pylint: disable=E0611,F0401
-from distutils.core import setup
+from setuptools import setup
 from os import path
 import versioneer
 
@@ -26,7 +26,12 @@ setup(name='qarnot',
       packages=['qarnot'],
       install_requires=['requests', 'boto3'],
       tests_require=['pytest'],
+      python_requires='>=2.7',
       classifiers=['Development Status :: 5 - Production/Stable',
+                   'Programming Language :: Python :: 2.7',
+                   'Programming Language :: Python :: 3.4',
+                   'Programming Language :: Python :: 3.5',
+                   'Programming Language :: Python :: 3.6',
                    'Intended Audience :: Developers',
                    'Intended Audience :: Information Technology',
                    'License :: OSI Approved :: Apache Software License'],

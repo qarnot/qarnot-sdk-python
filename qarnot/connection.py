@@ -705,11 +705,12 @@ class Connection(object):
 
     def create_bucket(self, name):
         """Create a new :class:`~qarnot.bucket.Bucket`.
+        If the bucket already exist, retrieve the existing bucket.
 
         :param str name: bucket name
 
         :rtype: :class:`qarnot.bucket.Bucket`
-        :returns: The created :class:`~qarnot.bucket.Bucket`.
+        :returns: The created or existing :class:`~qarnot.bucket.Bucket`.
 
         """
         return Bucket(self, name)

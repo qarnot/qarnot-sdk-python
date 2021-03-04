@@ -13,8 +13,9 @@ all: build
 
 build:
 
+
 clean:
-	@rm -f -r __pycache__
+	@rm -f -r __pycache__ qarnot/__pycache__ qarnot/*.pyc
 
 print-version:
 	@$(PYTHON) main.py --version
@@ -28,15 +29,23 @@ install-requirements:
 ############ Linting and testing area
 
 flake8:
-	flake8 --ignore $(PYLINT_IGNORES) main.py qarnot
+	flake8 --ignore $(PYLINT_IGNORES) setup.py qarnot
 
-lint: flake8
+pylint:
+	pylint --rcfile=setup.cfg qarnot/*.py --disable=all --enable=W,E,F -d W0212, W1620
+	# W0212: Access to a protected member "" of a client class (protected-access)
+	# W1620: Calling a dict.iter*() method
+
+lint: flake8 pylint
 
 unit-tests:
 	pytest -v
 
 integration-tests:
 	@echo "for intergration tests, see the internal simple"
+
+doc:
+	make -C doc html
 
 tests: unit-tests integration-tests
 
