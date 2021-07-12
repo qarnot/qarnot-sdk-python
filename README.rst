@@ -44,5 +44,5 @@ The index of the doc is then generated in `doc/_build/html/index.html`
 .. _pypi-badge: https://pypi.python.org/pypi/qarnot/
 .. |readthedocs-badge| image:: https://readthedocs.org/projects/qarnot/badge/?version=latest
 .. _readthedocs-badge: https://qarnot.readthedocs.io/en/latest/
-.. |travis-badge| image:: https://travis-ci.org/qarnot/qarnot-sdk-python.svg?branch=master
-.. _travis-badge: https://travis-ci.org/qarnot/qarnot-sdk-python
+.. |travis-badge| image:: https://travis-ci.com/qarnot/qarnot-sdk-python.svg?branch=master
+.. _travis-badge: https://travis-ci.com/qarnot/qarnot-sdk-python
