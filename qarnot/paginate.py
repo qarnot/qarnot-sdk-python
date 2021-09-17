@@ -1,8 +1,6 @@
 from typing import List, Any
-from dataclasses import dataclass
 
 
-@dataclass
 class PaginateResponse:
     """A paginate response
 
@@ -16,7 +14,8 @@ class PaginateResponse:
     :type page_data: List[Any]
     """
 
-    token: str
-    next_token: str
-    is_truncated: bool
-    page_data: List[Any]
+    def __init__(self, token: str, next_token: str, is_truncated: bool, page_data: List[Any]):
+        self.token = token
+        self.next_token = next_token
+        self.is_truncated = is_truncated
+        self.page_data = page_data

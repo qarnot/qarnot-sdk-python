@@ -444,7 +444,7 @@ class TestConnectionPaginateMethods:
             }
             get_user.return_value.status_code = 200
             get_user.return_value.json.return_value = user_json
-            user = connec.user_info()
+            user = connec.user_info
             assert user.email == user_json.get('email', '')
             assert user.max_bucket == user_json['maxBucket']
             assert user.bucket_count == user_json.get('bucketCount', -1)
