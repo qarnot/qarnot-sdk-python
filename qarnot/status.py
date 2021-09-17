@@ -98,6 +98,21 @@ class Status(object):
 
         Failed instances range."""
 
+        self.last_update_timestamp = json["lastUpdateTimestamp"]
+        """:type: :class:`str`
+
+        Last update time (UTC)."""
+
+        self.execution_time_by_cpu_model = [ExecutionTimeByCpuModel(timeCpu) for timeCpu in json["executionTimeByCpuModel"]]
+        """:type: :class:`str`
+
+        Execution time by cpu."""
+
+        self.execution_time_ghz_by_cpu_model = [ExecutionTimeGhzByCpuModel(timeCpu) for timeCpu in json["executionTimeGhzByCpuModel"]]
+        """:type: :class:`str`
+
+        Execution time ghz by cpu."""
+
         self.running_instances_info = None
         """:type: :class:`RunningInstancesInfo`
 
@@ -183,6 +198,15 @@ class RunningInstancesInfo(object):
         Total Network Input in Kbps."""
 
         self.total_network_out_kbps = json['totalNetworkOutKbps']
+        """:type: :class:`float`
+
+        Total Network Output in Kbps."""
+
+        self.snapshot_results = json['snapshotResults']
+        """:type: :class:`float`
+
+        Total Network Output in Kbps."""
+        self.running_core_count_by_cpu_model = json['runningCoreCountByCpuModel']
         """:type: :class:`float`
 
         Total Network Output in Kbps."""
@@ -324,6 +348,62 @@ class TaskActiveForward(object):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
+
+
+class ExecutionTimeByCpuModel:
+    """Execution time by Cpu model
+
+    .. note:: Read-only class
+    """
+
+    def __init__(self, json):
+        self.model = json["model"]
+        """:type: :class:`str`
+
+        Cpu Model."""
+
+        self.time = json["time"]
+        """:type: :class:`int`
+
+        Execution time in seconds."""
+
+        self.core = json["core"]
+        """:type: :class:`int`
+
+        CPU Cores."""
+
+    def __repr__(self):
+        return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
+
+
+class ExecutionTimeGhzByCpuModel:
+    """Execution time Gtz by Cpu model
+
+    .. note:: Read-only class
+    """
+    def __init__(self, json):
+        self.model = json["model"]
+        """:type: :class:`str`
+
+        Cpu Model."""
+
+        self.time_ghz = json["timeGhz"]
+        """:type: :class:`float`
+
+        Execution time in Gigahertz."""
+
+        self.clock_ratio = json["clockRatio"]
+        """:type: :class:`int`
+
+        Cpu clock ratio."""
+
+        self.core = json["core"]
+        """:type: :class:`int`
+
+        CPU Cores."""
+
+    def __repr__(self):
+        return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
 
 
 class TaskVpnConnection(object):

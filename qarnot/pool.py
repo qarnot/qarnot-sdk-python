@@ -71,6 +71,7 @@ class Pool(object):
 
         self._last_cache = time.time()
         self._instancecount = instancecount
+        self._resource_object_advanced = []
         self._resource_object_ids = []
         self._resource_objects = []
         self._tags = []
@@ -94,6 +95,13 @@ class Pool(object):
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
         self._tasks_wait_for_synchronization = False
+
+        self._previous_state = None
+        self._state_transition_time = None
+        self._previous_state_transition_time = None
+        self._last_modified = None
+        self._execution_time = None
+        self._end_date = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -152,6 +160,9 @@ class Pool(object):
         if 'resourceBuckets' in json_pool and json_pool['resourceBuckets'] is not None:
             self._resource_object_ids = json_pool['resourceBuckets']
 
+        if 'advancedResourceBuckets' in json_pool and json_pool['advancedResourceBuckets']:
+            self._resource_object_advanced = json_pool['advancedResourceBuckets']
+
         if 'status' in json_pool:
             self._status = json_pool['status']
         self._creation_date = _util.parse_datetime(json_pool['creationDate'])
@@ -163,7 +174,7 @@ class Pool(object):
         self._state = json_pool['state']
         self._preparation_task = json_pool.get('preparationTask')
         self._tags = json_pool.get('tags', None)
-        self._tasks_wait_for_synchronization = json_pool.get('tasksDefaultWaitForPoolResourcesSynchronization', False)
+        self._tasks_wait_for_synchronization = json_pool.get('taskDefaultWaitForPoolResourcesSynchronization', False)
 
         if 'autoDeleteOnCompletion' in json_pool:
             self._auto_delete = json_pool["autoDeleteOnCompletion"]
@@ -180,6 +191,13 @@ class Pool(object):
             self._elastic_minimum_idle_time = elasticProperty["minIdleTimeSeconds"]
             self._elastic_resize_factor = elasticProperty["rampResizeFactor"]
             self._elastic_resize_period = elasticProperty["resizePeriod"]
+
+        self._previous_state = json_pool.get('previousState', None)
+        self._state_transition_time = json_pool.get('stateTransitionTime', None)
+        self._previous_state_transition_time = json_pool.get('previousStateTransitionTime', None)
+        self._last_modified = json_pool.get('lastModified', None)
+        self._execution_time = json_pool.get('executionTime', None)
+        self._end_date = json_pool.get('endDate', None)
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -211,14 +229,14 @@ class Pool(object):
             'tags': self._tags,
             'preparationTask': self._preparation_task,
             'elasticProperty': elastic_dict,
-            'tasksDefaultWaitForPoolResourcesSynchronization': self._tasks_wait_for_synchronization
+            'taskDefaultWaitForPoolResourcesSynchronization': self._tasks_wait_for_synchronization
         }
 
         if self._shortname is not None:
             json_pool['shortname'] = self._shortname
 
-        self._resource_object_ids = [x.uuid for x in self._resource_objects]
-        json_pool['resourceBuckets'] = self._resource_object_ids
+        self._resource_object_advanced = [x.to_json() for x in self._resource_objects]
+        json_pool['advancedResourceBuckets'] = self._resource_object_advanced
 
         json_pool['autoDeleteOnCompletion'] = self._auto_delete
         json_pool['completionTimeToLive'] = self._completion_time_to_live
@@ -297,6 +315,30 @@ class Pool(object):
         if response.status_code == 404:
             raise MissingPoolException(response.json()['message'])
         raise_on_error(response)
+
+    def update_resources(self):
+        """ Update resources for a running pool.
+
+        The typical workflow is as follows:
+           1. Upload new files on your resource bucket,
+           2. Call this method,
+           3. The new files will appear on all the compute nodes in the $DOCKER_WORKDIR folder
+        Note: There is no way to know when the files are effectively transfered. This information is available on the compute node only.
+        Note: The update is additive only: files deleted from the bucket will NOT be deleted from the pool's resources directory.
+
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        """
+
+        self.update(True)
+        resp = self._connection._patch(get_url('pool update', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingPoolException(resp.json()['message'])
+        raise_on_error(resp)
+
+        self.update(True)
 
     def setup_elastic(self, minimum_total_slots=0, maximum_total_slots=1, minimum_idle_slots=0, minimum_idle_time_seconds=0, resize_factor=1, resize_period=90):
         """Setup the pool elastic properties
@@ -428,6 +470,10 @@ class Pool(object):
         if self._auto_update:
             self.update()
         if not self._resource_objects:
+            for adv in self._resource_object_advanced:
+                d = Bucket.from_json(self._connection, adv)
+                self._resource_objects.append(d)
+
             for bid in self._resource_object_ids:
                 d = Bucket(self._connection, bid)
                 self._resource_objects.append(d)
@@ -584,7 +630,7 @@ class Pool(object):
         """:type: :class:`qarnot.status.Status`
         :getter: Returns this pool's status
 
-        Status of the task
+        Status of the pool
         """
         self._update_if_summary()
         if self._auto_update:
@@ -765,7 +811,7 @@ class Pool(object):
         :setter: set the pool's command line.
 
         Update the pool command line if needed
-        The command line is a command running before each task execution.
+        The command line is a command executed on the node before any task is executed.
         """
         self._update_if_summary()
         if self._auto_update:
@@ -910,6 +956,70 @@ class Pool(object):
             raise AttributeError("can't set attribute on a submitted job")
         self._completion_time_to_live = _util.parse_to_timespan_string(value)
 
+    @property
+    def previous_state(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running pool's previous state
+        """
+        self._update_if_summary()
+        return self._previous_state
+
+    @property
+    def state_transition_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running pool's transition state time
+
+        pool state transition time (UTC Time)
+        """
+        self._update_if_summary()
+        return self._state_transition_time
+
+    @property
+    def previous_state_transition_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running pool's previous transition state time
+
+        pool previous state transition time (UTC Time)
+        """
+        self._update_if_summary()
+        return self._previous_state_transition_time
+
+    @property
+    def last_modified(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running pool's last modification time
+
+        pool's last modified time (UTC Time)
+        """
+        self._update_if_summary()
+        return self._last_modified
+
+    @property
+    def execution_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running pool's total CPU execution time.
+
+        pool's execution time of all it's instances.
+        """
+        self._update_if_summary()
+        return self._execution_time
+
+    @property
+    def end_date(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the finished pool's end date.
+
+        pool's end date (UTC Time)
+        """
+        self._update_if_summary()
+        return self._end_date
+
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\
             'Tag {7} - IsElastic {8} - ElasticMin {9} - ElasticMax {10} - ElasticMinIdle {11} -'\
@@ -921,7 +1031,7 @@ class Pool(object):
                     self._profile,
                     self._instancecount,
                     self.state,
-                    (self._resource_object_ids if self._resource_objects is not None else ""),
+                    ([bucket._uuid for bucket in self._resource_objects] if self._resource_objects is not None else ""),
                     self._tags,
                     self._is_elastic,
                     self._elastic_minimum_slots,

@@ -127,11 +127,22 @@ class Task(object):
         self._creation_date = None
         self._errors = None
         self._resource_object_ids = []
+        self._resource_object_advanced = []
         self._result_object_id = None
         self._is_summary = False
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
         self._wait_for_pool_resources_synchronization = None
+
+        self._previous_state = None
+        self._state_transition_time = None
+        self._previous_state_transition_time = None
+        self._last_modified = None
+        self._snapshot_interval = None
+        self._progress = None
+        self._execution_time = None
+        self._wall_time = None
+        self._end_date = None
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -395,6 +406,9 @@ class Task(object):
         if 'resourceBuckets' in json_task and json_task['resourceBuckets']:
             self._resource_object_ids = json_task['resourceBuckets']
 
+        if 'advancedResourceBuckets' in json_task and json_task['advancedResourceBuckets']:
+            self._resource_object_advanced = json_task['advancedResourceBuckets']
+
         if 'resultBucket' in json_task and json_task['resultBucket']:
             self._result_object_id = json_task['resultBucket']
 
@@ -436,6 +450,16 @@ class Task(object):
             self._auto_delete = json_task["autoDeleteOnCompletion"]
         if 'completionTimeToLive' in json_task:
             self._completion_time_to_live = json_task["completionTimeToLive"]
+
+        self._previous_state = json_task.get("previousState", None)
+        self._state_transition_time = json_task.get("stateTransitionTime", None)
+        self._previous_state_transition_time = json_task.get("previousStateTransitionTime", None)
+        self._last_modified = json_task.get("lastModified", None)
+        self._snapshot_interval = json_task.get("snapshotInterval", None)
+        self._progress = json_task.get("progress", None)
+        self._execution_time = json_task.get("executionTime", None)
+        self._wall_time = json_task.get("wallTime", None)
+        self._end_date = json_task.get("endDate", None)
 
     @classmethod
     def from_json(cls, connection, json_task, is_summary=False):
@@ -633,6 +657,10 @@ class Task(object):
         if self._auto_update:
             self.update()
         if not self._resource_objects:
+            for adv in self._resource_object_advanced:
+                d = Bucket.from_json(self._connection, adv)
+                self._resource_objects.append(d)
+
             for bid in self._resource_object_ids:
                 d = Bucket(self._connection, bid)
                 self._resource_objects.append(d)
@@ -1279,6 +1307,103 @@ class Task(object):
             raise AttributeError("can't set attribute on a submitted job")
         self._completion_time_to_live = _util.parse_to_timespan_string(value)
 
+    @property
+    def previous_state(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running task's previous state
+        """
+        self._update_if_summary()
+        return self._previous_state
+
+    @property
+    def state_transition_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running task's transition state time
+
+        task state transition time (UTC Time)
+        """
+        self._update_if_summary()
+        return self._state_transition_time
+
+    @property
+    def previous_state_transition_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running task's previous transition state time
+
+        task previous state transition time (UTC Time)
+        """
+        self._update_if_summary()
+        return self._previous_state_transition_time
+
+    @property
+    def last_modified(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running task's last modification time
+
+        task's last modified time (UTC Time)
+        """
+        self._update_if_summary()
+        return self._last_modified
+
+    @property
+    def execution_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running task's total CPU execution time.
+
+        task's execution time of all it's instances.
+        """
+        self._update_if_summary()
+        return self._execution_time
+
+    @property
+    def end_date(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the finished task's end date.
+
+        task's end date (UTC Time)
+        """
+        self._update_if_summary()
+        return self._end_date
+
+    @property
+    def wall_time(self):
+        """
+        :type: :class:`str`
+        :getter: task's wall time.
+
+        task's wall time
+        """
+        self._update_if_summary()
+        return self._wall_time
+
+    @property
+    def snapshot_interval(self):
+        """
+        :type: :class:`int`
+        :getter: task's snapshot interval in seconds.
+
+        task's snapshot interval in seconds.
+        """
+        self._update_if_summary()
+        return self._snapshot_interval
+
+    @property
+    def progress(self):
+        """
+        :type: :class:`float`
+        :getter: task's progress in %.
+
+        task's progress in %.
+        """
+        self._update_if_summary()
+        return self._progress
+
     def _to_json(self):
         """Get a dict ready to be json packed from this task."""
         const_list = [
@@ -1305,8 +1430,8 @@ class Task(object):
         if self._shortname is not None:
             json_task['shortname'] = self._shortname
 
-        self._resource_object_ids = [x.uuid for x in self._resource_objects]
-        json_task['resourceBuckets'] = self._resource_object_ids
+        self._resource_object_advanced = [x.to_json() for x in self._resource_objects]
+        json_task['advancedResourceBuckets'] = self._resource_object_advanced
 
         if self._result_object is not None:
             json_task['resultBucket'] = self._result_object.uuid
@@ -1329,6 +1454,7 @@ class Task(object):
 
         json_task['autoDeleteOnCompletion'] = self._auto_delete
         json_task['completionTimeToLive'] = self._completion_time_to_live
+
         return json_task
 
     def _update_if_summary(self):
@@ -1347,7 +1473,7 @@ class Task(object):
                     self._profile,
                     self._instancecount,
                     self.state,
-                    (self._resource_object_ids if self._resource_objects is not None else ""),
+                    ([bucket._uuid for bucket in self._resource_objects] if self._resource_objects is not None else ""),
                     (self._result_object.uuid if self._result_object is not None else ""))
 
     # Context manager

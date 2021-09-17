@@ -21,6 +21,7 @@ import os
 import posixpath
 import shutil
 import itertools
+from typing import Optional
 
 from boto3.s3.transfer import TransferConfig
 from itertools import groupby
@@ -30,6 +31,7 @@ from . import _util
 from .exceptions import BucketStorageUnavailableException
 from .storage import Storage
 
+from .advanced_bucket import Filtering, ResourcesTransformation
 # Max size in bytes before uploading in parts.
 
 AWS_UPLOAD_MAX_SIZE = 8 * 1024 * 1024
@@ -62,15 +64,67 @@ class Bucket(Storage):
        **must** be valid unix-like paths.
     """
 
-    def __init__(self, connection, name, create=True):
+    def __init__(self, connection, name, create=True, filtering: Filtering = None, resources_transformation: ResourcesTransformation = None):
         if connection.s3client is None:
             raise BucketStorageUnavailableException()
 
         self._connection = connection
         self._uuid = name
+        self._filtering: Optional[Filtering] = filtering or Filtering()
+        self._resources_transformation: Optional[ResourcesTransformation] = \
+            resources_transformation or ResourcesTransformation()
 
         if create:
             self._connection.s3client.create_bucket(Bucket=name)
+
+    def to_json(self):
+        """Get a dict ready to be json packed from this bucket."""
+        as_json_dict = dict()
+        as_json_dict['bucketName'] = self._uuid
+        as_json_dict['filtering'] = None if self._filtering is None else self._filtering.to_json()
+        as_json_dict['resourcesTransformation'] = (None if self._resources_transformation is None
+                                                   else self._resources_transformation.to_json())
+        return as_json_dict
+
+    @classmethod
+    def from_json(cls, connection, json_bucket):
+        """Create a Bucket object from a json advance bucket.
+        :param qarnot.connection.Connection connection: the cluster connection
+        :param dict json_bucket: Dictionary representing the bucket
+        :returns: The created :class:`~qarnot.bucket.Bucket`.
+        """
+        filtering = Filtering.from_json(json_bucket['filtering'])
+        resource_transformation = ResourcesTransformation.from_json(json_bucket['resourcesTransformation'])
+        bucket = Bucket(connection, json_bucket['bucketName'], create=False, filtering=filtering, resources_transformation=resource_transformation)
+        return bucket
+
+    def with_filtering(self, filtering):
+        """Create a new Bucket object from the given bucket with a specific filtering.
+        examples :
+        * new_bucket = bucket.with_filtering(BucketPrefixFiltering("prefix1"))
+        * new_bucket = Bucket(connection, "name", False).with_filtering(BucketPrefixFiltering("prefix1"))
+
+        :param :class:`~qarnot.advance_bucket.AbstractFiltering` filtering: Filtering to add to the bucket.
+        :returns: The created :class:`~qarnot.bucket.Bucket`.
+        """
+        bucket_copy = Bucket(self._connection, self._uuid,
+                             create=False, filtering=Filtering(), resources_transformation=self._resources_transformation)
+        bucket_copy._filtering.append(filtering)
+        return bucket_copy
+
+    def with_resource_transformation(self, resource):
+        """Create a new Bucket object from the given bucket with a specific resource transformation.
+        examples :
+        * new_bucket = Bucket(connection, "name", False).with_resource_transformation(PrefixResourcesTransformation("prefix2"))
+        * new_bucket = bucket.with_resource_transformation(PrefixResourcesTransformation("prefix2")).with_filtering(BucketPrefixFiltering("prefix1"))
+
+        :param :class:`~qarnot.advance_bucket.AbstractResourcesTransformation` resource: The resource transformation to add to the bucket.
+        :returns: The created :class:`~qarnot.bucket.Bucket`.
+        """
+        bucket_copy = Bucket(self._connection, self._uuid,
+                             create=False, filtering=self._filtering, resources_transformation=ResourcesTransformation())
+        bucket_copy._resources_transformation.append(resource)
+        return bucket_copy
 
     @classmethod
     def _retrieve(cls, connection, bucket_uuid):

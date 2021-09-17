@@ -69,10 +69,14 @@ class Job(object):
         self._update_cache_time = 5
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
+        self._tags = []
 
         self._last_cache = time.time()
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
+        self._previous_state = None
+        self._state_transition_time = None
+        self._previous_state_transition_time = None
 
     @property
     def auto_update(self):
@@ -319,6 +323,7 @@ class Job(object):
             'poolUuid': self._pool_uuid,
             'shortname': self._shortname,
             'state': self._state,
+            'tags': self._tags,
             'useDependencies': self._use_dependencies,
             'maxWallTime': self._max_wall_time,
             'autoDeleteOnCompletion': self._auto_delete,
@@ -338,7 +343,10 @@ class Job(object):
         self._creation_date = _util.parse_datetime(json_job['creationDate'])
         self._last_modified = json_job.get('lastModified')
         self._max_wall_time = json_job.get('maxWallTime')
-        self._creation_date = _util.parse_datetime(json_job['creationDate'])
+        self._tags = json_job.get('tags', None)
+        self._previous_state = json_job.get('previousState', None)
+        self._state_transition_time = json_job.get('stateTransitionTime', None)
+        self._previous_state_transition_time = json_job.get('previousStateTransitionTime', None)
 
     def submit(self):
         """Submit job to the cluster if it is not already submitted.
@@ -361,7 +369,7 @@ class Job(object):
             raise NotEnoughCreditsException(resp.json()['message'])
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
-        self.update()
+        self.update(True)
 
     def update(self, flushcache=False):
         """
@@ -476,11 +484,60 @@ class Job(object):
             raise AttributeError("can't set attribute on a submitted job")
         self._completion_time_to_live = _util.parse_to_timespan_string(value)
 
+    @property
+    def tags(self):
+        """:type: :class:list(`str`)
+        :getter: Returns this job's tags
+        :setter: Sets this job's tags
+
+        Custom tags.
+        """
+        if self._auto_update:
+            self.update()
+
+        return self._tags
+
+    @tags.setter
+    def tags(self, value):
+        """Setter for tags"""
+        if self._auto_update:
+            self.update()
+        self._tags = value
+
+    @property
+    def previous_state(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running job's previous state
+        """
+        return self._previous_state
+
+    @property
+    def state_transition_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running job's transition state time
+
+        job state transition time (UTC Time)
+        """
+        return self._state_transition_time
+
+    @property
+    def previous_state_transition_time(self):
+        """
+        :type: :class:`str`
+        :getter: Returns the running job's previous transition state time
+
+        job previous state transition time (UTC Time)
+        """
+        return self._previous_state_transition_time
+
     def __repr__(self):
-        return '{0} - {1} - {2} - Pool : {3} - {4} - UseDependencies : {5} '\
+        return '{0} - {1} - {2} - Pool : {3} - {4} - Tags: {5} - UseDependencies : {6} '\
             .format(self.name,
                     self.shortname,
                     self._uuid,
                     self._pool_uuid,
                     self.state,
+                    self._tags,
                     self._use_dependencies)

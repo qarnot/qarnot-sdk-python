@@ -18,7 +18,8 @@
 
 from .exceptions import QarnotGenericException
 
-__all__ = ["task", "connection", "bucket", "pool", "storage", "status", "job"]
+__all__ = ["task", "connection", "bucket", "pool",
+           "storage", "status", "job", "advance_bucket"]
 
 
 def raise_on_error(response):
@@ -35,14 +36,16 @@ def get_url(key, **kwargs):
     """Get and format the url for the given key.
     """
     urls = {
-        'jobs': u'/jobs/',  # GET -> jobs, POST -> Submit Job
+        'jobs': u'/jobs/',  # POST -> Submit Job
+        'paginate jobs': u'/jobs/paginate',  # GET -> paginate jobs
         'job update': u'/jobs/{uuid}',  # GET -> result; DELETE -> abort
         'job delete': u'/jobs/{uuid}?force={force}',  # DELETE -> delete job
         'jobs search': u'/jobs/search',  # POST -> make a custom search on jobs
         'job terminate': u'/jobs/{uuid}/terminate',  # POST -> terminate a job
         'job tasks': u'/jobs/{uuid}/tasks',  # GET -> tasks in job
-        'tasks': u'/tasks',  # GET -> running tasks; POST -> submit task
-        'tasks summaries': u'/tasks/summaries',  # GET -> running tasks summaries;
+        'tasks': u'/tasks',  # POST -> submit task
+        'paginate tasks': u'/tasks/paginate',  # GET -> paginate tasks
+        'paginate tasks summaries': u'/tasks/summaries/paginate',  # GET -> paginate tasks summaries;
         'tasks search': u'/tasks/search',  # POST -> make a custom search on tasks
         'task force': u'/tasks/force',  # POST -> force add
         'task update': u'/tasks/{uuid}',  # GET->result; DELETE -> abort, PATCH -> update resources
@@ -51,11 +54,12 @@ def get_url(key, **kwargs):
         'task stdout': u'/tasks/{uuid}/stdout',  # GET -> task stdout
         'task stderr': u'/tasks/{uuid}/stderr',  # GET -> task stderr
         'task abort': u'/tasks/{uuid}/abort',  # GET -> task
-        'pools': u'/pools',  # GET -> pools, POST -> submit pool
-        'pools summaries': u'/pools/summaries',  # GET -> pools summaries
+        'pools': u'/pools',  # POST -> submit pool
+        'paginate pools': u'/pools/paginate',  # GET -> paginate pools
+        'paginate pools summaries': u'/pools/summaries/paginate',  # GET -> paginate pools summaries
         'pools search': u'/pools/search',  # POST -> make a custom search on pools
         'pool close': u'/pools/{uuid}/close',  # POST -> close pool
-        'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete
+        'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete, PATCH -> update resources
         'user': u'/info',  # GET -> user info
         'profiles': u'/profiles',  # GET -> profiles list
         'profile details': u'/profiles/{profile}',  # GET -> profile details

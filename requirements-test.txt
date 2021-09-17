@@ -1,3 +1,6 @@
 pytest
 pytest-runner
 simplejson
+mypy
+pytest-cov
+pytest-picked

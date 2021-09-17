@@ -16,12 +16,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Dict, Iterable, Iterator, List, Union
 from . import get_url, raise_on_error, __version__
 from .task import Task, BulkTaskResponse
 from .pool import Pool
+from .paginate import PaginateResponse
 from .bucket import Bucket
 from .job import Job
-from ._filter import all_tag_filter
+from ._filter import create_pool_filter, create_task_filter, create_job_filter
 from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
                          MissingTaskException, MissingPoolException, MissingJobException)
 import requests
@@ -30,7 +32,9 @@ import warnings
 import os
 import time
 import boto3
+import concurrent.futures
 import botocore
+import deprecation
 from json import dumps as json_dumps
 from requests.exceptions import ConnectionError
 if sys.version_info[0] >= 3:  # module renamed in py3
@@ -38,10 +42,10 @@ if sys.version_info[0] >= 3:  # module renamed in py3
 else:
     import ConfigParser as config  # pylint: disable=import-error
 
-
 #########
 # class #
 #########
+
 
 class Connection(object):
     """Represents the couple cluster/user to which submit tasks.
@@ -440,12 +444,84 @@ class Connection(object):
         buckets = [Bucket(self, x.name, create=False) for x in self._s3resource.buckets.all()]
         return buckets
 
-    def pools(self, summary=True, tags_intersect=None):
+    @deprecation.deprecated(deprecated_in="2.5.0", removed_in="3.0",
+                            current_version=__version__,
+                            details="Use the all_pools function instead")
+    def pools(self, summary=True, tags_intersect=None, tags=None):
         """Get the list of pools stored on this cluster for this user.
 
+        if tags and tags_intersect are set, the connection will only return the pools with tag intersect values.
         :param bool summary: only get the summaries.
         :param tags_intersect: Desired filtering tags, all of them
         :type tags_intersect: list of :class:`str`, optional
+        :param tags: Desired filtering tags, any of them
+        :type tags: list of :class:`str`, optional
+
+        :rtype: List of :class:`~qarnot.pool.Pool`.
+        :returns: Pools stored on the cluster owned by the user.
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+
+        .. deprecated:: 2.5.0
+        This function can be inefficient, Use :func:`all_pools` instead.
+        """
+        return list(self.all_pools(summary=summary, tags=tags, tags_intersect=tags_intersect))
+
+    @deprecation.deprecated(deprecated_in="2.5.0", removed_in="3.0",
+                            current_version=__version__,
+                            details="Use the all_tasks function instead")
+    def tasks(self, tags=None, summary=True, tags_intersect=None):
+        """Get the list of tasks stored on this cluster for this user.
+
+        if tags and tags_intersect are set, the connection will only return the tasks with tag_intersect values.
+
+        :param tags: Desired filtering tags, any of them
+        :type tags: list of :class:`str`, optional
+        :param bool summary: only get the summaries.
+        :param tags_intersect: Desired filtering tags, all of them
+        :type tags_intersect: list of :class:`str`, optional
+
+        :rtype: List of :class:`~qarnot.task.Task`.
+        :returns: Tasks stored on the cluster owned by the user.
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+
+        .. deprecated:: 2.5.0
+        This function can be inefficient, Use :func:`all_tasks` instead.
+        """
+        return list(self.all_tasks(summary=summary, tags=tags, tags_intersect=tags_intersect))
+
+    @deprecation.deprecated(deprecated_in="2.5.0", removed_in="3.0",
+                            current_version=__version__,
+                            details="Use the all_jobs function instead")
+    def jobs(self, tags=None, tags_intersect=None):
+        """Get the list of jobs stored on this cluster for this user.
+
+        if tags and tags_intersect are set, the connection will only return the jobs with tag intersect values.
+        :param tags: Desired filtering tags, any of them
+        :type tags: list of :class:`str`, optional
+        :param tags_intersect: Desired filtering tags, the jobs must have all of them
+        :type tags_intersect: list of :class:`str`, optional
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+
+        .. deprecated:: 2.5.0
+        This function can be inefficient, Use :func:`all_jobs` instead.
+        """
+        return list(self.all_jobs(tags=tags, tags_intersect=tags_intersect))
+
+    def all_pools(self, summary: bool = True, tags: List[str] = None, tags_intersect: List[str] = None):
+        """Get an iterator of all the pools.
+
+        if tags and tags_intersect are set, the connection will only return the pools with tag intersect values.
+        :param bool summary: only get the summaries.
+        :param tags_intersect: Desired filtering tags, all of them
+        :type tags_intersect: list of :class:`str`, optional
+        :param tags: Desired filtering tags, any of them
+        :type tags: list of :class:`str`, optional
 
         :rtype: List of :class:`~qarnot.pool.Pool`.
         :returns: Pools stored on the cluster owned by the user.
@@ -453,18 +529,12 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
-        url = get_url('pools summaries') if summary else get_url('pools')
+        return self._all_pages(self.pools_page, summary=summary, tags=tags, tags_intersect=tags_intersect)
 
-        if tags_intersect:
-            tag_filter = all_tag_filter(tags_intersect)
-            response = self._post(get_url('pools search'), tag_filter)
-        else:
-            response = self._get(url)
-        raise_on_error(response)
-        return [Pool.from_json(self, pool, summary) for pool in response.json()]
+    def all_tasks(self, summary: bool = True, tags: List[str] = None, tags_intersect: List[str] = None):
+        """Get an iterator of all the tasks.
 
-    def tasks(self, tags=None, summary=True, tags_intersect=None):
-        """Get the list of tasks stored on this cluster for this user.
+        if tags and tags_intersect are set, the connection will only return the tasks with tag_intersect values.
 
         :param tags: Desired filtering tags, any of them
         :type tags: list of :class:`str`, optional
@@ -478,28 +548,124 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
+        return self._all_pages(self.tasks_page, summary=summary, tags=tags, tags_intersect=tags_intersect)
 
-        url = get_url('tasks summaries') if summary else get_url('tasks')
-        if tags_intersect:
-            tag_filter = all_tag_filter(tags_intersect)
-            response = self._post(get_url('tasks search'), tag_filter)
-        elif tags:
-            response = self._get(url, params={'tag': tags})
-        else:
-            response = self._get(url)
-        raise_on_error(response)
-        return [Task.from_json(self, task, summary) for task in response.json()]
+    def all_jobs(self, tags: List[str] = None, tags_intersect: List[str] = None) -> Iterator[Iterable]:
+        """Get an iterator of all the jobs.
 
-    def jobs(self):
-        """Get the list of jobs stored on this cluster for this user.
+        if tags and tags_intersect are set, the connection will only return the jobs with tag intersect values.
+        :param tags: Desired filtering tags, any of them
+        :type tags: list of :class:`str`, optional
+        :param tags_intersect: Desired filtering tags, the jobs must have all of them
+        :type tags_intersect: list of :class:`str`, optional
 
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
+        return self._all_pages(self.jobs_page, tags=tags, tags_intersect=tags_intersect)
 
-        response = self._get(get_url('jobs'))
+    def _all_pages(self, page_function, **kwargs) -> Iterator[Iterable]:
+        """Return all the pages of an object.
+
+        :param page_function: the call function used to retrieve a paginate list.
+        :type page_function: Function
+        :yield: An object
+        :rtype: Iterator[Iterable]
+        """
+
+        next_token = None
+        is_truncated = True
+        while is_truncated:
+            page = page_function(token=next_token, **kwargs)
+            next_token = page.next_token
+            is_truncated = page.is_truncated and next_token is not None
+            for task in page.page_data:
+                yield task
+
+    def _paginate_request(self, filter: Dict, token: str, maximum: Union[int, None]) -> Dict:
+        """A paginate request creator.
+
+        :return: The json request to be call.
+        :rtype: Dict
+        """
+        return {
+            "filter": filter,
+            "token": token,
+            "maximumResults": maximum
+        }
+
+    def _page_call(self, url, request) -> Dict:
+        """Call the api and return the response body
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+
+        :return: The response body
+        :rtype: Dict
+        """
+        response = self._post(url, request)
         raise_on_error(response)
-        return [Job.from_json(self, job) for job in response.json()]
+        return response.json()
+
+    def pools_page(self, token: str = None, maximum: Union[int, None] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
+        """Return a paginate pool object retriver.
+
+        :param summary: retrive a pool or a pool summary, defaults to True
+        :type summary: bool, optional
+        :param tags_intersect: use a tag exclusive filter, defaults to None
+        :type tags_intersect: List, optional
+        :param token: the first paginate token to be used, defaults to None
+        :type token: str, optional
+        :param maximum: the maximum number of pages to retrieve, defaults to 10
+        :type maximum: Union[int, None], optional
+        :return: A paginate object
+        :rtype: :class:`paginate.PaginateResponse`
+        """
+
+        filter = create_pool_filter(tags=tags, tags_intersect=tags_intersect)
+        url = get_url('paginate pools summaries') if summary and filter is None else get_url('paginate pools')
+        result = self._page_call(url, self._paginate_request(filter, token, maximum))
+        data = [Pool.from_json(self, pool, summary) for pool in result["data"]]
+        return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
+
+    def tasks_page(self, token: str = None, maximum: Union[int, None] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
+        """Return a paginate task object.
+
+        :param summary: retrive a task or a task summary, defaults to True
+        :type summary: bool, optional
+        :param tags_intersect: use a tag exclusive filter, defaults to None
+        :type tags_intersect: List, optional
+        :param token: the first paginate token to be used, defaults to None
+        :type token: str, optional
+        :param maximum: the maximum number of pages to retrieve, defaults to 10
+        :type maximum: Union[int, None], optional
+        :return: A paginate object
+        :rtype: :class:`paginate.PaginateResponse`
+        """
+
+        filter = create_task_filter(tags=tags, tags_intersect=tags_intersect)
+        url = get_url('paginate tasks summaries') if summary and filter is None else get_url('paginate tasks')
+        result = self._page_call(url, self._paginate_request(filter, token, maximum))
+        data = [Task.from_json(self, task, summary) for task in result["data"]]
+        return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
+
+    def jobs_page(self, token: str = None, maximum: Union[int, None] = None, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
+        """Return a paginate job object.
+
+        :param tags_intersect: use a tag exclusive filter, defaults to None
+        :type tags_intersect: List, optional
+        :param token: the first paginate token to be used, defaults to None
+        :type token: str, optional
+        :param maximum: the maximum number of pages to retrieve, defaults to 10
+        :type maximum: Union[int, None], optional
+        :return: A paginate object
+        :rtype: :class:`paginate.PaginateResponse`
+        """
+
+        filter = create_job_filter(tags=tags, tags_intersect=tags_intersect)
+        result = self._page_call(get_url('paginate jobs'), self._paginate_request(filter, token, maximum))
+        data = [Job.from_json(self, job) for job in result["data"]]
+        return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
 
     def retrieve_pool(self, uuid):
         """Retrieve a :class:`qarnot.pool.Pool` from its uuid
@@ -665,6 +831,34 @@ class Connection(object):
         if error_message:
             raise QarnotGenericException(error_message)
 
+    def profiles_names(self):
+        """Get list of profiles names available on the cluster.
+
+        :rtype: list of :class:`str`
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+        url = get_url('profiles')
+        response = self._get(url)
+        raise_on_error(response)
+        return response.json()
+
+    def profile_details(self, profile_name):
+        """Get a profile available on the cluster.
+
+        :rtype: :class:`Profile`
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+        url = get_url('profile details', profile=profile_name)
+        response = self._get(url)
+        if response.status_code == 404:
+            return None
+        raise_on_error(response)
+        return Profile(response.json())
+
     def profiles(self):
         """Get list of profiles available on the cluster.
 
@@ -673,19 +867,8 @@ class Connection(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
-
-        url = get_url('profiles')
-        response = self._get(url)
-        raise_on_error(response)
-        profiles_list = []
-        for p in response.json():
-            url = get_url('profile details', profile=p)
-            response2 = self._get(url)
-            if response2.status_code == 404:
-                continue
-            raise_on_error(response2)
-            profiles_list.append(Profile(response2.json()))
-        return profiles_list
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            return list(filter(lambda x: x is not None, executor.map(self.profile_details, self.profiles_names())))
 
     def retrieve_profile(self, name):
         """Get details of a profile from its name.
@@ -748,6 +931,10 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Maximum number of buckets allowed (resource and result buckets)."""
+        self.bucket_count = info.get('bucketCount', -1)
+        """:type: :class:`int`
+
+        Number of buckets owned by the user."""
         self.quota_bytes_bucket = info['quotaBytesBucket']
         """:type: :class:`int`
 
@@ -776,6 +963,30 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Maximum number of instances."""
+        self.max_pool = info['maxPool']
+        """:type: :class:`int`
+
+        Maximum number of pool the user is allowed to create."""
+        self.pool_count = info['poolCount']
+        """:type: :class:`int`
+
+        Total number of pools belonging to the user."""
+        self.max_running_pool = info['maxRunningPool']
+        """:type: :class:`int`
+
+        Maximum number of running pools the user is allowed to create."""
+        self.running_pool_count = info['runningPoolCount']
+        """:type: :class:`int`
+
+        Number of pools currently submitted or running."""
+        self.running_instance_count = info.get('runningInstanceCount', -1)
+        """:type: :class:`int`
+
+        Number of Instances currently submitted or running."""
+        self.running_core_count = info.get('runningCoreCount', -1)
+        """:type: :class:`int`
+
+        Number of cores currently submitted or running."""
 
 
 class Profile(object):

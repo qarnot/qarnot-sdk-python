@@ -3,13 +3,10 @@ import qarnot
 from qarnot.job import Job
 from qarnot.pool import Pool
 import datetime
+from .mock_job import default_json_job
+from .mock_connection import MockConnection
 
 class TestJobProperties:
-    class MockConnection:
-        def retrieve_pool(self, uuid):
-            pool = Pool(self, "name", "profile", 2, "shortname")
-            return pool
-
     conn = MockConnection()
     def submit_job(self, job):
         job._uuid = "submitted"
@@ -115,3 +112,57 @@ class TestJobProperties:
 
         assert json_job['completionTimeToLive'] == '4.11:08:06'
         assert json_job['autoDeleteOnCompletion'] == True
+
+    @pytest.mark.parametrize("property_name, expected_value", [
+        ("previous_state", None),
+        ("state_transition_time", None),
+        ("previous_state_transition_time", None),
+    ])
+    def test_job_property_default_value(self, property_name,  expected_value):
+        job = Job(self.conn, "job-name")
+        assert getattr(job, property_name) is expected_value
+
+    @pytest.mark.parametrize("property_name, set_value, expected_value", [
+        ("max_wall_time", datetime.timedelta(days=2, hours=33, minutes=66, seconds=66), "3.10:07:06")
+    ])
+    def test_job_set_property_value(self, property_name, set_value, expected_value):
+        job = Job(self.conn, "job-name")
+        setattr(job, property_name, set_value)
+        assert getattr(job, property_name) == expected_value
+
+    @pytest.mark.parametrize("property_name, set_value, exception", [
+        ("max_wall_time", 10, TypeError)
+    ])
+    def test_job_set_forbidden_property_raise_exception(self, property_name, set_value, exception):
+        job = Job(self.conn, "job-name")
+        with pytest.raises(exception):
+            setattr(job, property_name, set_value)
+
+    @pytest.mark.parametrize("property_name, set_value, exception", [
+        ("max_wall_time", datetime.timedelta(seconds=66), AttributeError),
+        ("name", "test", AttributeError),
+    ])
+    def test_job_set_property_raise_exception_after_submitted(self, property_name, set_value, exception):
+        job = Job(self.conn, "job-name")
+        self.submit_job(job)
+        with pytest.raises(exception):
+            setattr(job, property_name, set_value)
+
+    @pytest.mark.parametrize("property_name, expected_value", [
+        ("previous_state", default_json_job["previousState"]),
+        ("state_transition_time", default_json_job["stateTransitionTime"]),
+        ("previous_state_transition_time", default_json_job["previousStateTransitionTime"]),
+    ])
+    def test_job_property_update_value(self, property_name, expected_value):
+        job = Job(self.conn, "job-name")
+        job._update(default_json_job)
+        assert getattr(job, property_name) is expected_value
+
+    @pytest.mark.parametrize("property_name, expected_value", [
+        ("name", default_json_job["name"]),
+    ])
+    def test_job_property_send_to_json_representation(self, property_name, expected_value):
+        job = Job(self.conn, "job-name")
+        job._update(default_json_job)
+        job_json = job._to_json()
+        assert job_json[property_name] is expected_value

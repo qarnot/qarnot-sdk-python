@@ -12,7 +12,7 @@ try:
 except ImportError:
     pass
 
-with open(path.join(path.dirname(__file__), 'README.rst')) as long_d_f:
+with open(path.join(path.dirname(__file__), 'README.rst'), encoding="utf-8") as long_d_f:
     LONG_DESCRIPTION = long_d_f.read()
 
 setup(name='qarnot',
@@ -23,8 +23,9 @@ setup(name='qarnot',
       author='Qarnot computing',
       author_email='support@qarnot-computing.com',
       url='https://computing.qarnot.com',
+      setup_requires=['wheel'],
       packages=['qarnot'],
-      install_requires=['requests', 'boto3'],
+      install_requires=['requests', 'boto3', 'wheel', 'deprecation'],
       tests_require=['pytest'],
       python_requires='>=3.6',
       classifiers=['Development Status :: 5 - Production/Stable',
