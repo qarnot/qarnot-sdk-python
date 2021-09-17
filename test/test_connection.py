@@ -40,7 +40,7 @@ class TestConnectionPaginateMethods:
             mock_get.return_value.status_code = 200
             mock_get.return_value.json.return_value = ["test1", "test2"]
             retriever = connec.profiles_names()
-            assert "/profiles" == mock_get.call_args.args[0]
+            assert "/profiles" == mock_get.call_args[0][0]
             assert retriever[0] == "test1" and retriever[1] == "test2"
 
     def test_profiles(self):
@@ -55,8 +55,8 @@ class TestConnectionPaginateMethods:
                 assert len(retriever) == 13
                 for ret in retriever:
                     assert ret.name == "world" and ret.constants == (('foo', 'bar'),('foo2', 'bar2'))
-                for arg in mock_get.call_args.args:
-                    assert arg.startswith("/profiles/hello")
+                for arg in mock_get.call_args_list:
+                    assert arg[0][0].startswith("/profiles/hello")
 
     def test_profiles_with_internal_server_error(self):
         connec = self.get_connection()
@@ -78,7 +78,7 @@ class TestConnectionPaginateMethods:
                 mock_get.return_value.json.return_value = {"name":"world",
                                                            "constants": [{"name": "foo", "value": "bar"}, {"name": "foo2", "value": "bar2"}]}
                 retriever = connec.profiles()
-                assert mock_get.call_args.args[0].startswith("/profiles/hello")
+                assert mock_get.call_args[0][0].startswith("/profiles/hello")
                 assert len(retriever) == 0
 
     def return_mock_status(self, *args, **kwargs):
@@ -99,7 +99,7 @@ class TestConnectionPaginateMethods:
                 mock_names.return_value = ["hello01", "hello02", "hello03", "hello04", "hello05", "hello06", "hello07", "hello08", "hello09", "hello10", "hello11", "hello12", "hello13"]
                 mock_get.side_effect = self.return_mock_status
                 retriever = connec.profiles()
-                assert mock_get.call_args.args[0].startswith("/profiles/hello")
+                assert mock_get.call_args[0][0].startswith("/profiles/hello")
                 assert len(retriever) == 8
 
     def test_profile_details(self):
@@ -110,32 +110,32 @@ class TestConnectionPaginateMethods:
                                                "constants": [{"name": "foo", "value": "bar"}, {"name": "foo2", "value": "bar2"}]}
             retriever = connec.profile_details("hello")
             assert retriever.name == "world" and retriever.constants == (('foo', 'bar'),('foo2', 'bar2'))
-            assert "/profiles/hello" == mock_get.call_args.args[0]
+            assert "/profiles/hello" == mock_get.call_args[0][0]
 
     def test_paginate_task_retriever_url(self):
         connec = self.get_connection()
         with patch("qarnot.connection.Connection._page_call") as mock_page_call:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
             retriever = connec.tasks_page(summary=False)
-            assert "/tasks/paginate" == mock_page_call.call_args.args[0]
+            assert "/tasks/paginate" == mock_page_call.call_args[0][0]
             retriever = connec.tasks_page(summary=True)
-            assert "/tasks/summaries/paginate" == mock_page_call.call_args.args[0]
+            assert "/tasks/summaries/paginate" == mock_page_call.call_args[0][0]
 
     def test_paginate_job_retriever_url(self):
         connec = self.get_connection()
         with patch("qarnot.connection.Connection._page_call") as mock_page_call:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
             retriever = connec.jobs_page()
-            assert "/jobs/paginate" == mock_page_call.call_args.args[0]
+            assert "/jobs/paginate" == mock_page_call.call_args[0][0]
 
     def test_paginate_pool_retriever_url(self):
         connec = self.get_connection()
         with patch("qarnot.connection.Connection._page_call") as mock_page_call:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
             retriever = connec.pools_page(summary=False)
-            assert "/pools/paginate" == mock_page_call.call_args.args[0]
+            assert "/pools/paginate" == mock_page_call.call_args[0][0]
             retriever = connec.pools_page(summary=True)
-            assert "/pools/summaries/paginate" == mock_page_call.call_args.args[0]
+            assert "/pools/summaries/paginate" == mock_page_call.call_args[0][0]
 
     @pytest.mark.parametrize("tags, tags_intersect, expected_filter", [
         (["tag1", "tag2"], None, expected_or_tags_filter),
@@ -148,7 +148,7 @@ class TestConnectionPaginateMethods:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
 
             retriever = connec.tasks_page(tags=tags, tags_intersect=tags_intersect)
-            assert expected_filter == mock_page_call.call_args.args[1]["filter"]
+            assert expected_filter == mock_page_call.call_args[0][1]["filter"]
 
     @pytest.mark.parametrize("tags, tags_intersect, expected_filter", [
         (["tag1", "tag2"], None, expected_or_tags_filter),
@@ -161,7 +161,7 @@ class TestConnectionPaginateMethods:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
 
             retriever = connec.jobs_page(tags=tags, tags_intersect=tags_intersect)
-            assert expected_filter == mock_page_call.call_args.args[1]["filter"]
+            assert expected_filter == mock_page_call.call_args[0][1]["filter"]
 
     @pytest.mark.parametrize("tags, tags_intersect, expected_filter", [
         (["tag1", "tag2"], None, expected_or_tags_filter),
@@ -173,10 +173,10 @@ class TestConnectionPaginateMethods:
         with patch("qarnot.connection.Connection._page_call") as mock_page_call:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
             retriever = connec.pools_page(tags=tags, tags_intersect=tags_intersect)
-            print(mock_page_call.call_args.args[1]["filter"])
-            print(mock_page_call.call_args.args)
+            print(mock_page_call.call_args[0][1]["filter"])
+            print(mock_page_call.call_args[0])
             print(mock_page_call.call_args)
-            assert expected_filter == mock_page_call.call_args.args[1]["filter"]
+            assert expected_filter == mock_page_call.call_args[0][1]["filter"]
 
     @pytest.mark.parametrize("token, max, expected_token, expected_max", [
         ("token", 1, "token", 1),
@@ -188,8 +188,8 @@ class TestConnectionPaginateMethods:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
 
             retriever = connec.tasks_page(token=token, maximum=max)
-            assert expected_token == mock_page_call.call_args.args[1]["token"]
-            assert expected_max == mock_page_call.call_args.args[1]["maximumResults"]
+            assert expected_token == mock_page_call.call_args[0][1]["token"]
+            assert expected_max == mock_page_call.call_args[0][1]["maximumResults"]
 
     @pytest.mark.parametrize("token, max, expected_token, expected_max", [
         ("token", 1, "token", 1),
@@ -201,8 +201,8 @@ class TestConnectionPaginateMethods:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
 
             retriever = connec.jobs_page(token=token, maximum=max)
-            assert expected_token == mock_page_call.call_args.args[1]["token"]
-            assert expected_max == mock_page_call.call_args.args[1]["maximumResults"]
+            assert expected_token == mock_page_call.call_args[0][1]["token"]
+            assert expected_max == mock_page_call.call_args[0][1]["maximumResults"]
 
     @pytest.mark.parametrize("token, max, expected_token, expected_max", [
         ("token", 1, "token", 1),
@@ -213,8 +213,8 @@ class TestConnectionPaginateMethods:
         with patch("qarnot.connection.Connection._page_call") as mock_page_call:
             mock_page_call.return_value = {"token" : "token","nextToken" : "nextToken","isTruncated":True,"data":[]}
             retriever = connec.pools_page(token=token, maximum=max)
-            assert expected_token == mock_page_call.call_args.args[1]["token"]
-            assert expected_max == mock_page_call.call_args.args[1]["maximumResults"]
+            assert expected_token == mock_page_call.call_args[0][1]["token"]
+            assert expected_max == mock_page_call.call_args[0][1]["maximumResults"]
 
     def test_page_task_return_object(self):
         task_body = [{
