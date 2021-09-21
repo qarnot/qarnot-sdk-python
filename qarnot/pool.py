@@ -91,6 +91,9 @@ class Pool(object):
         self._elastic_minimum_idle_time = 0
         self._running_core_count = 0
         self._running_instance_count = 0
+        self._pool_usage = 0.0
+        self._total_slot_capacity = 0
+        self._queued_or_running_task_instances_count = 0.0
 
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
@@ -175,10 +178,12 @@ class Pool(object):
         self._preparation_task = json_pool.get('preparationTask')
         self._tags = json_pool.get('tags', None)
         self._tasks_wait_for_synchronization = json_pool.get('taskDefaultWaitForPoolResourcesSynchronization', False)
+        self._pool_usage = json_pool.get("poolUsage", 0.0)
+        self._total_slot_capacity = json_pool.get("totalSlotCapacity", 0)
+        self._queued_or_running_task_instances_count = json_pool.get("queuedOrRunningTaskInstancesCount", 0.0)
 
         if 'autoDeleteOnCompletion' in json_pool:
             self._auto_delete = json_pool["autoDeleteOnCompletion"]
-
         if 'completionTimeToLive' in json_pool:
             self._completion_time_to_live = json_pool["completionTimeToLive"]
 
@@ -1019,6 +1024,32 @@ class Pool(object):
         """
         self._update_if_summary()
         return self._end_date
+
+    @property
+    def pool_usage(self):
+        """
+        :type: :class:`float`
+        :getter: Returns the pool usage
+        """
+        self._update_if_summary()
+        return self._pool_usage
+
+    @property
+    def total_slot_capacity(self):
+        """
+        :type: :class:`int`
+        :getter: Returns the pool slot capacity
+        """
+        self._update_if_summary()
+        return self._total_slot_capacity
+
+    @property
+    def queued_or_running_task_instances_count(self):
+        """
+        :type: :class:`int`
+        :getter: Returns count of task instances dispatched in the pool
+        """
+        return self._queued_or_running_task_instances_count
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\
