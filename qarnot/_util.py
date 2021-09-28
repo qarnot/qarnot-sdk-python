@@ -71,14 +71,9 @@ def parse_datetime(string):
     try:
         # '2018-06-13T09:06:20Z'
         return datetime.strptime(string, "%Y-%m-%dT%H:%M:%SZ")
-    except Exception:
-        pass
-
-    try:
+    except ValueError:
         # '2018-06-13T09:06:20.537708Z'
         return datetime.strptime(string, "%Y-%m-%dT%H:%M:%S.%fZ")
-    except Exception:
-        raise
 
 
 def parse_timedelta(string):
@@ -93,28 +88,27 @@ def parse_timedelta(string):
     if string is None:
         return timedelta(day, second, 0, millisecond, minute, hour)
 
-    try:
-        splitted_timedelta = string.split(":")
-        if len(splitted_timedelta) == 3:
-            # handle days and hours
-            if ('.' in splitted_timedelta[0]):
-                day_string, hour_string = splitted_timedelta[0].split('.')
-            else:
-                hour_string = splitted_timedelta[0]
-            # handle minute
-            minute_string = splitted_timedelta[1]
-            # handle seconds and milliseconds
-            if ('.' in splitted_timedelta[2]):
-                second_string, millisecond_string = splitted_timedelta[2].split('.')
-            else:
-                second_string = splitted_timedelta[2]
+    splitted_timedelta = string.split(":")
+    if len(splitted_timedelta) == 3:
+        # handle days and hours
+        if ('.' in splitted_timedelta[0]):
+            day_string, hour_string = splitted_timedelta[0].split('.')
+        else:
+            hour_string = splitted_timedelta[0]
+        # handle minute
+        minute_string = splitted_timedelta[1]
+        # handle seconds and milliseconds
+        if ('.' in splitted_timedelta[2]):
+            second_string, millisecond_string = splitted_timedelta[2].split('.')
+        else:
+            second_string = splitted_timedelta[2]
 
-            day = int(day_string)
-            hour = int(hour_string)
-            minute = int(minute_string)
-            second = int(second_string)
-            millisecond = int(millisecond_string)
-    except Exception:
-        raise
+        day = int(day_string)
+        hour = int(hour_string)
+        minute = int(minute_string)
+        second = int(second_string)
+        millisecond = int(millisecond_string)
+    else:
+        raise ValueError("parse_timedelta format should be [d'.']hh':'mm':'ss['.'fffffff].")
 
     return timedelta(day, second, 0, millisecond, minute, hour)

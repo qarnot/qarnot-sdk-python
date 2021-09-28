@@ -1,4 +1,5 @@
-from typing import Dict
+from __future__ import annotations
+from typing import Any, Dict
 import abc
 
 # ********************************************************
@@ -7,6 +8,7 @@ import abc
 
 
 class AbstractFiltering(metaclass=abc.ABCMeta):
+    name: str = 'abstractFiltering'
     """
     Abstract base class for resources filtering, allowing to select only a subset of a resources bucket as task resources.
     """
@@ -45,7 +47,7 @@ class BucketPrefixFiltering(AbstractFiltering):
         :type json: Dict
         "bucket_or_bucket_name""
         """
-        prefix = json.get("prefix")
+        prefix: str = json.get("prefix")
         return BucketPrefixFiltering(prefix)
 
     def __repr__(self) -> str:
@@ -82,7 +84,7 @@ class Filtering(object):
         self._filters[filtering.name] = filtering
 
     @classmethod
-    def from_json(cls, json) -> object:
+    def from_json(cls, json) -> Filtering:
         """Create the class sub objects of a Filtering from a json.
 
         :param json: the json elements of the class
@@ -94,7 +96,7 @@ class Filtering(object):
                 filtering.append(BucketPrefixFiltering.from_json(json[key]))
         return filtering
 
-    def to_json(self) -> object:
+    def to_json(self) -> Dict[str, Any]:
         """Get a dict ready to be json packed.
         """
         json = {}
@@ -111,6 +113,7 @@ class AbstractResourcesTransformation(metaclass=abc.ABCMeta):
     """
     Abstract base class for resources transformation, allowing to transform bucket objects before they are presented to the task as resources.
     """
+    name: str = 'abstractResourcesTransformation'
 
     @abc.abstractmethod
     def to_json(self):
@@ -182,7 +185,7 @@ class ResourcesTransformation(object):
         return "[" + ",".join(map(str, self._resource_transformers.values())) + "]"
 
     @classmethod
-    def from_json(cls, json) -> object:
+    def from_json(cls, json) -> ResourcesTransformation:
         """Create the class sub objects of a ResourcesTransformation from a json.
 
         :param json: the json elements of the class

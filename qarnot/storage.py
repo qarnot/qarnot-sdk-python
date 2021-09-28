@@ -13,10 +13,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+# pylint: disable=W0613
 
 import inspect
 import os
 import os.path
+import deprecation
+from . import __version__
 
 
 class Storage(object):
@@ -147,6 +150,9 @@ class Storage(object):
         """
         self._not_implemented()
 
+    @deprecation.deprecated(deprecated_in="2.6.0", removed_in="3.0",
+                            current_version=__version__,  # type: ignore
+                            details="Legacy function")
     def update(self, flush=None):
         """Update object from remote endpoint
 
@@ -154,6 +160,9 @@ class Storage(object):
         """
         self._not_implemented()
 
+    @deprecation.deprecated(deprecated_in="2.6.0", removed_in="3.0",
+                            current_version=__version__,  # type: ignore
+                            details="Legacy function")
     def flush(self):
         """Ensure all background uploads are complete
         """
@@ -164,8 +173,8 @@ class Storage(object):
         """x.__getitem__(y) <==> x[y]"""
         try:
             return self.get_file(filename)
-        except ValueError:
-            raise KeyError(filename)
+        except ValueError as error:
+            raise KeyError(filename) from error
 
     def __setitem__(self, remote, filename):
         """x.__setitem__(i, y) <==> x[i]=y"""
@@ -177,8 +186,8 @@ class Storage(object):
         """x.__delitem__(y) <==> del x[y]"""
         try:
             return self.delete_file(filename)
-        except ValueError:
-            raise KeyError(filename)
+        except ValueError as error:
+            raise KeyError(filename) from error
 
     def __contains__(self, item):
         """D.__contains__(k) -> True if D has a key k, else False"""

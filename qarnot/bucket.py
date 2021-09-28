@@ -16,11 +16,12 @@
 from __future__ import print_function
 
 import hashlib
-import sys
 import os
 import posixpath
 import shutil
 import itertools
+import deprecation
+from . import __version__
 from typing import Optional
 
 from boto3.s3.transfer import TransferConfig
@@ -46,7 +47,7 @@ s3_multipart_config = TransferConfig(
 )
 
 
-class Bucket(Storage):
+class Bucket(Storage):  # pylint: disable=W0223
     """Represents a resource/result bucket.
 
     This class is the interface to manage resources or results from a
@@ -65,6 +66,7 @@ class Bucket(Storage):
     """
 
     def __init__(self, connection, name, create=True, filtering: Filtering = None, resources_transformation: ResourcesTransformation = None):
+        super().__init__()
         if connection.s3client is None:
             raise BucketStorageUnavailableException()
 
@@ -151,18 +153,10 @@ class Bucket(Storage):
 
         if versioned_bucket.status == 'None':
             objectlist = list(bucket.objects.all())
-            if sys.version_info >= (3, 0):
-                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
-            else:
-                # noinspection PyUnresolvedReferences
-                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
+            listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
         else:
             objectlist = list(bucket.object_versions.all())
-            if sys.version_info >= (3, 0):
-                listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
-            else:
-                # noinspection PyUnresolvedReferences
-                listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in xrange(0, len(objectlist), n)]  # noqa
+            listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
 
         for item in listofobjectlist:
             bucket.delete_objects(
@@ -218,7 +212,7 @@ class Bucket(Storage):
         filesdict = {}
         for root, _, files in os.walk(directory):
             root = _util.decode(root)
-            files = map(_util.decode, files)
+            files = list(map(_util.decode, files))
 
             for file_ in files:
                 filepath = os.path.join(root, file_)
@@ -362,9 +356,9 @@ class Bucket(Storage):
         list_files_only = [x for x in self.list_files() if not x.key.endswith('/')]
         list_directories_only = [x for x in self.list_files() if x.key.endswith('/')]
 
-        for dir in list_directories_only:
-            if not os.path.isdir(os.path.join(output_dir, dir.key.lstrip('/'))):
-                os.makedirs(os.path.join(output_dir, dir.key.lstrip('/')))
+        for directory in list_directories_only:
+            if not os.path.isdir(os.path.join(output_dir, directory.key.lstrip('/'))):
+                os.makedirs(os.path.join(output_dir, directory.key.lstrip('/')))
 
         for _, dupes in groupby(sorted(list_files_only, key=attrgetter('e_tag')), attrgetter('e_tag')):
             file_info = next(dupes)
@@ -391,7 +385,7 @@ class Bucket(Storage):
             remote += '/'
         for dirpath, _, files in os.walk(local):
             dirpath = _util.decode(dirpath)
-            files = map(_util.decode, files)
+            files = list(map(_util.decode, files))
 
             remote_loc = dirpath.replace(local, remote, 1)
             for filename in files:
@@ -406,10 +400,16 @@ class Bucket(Storage):
         }
         return self._connection.s3client.copy_object(CopySource=copy_source, Bucket=self._uuid, Key=dest)
 
+    @deprecation.deprecated(deprecated_in="2.6.0", removed_in="3.0",
+                            current_version=__version__,  # type: ignore
+                            details="Legacy function")
     @_util.copy_docs(Storage.flush)
     def flush(self):
         pass
 
+    @deprecation.deprecated(deprecated_in="2.6.0", removed_in="3.0",
+                            current_version=__version__,  # type: ignore
+                            details="Legacy function")
     @_util.copy_docs(Storage.update)
     def update(self, flush=False):
         pass

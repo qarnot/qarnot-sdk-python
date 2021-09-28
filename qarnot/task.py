@@ -19,6 +19,7 @@ from os import makedirs, path
 import time
 import warnings
 import sys
+from typing import Dict, Optional, Union, List, Any, Callable
 
 from . import get_url, raise_on_error, _util
 from .status import Status
@@ -37,6 +38,14 @@ RUNNING_DOWNLOADING_STATES = ['Submitted', 'PartiallyDispatched',
                               'FullyDispatched', 'PartiallyExecuting',
                               'FullyExecuting', 'DownloadingResults', 'UploadingResults']
 
+JobType = Any
+ConnectionType = Any
+TaskType = Any
+PoolType = Pool
+BucketType = Optional[Bucket]
+StatusType = Status
+Uuid = str
+
 
 class Task(object):
     """Represents a Qarnot task.
@@ -46,7 +55,7 @@ class Task(object):
        :meth:`qarnot.connection.Connection.create_task`
        or retrieved with :meth:`qarnot.connection.Connection.tasks` or :meth:`qarnot.connection.Connection.retrieve_task`.
     """
-    def __init__(self, connection, name, profile_or_pool=None, instancecount_or_range=1, shortname=None, job=None):
+    def __init__(self, connection: ConnectionType, name: str, profile_or_pool: Union[str, PoolType] = None, instancecount_or_range: Union[int, str] = 1, shortname: str = None, job: JobType = None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -80,7 +89,7 @@ class Task(object):
             self._job_uuid = job.uuid
 
         if isinstance(instancecount_or_range, int):
-            self._instancecount = instancecount_or_range
+            self._instancecount: int = instancecount_or_range
             self._advanced_range = None
         else:
             self._advanced_range = instancecount_or_range
@@ -89,11 +98,11 @@ class Task(object):
         self._running_core_count = 0
         self._running_instance_count = 0
 
-        self._resource_objects = []
+        self._resource_objects: List[BucketType] = []
 
-        self._result_object = None
+        self._result_object: BucketType = None
         self._connection = connection
-        self._constants = {}
+        self._constants: Dict[str, Any] = {}
         """
          :type: dict(str,str)
 
@@ -104,35 +113,35 @@ class Task(object):
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
 
-        self._dependentOn = []
+        self._dependentOn: List[Uuid] = []
 
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
 
         self._last_cache = time.time()
-        self._constraints = {}
+        self._constraints: Dict[str, str] = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
-        self._snapshots = False
+        self._snapshots: Union[int, bool] = False
         self._dirty = False
         self._rescount = -1
-        self._snapshot_whitelist = None
-        self._snapshot_blacklist = None
-        self._results_whitelist = None
-        self._results_blacklist = None
+        self._snapshot_whitelist: str = None
+        self._snapshot_blacklist: str = None
+        self._results_whitelist: str = None
+        self._results_blacklist: str = None
         self._status = None
-        self._completed_instances = []
-        self._tags = []
+        self._completed_instances: List[CompletedInstance] = []
+        self._tags: List[str] = []
         self._creation_date = None
-        self._errors = None
-        self._resource_object_ids = []
-        self._resource_object_advanced = []
+        self._errors: Optional[List[Error]] = None
+        self._resource_object_ids: List[str] = []
+        self._resource_object_advanced: List[str] = []
         self._result_object_id = None
         self._is_summary = False
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
-        self._wait_for_pool_resources_synchronization = None
+        self._wait_for_pool_resources_synchronization: Optional[bool] = None
 
         self._previous_state = None
         self._state_transition_time = None
@@ -143,9 +152,10 @@ class Task(object):
         self._execution_time = None
         self._wall_time = None
         self._end_date = None
+        self._upload_results_on_cancellation: Optional[bool] = None
 
     @classmethod
-    def _retrieve(cls, connection, uuid):
+    def _retrieve(cls, connection: ConnectionType, uuid: str) -> TaskType:
         """Retrieve a submitted task given its uuid.
 
         :param qarnot.connection.Connection connection:
@@ -165,7 +175,7 @@ class Task(object):
         raise_on_error(resp)
         return Task.from_json(connection, resp.json())
 
-    def run(self, output_dir=None, job_timeout=None, live_progress=False, results_progress=None):
+    def run(self, output_dir: str = None, job_timeout: float = None, live_progress: bool = False, results_progress: bool = None) -> None:
         """Submit a task, wait for the results and download them if required.
 
         :param str output_dir: (optional) path to a directory that will contain the results
@@ -193,7 +203,7 @@ class Task(object):
         if output_dir is not None:
             self.download_results(output_dir, progress=results_progress)
 
-    def resume(self, output_dir, job_timeout=None, live_progress=False, results_progress=None):
+    def resume(self, output_dir: str, job_timeout: float = None, live_progress: bool = False, results_progress: bool = None) -> None:
         """Resume waiting for this task if it is still in submitted mode.
         Equivalent to :meth:`wait` + :meth:`download_results`.
 
@@ -210,12 +220,11 @@ class Task(object):
         .. note:: Do nothing if the task has not been submitted.
         .. warning:: Will override *output_dir* content.
         """
-        if self._uuid is None:
-            return output_dir
-        self.wait(timeout=job_timeout, live_progress=live_progress)
-        self.download_results(output_dir, progress=results_progress)
+        if self._uuid is not None:
+            self.wait(timeout=job_timeout, live_progress=live_progress)
+            self.download_results(output_dir, progress=results_progress)
 
-    def submit(self):
+    def submit(self) -> None:
         """Submit task to the cluster if it is not already submitted.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -244,21 +253,20 @@ class Task(object):
 
         self._post_submit()
 
-    def _pre_submit(self):
+    def _pre_submit(self) -> None:
         """Pre submit action on the task & its resources"""
-        if self._uuid is not None:
-            return self._state
-        for resource_buckets in self.resources:
-            resource_buckets.flush()
+        if self._uuid is None:
+            for resource_buckets in self.resources:
+                resource_buckets.flush()
 
-    def _post_submit(self):
+    def _post_submit(self) -> None:
         """Post submit action on the task after submission"""
         if not isinstance(self._snapshots, bool):
             self.snapshot(self._snapshots)
 
         self.update(True)
 
-    def abort(self):
+    def abort(self) -> None:
         """Abort this task if running.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -276,7 +284,7 @@ class Task(object):
 
         self.update(True)
 
-    def update_resources(self):
+    def update_resources(self) -> None:
         """ Update resources for a running task.
 
         The typical workflow is as follows:
@@ -301,7 +309,7 @@ class Task(object):
 
         self.update(True)
 
-    def delete(self, purge_resources=False, purge_results=False):
+    def delete(self, purge_resources: bool = False, purge_results: bool = False) -> None:
         """Delete this task on the server.
 
         :param bool purge_resources: parameter value is used to determine if the bucket is also deleted.
@@ -357,7 +365,7 @@ class Task(object):
         self._state = "Deleted"
         self._uuid = None
 
-    def update(self, flushcache=False):
+    def update(self, flushcache: bool = False) -> None:
         """
         Update the task object from the REST Api.
         The flushcache parameter can be used to force the update, otherwise a cached version of the object
@@ -387,7 +395,7 @@ class Task(object):
         self._last_cache = time.time()
         self._is_summary = False
 
-    def _update(self, json_task):
+    def _update(self, json_task: Dict) -> None:
         """Update this task from retrieved info."""
         self._name = json_task['name']
         self._shortname = json_task.get('shortname')
@@ -427,6 +435,7 @@ class Task(object):
         self._uuid = json_task['uuid']
         self._state = json_task['state']
         self._tags = json_task.get('tags', None)
+        self._upload_results_on_cancellation = json_task.get('uploadResultsOnCancellation', None)
         if 'resultsCount' in json_task:
             if self._rescount < json_task['resultsCount']:
                 self._dirty = True
@@ -462,7 +471,7 @@ class Task(object):
         self._end_date = json_task.get("endDate", None)
 
     @classmethod
-    def from_json(cls, connection, json_task, is_summary=False):
+    def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
         """Create a Task object from a json task.
 
         :param qarnot.connection.Connection connection: the cluster connection
@@ -481,7 +490,7 @@ class Task(object):
         new_task._is_summary = is_summary
         return new_task
 
-    def commit(self):
+    def commit(self) -> None:
         """Replicate local changes on the current object instance to the REST API
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -497,7 +506,7 @@ class Task(object):
 
         raise_on_error(resp)
 
-    def wait(self, timeout=None, live_progress=False):
+    def wait(self, timeout: float = None, live_progress: bool = False) -> bool:
         """Wait for this task until it is completed.
 
         :param float timeout: maximum time (in seconds) to wait before returning
@@ -524,7 +533,7 @@ class Task(object):
                     ' ', AdaptiveETA()
                 ]
                 progressbar = ProgressBar(widgets=widgets, max_value=100)
-            except Exception:
+            except Exception:  # pylint: disable=W0703
                 live_progress = False
 
         start = time.time()
@@ -564,7 +573,7 @@ class Task(object):
             progressbar.finish()
         return True
 
-    def snapshot(self, interval):
+    def snapshot(self, interval: int) -> None:
         """Start snapshooting results.
         If called, this task's results will be periodically
         updated, instead of only being available at the end.
@@ -596,7 +605,7 @@ class Task(object):
 
         self._snapshots = True
 
-    def instant(self):
+    def instant(self) -> None:
         """Make a snapshot of the current task.
 
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
@@ -668,7 +677,7 @@ class Task(object):
         return self._resource_objects
 
     @resources.setter
-    def resources(self, value):
+    def resources(self, value: List[BucketType]):
         """This is a setter."""
         self._resource_objects = value
 
@@ -689,11 +698,11 @@ class Task(object):
         return self._result_object
 
     @results.setter
-    def results(self, value):
+    def results(self, value: Bucket):
         """ This is a setter."""
         self._result_object = value
 
-    def download_results(self, output_dir, progress=None):
+    def download_results(self, output_dir: str, progress: Union[bool, Callable[[float, float, str], None]] = None) -> None:
         """Download results in given *output_dir*.
 
         :param str output_dir: local directory for the retrieved files.
@@ -835,7 +844,7 @@ class Task(object):
         return self._name
 
     @name.setter
-    def name(self, value):
+    def name(self, value: str):
         """Setter for name."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -855,7 +864,7 @@ class Task(object):
         return self._shortname
 
     @shortname.setter
-    def shortname(self, value):
+    def shortname(self, value: str):
         """Setter for shortname."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -877,7 +886,7 @@ class Task(object):
         return self._tags
 
     @tags.setter
-    def tags(self, value):
+    def tags(self, value: List[str]):
         """setter for tags"""
         self._tags = value
         self._auto_update = False
@@ -897,7 +906,7 @@ class Task(object):
         return self._connection.retrieve_pool(self._pool_uuid)
 
     @pool.setter
-    def pool(self, value):
+    def pool(self, value: PoolType):
         """setter for pool"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -921,7 +930,7 @@ class Task(object):
         return self._profile
 
     @profile.setter
-    def profile(self, value):
+    def profile(self, value: str):
         """setter for profile"""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -947,7 +956,7 @@ class Task(object):
         return self._instancecount
 
     @instancecount.setter
-    def instancecount(self, value):
+    def instancecount(self, value: int):
         """Setter for instancecount."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -996,7 +1005,7 @@ class Task(object):
         return self._advanced_range
 
     @advanced_range.setter
-    def advanced_range(self, value):
+    def advanced_range(self, value: str):
         """Setter for advanced_range."""
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -1018,7 +1027,7 @@ class Task(object):
         return self._snapshot_whitelist
 
     @snapshot_whitelist.setter
-    def snapshot_whitelist(self, value):
+    def snapshot_whitelist(self, value: str):
         """Setter for snapshot whitelist, this can only be set before tasks submission
         """
         if self.uuid is not None:
@@ -1039,7 +1048,7 @@ class Task(object):
         return self._snapshot_blacklist
 
     @snapshot_blacklist.setter
-    def snapshot_blacklist(self, value):
+    def snapshot_blacklist(self, value: str):
         """Setter for snapshot blacklist, this can only be set before tasks submission
         """
         if self.uuid is not None:
@@ -1060,7 +1069,7 @@ class Task(object):
         return self._results_whitelist
 
     @results_whitelist.setter
-    def results_whitelist(self, value):
+    def results_whitelist(self, value: str):
         """Setter for results whitelist, this can only be set before tasks submission
         """
         if self.uuid is not None:
@@ -1084,7 +1093,7 @@ class Task(object):
         return self._results_blacklist
 
     @results_blacklist.setter
-    def results_blacklist(self, value):
+    def results_blacklist(self, value: str):
         """Setter for results blacklist, this can only be set before tasks submission
         """
         if self.uuid is not None:
@@ -1118,7 +1127,7 @@ class Task(object):
 
     @property
     def creation_date(self):
-        """:type: :class:`str`
+        """:type: :class:`datetime`
 
         :getter: Returns this task's creation date
 
@@ -1156,7 +1165,7 @@ class Task(object):
         return self._constants
 
     @constants.setter
-    def constants(self, value):
+    def constants(self, value: Dict[str, str]):
         """Setter for constants
         """
         self._update_if_summary()
@@ -1181,7 +1190,7 @@ class Task(object):
         return self._constraints
 
     @constraints.setter
-    def constraints(self, value):
+    def constraints(self, value: Dict[str, str]):
         """Setter for constraints
         """
         self._update_if_summary()
@@ -1201,7 +1210,7 @@ class Task(object):
         return self._wait_for_pool_resources_synchronization
 
     @wait_for_pool_resources_synchronization.setter
-    def wait_for_pool_resources_synchronization(self, value):
+    def wait_for_pool_resources_synchronization(self, value: Optional[bool]):
         """Setter for wait_for_pool_resources_synchronization
         """
         if self.uuid is not None:
@@ -1222,7 +1231,7 @@ class Task(object):
         return self._auto_update
 
     @auto_update.setter
-    def auto_update(self, value):
+    def auto_update(self, value: bool):
         """Setter for auto_update feature
         """
         self._auto_update = value
@@ -1240,17 +1249,39 @@ class Task(object):
         return self._update_cache_time
 
     @update_cache_time.setter
-    def update_cache_time(self, value):
+    def update_cache_time(self, value: int):
         """Setter for update_cache_time
         """
         self._update_cache_time = value
 
-    def set_task_dependencies_from_uuids(self, uuids):
+    @property
+    def upload_results_on_cancellation(self) -> Optional[bool]:
+        """:type: :class:`Optional[bool]`
+
+        :getter: Whether task results will be uploaded upon task cancellation
+        :setter: Set to `True` to upload results on task cancellation, `False` to
+                 make sure they won't be uploaded, and keep to `None` to get the
+                 default behavior.
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._upload_results_on_cancellation
+
+    @upload_results_on_cancellation.setter
+    def upload_results_on_cancellation(self, value: Optional[bool]):
+        """Setter for upload_results_on_cancellation
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._upload_results_on_cancellation = value
+
+    def set_task_dependencies_from_uuids(self, uuids: Uuid):
         """Setter for the task dependencies using uuid
         """
         self._dependentOn += uuids
 
-    def set_task_dependencies_from_tasks(self, tasks):
+    def set_task_dependencies_from_tasks(self, tasks: List[TaskType]):
         """Setter for the task dependencies using tasks
         """
         self._dependentOn += [task._uuid for task in tasks]
@@ -1272,7 +1303,7 @@ class Task(object):
         return self._auto_delete
 
     @auto_delete.setter
-    def auto_delete(self, value):
+    def auto_delete(self, value: bool):
         """Setter for auto_delete, this can only be set before tasks submission
         """
         self._update_if_summary()
@@ -1423,7 +1454,8 @@ class Task(object):
             'constants': const_list,
             'constraints': constr_list,
             'dependencies': {},
-            'waitForPoolResourcesSynchronization': self._wait_for_pool_resources_synchronization
+            'waitForPoolResourcesSynchronization': self._wait_for_pool_resources_synchronization,
+            'uploadResultsOnCancellation': self._upload_results_on_cancellation
         }
         json_task['dependencies']["dependsOn"] = self._dependentOn
 
@@ -1491,7 +1523,7 @@ class CompletedInstance(object):
 
     .. note:: Read-only class
     """
-    def __init__(self, json):
+    def __init__(self, json: Dict[str, Any]):
         self.instance_id = json['instanceId']
         """:type: :class:`int`
 
@@ -1532,6 +1564,11 @@ class CompletedInstance(object):
 
           Instance produced results"""
 
+        self.execution_attempt_count = json.get('executionAttemptCount', 0)
+        """:type: :class:`int`
+
+        Number of execution attempt of an instance, (manly in case of preemption)."""
+
     def __repr__(self):
         if sys.version_info > (3, 0):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
@@ -1544,7 +1581,8 @@ class BulkTaskResponse(object):
 
     .. note:: Read-only class
     """
-    def __init__(self, json):
+
+    def __init__(self, json: Dict[str, Any]):
         self.status_code = json['statusCode']
         """:type: :class:`int`
 

@@ -19,7 +19,7 @@
 from .exceptions import QarnotGenericException
 
 __all__ = ["task", "connection", "bucket", "pool",
-           "storage", "status", "job", "advance_bucket"]
+           "storage", "status", "job", "advanced_bucket"]
 
 
 def raise_on_error(response):
@@ -28,8 +28,8 @@ def raise_on_error(response):
     if response.status_code < 200 or response.status_code >= 300:
         try:
             raise QarnotGenericException(response.json()['message'])
-        except ValueError:
-            raise QarnotGenericException(response.text)
+        except ValueError as value:
+            raise QarnotGenericException(response.text) from value
 
 
 def get_url(key, **kwargs):
@@ -69,7 +69,7 @@ def get_url(key, **kwargs):
 
 
 from ._version import get_versions  # noqa
-__version__ = get_versions()['version']
+__version__ = get_versions()['version']  # type: ignore
 del get_versions
 
 from .connection import Connection  # noqa

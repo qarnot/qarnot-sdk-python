@@ -7,7 +7,7 @@ from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransfo
 import datetime
 
 from .mock_connection import MockConnection
-from .mock_task import default_json_task
+from .mock_task import default_json_task, task_with_running_instances
 
 @pytest.fixture(name="mock_conn")
 def mock_conn_fixture():
@@ -177,3 +177,17 @@ class TestTaskProperties:
         assert "name" == task.resources[0].uuid
         assert "prefix1" == task.resources[0]._filtering._filters["prefixFiltering"].prefix
         assert "prefix2" == task.resources[0]._resources_transformation._resource_transformers["stripPrefix"].prefix
+
+
+    def test_execution_attempt_count_in_running_instances(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task._update(task_with_running_instances)
+        assert len(task.status.running_instances_info.per_running_instance_info) == 2
+        assert task.status.running_instances_info.per_running_instance_info[0].execution_attempt_count == 1
+        assert task.status.running_instances_info.per_running_instance_info[1].execution_attempt_count == 2
+
+
+    def test_execution_attempt_count_in_completed_instances(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task._update(default_json_task)
+        assert task.completed_instances[0].execution_attempt_count == 43

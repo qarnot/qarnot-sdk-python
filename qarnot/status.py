@@ -294,6 +294,11 @@ class PerRunningInstanceInfo(object):
 
         CPU model"""
 
+        self.execution_attempt_count = json.get('executionAttemptCount', 0)
+        """:type: :class:`int`
+
+        Number of execution attempt of an instance, (manly in case of preemption)."""
+
         self.active_forward = []
         """type: list(:class:`TaskActiveForward`)
 

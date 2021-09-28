@@ -32,7 +32,6 @@ __all__ = ['QarnotException',
 
 class QarnotException(Exception):
     """Qarnot Exception"""
-    pass
 
 
 class QarnotGenericException(QarnotException):
@@ -43,49 +42,39 @@ class QarnotGenericException(QarnotException):
 
 class BucketStorageUnavailableException(QarnotException):
     """API bucket storage is disabled."""
-    pass
 
 
 class UnauthorizedException(QarnotException):
     """Invalid token."""
-    pass
 
 
 class MissingTaskException(QarnotException):
     """Non existent task."""
-    pass
 
 
 class MissingBucketException(QarnotException):
     """Non existent bucket."""
-    pass
 
 
 class MissingPoolException(QarnotException):
     """Non existent pool."""
-    pass
 
 
 class MaxTaskException(QarnotException):
     """Max number of tasks reached."""
-    pass
 
 
 class MaxPoolException(QarnotException):
     """Max number of pools reached."""
-    pass
 
 
 class NotEnoughCreditsException(QarnotException):
     """Not enough credits exception."""
-    pass
 
 
 class MissingJobException(Exception):
     """Non existentjob."""
-    pass
 
 
 class MaxJobException(Exception):
     """Max number of jobs reached."""
-    pass

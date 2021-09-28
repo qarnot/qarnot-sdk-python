@@ -16,8 +16,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict, Iterable, Iterator, List, Union
-from . import get_url, raise_on_error, __version__
+from typing import Dict, Iterable, Iterator, List, Optional
+from . import get_url, raise_on_error, __version__  # type: ignore
 from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .paginate import PaginateResponse
@@ -27,7 +27,6 @@ from ._filter import create_pool_filter, create_task_filter, create_job_filter
 from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
                          MissingTaskException, MissingPoolException, MissingJobException)
 import requests
-import sys
 import warnings
 import os
 import time
@@ -36,11 +35,9 @@ import concurrent.futures
 import botocore
 import deprecation
 from json import dumps as json_dumps
-from requests.exceptions import ConnectionError
-if sys.version_info[0] >= 3:  # module renamed in py3
-    import configparser as config  # pylint: disable=import-error
-else:
-    import ConfigParser as config  # pylint: disable=import-error
+from requests.packages import urllib3
+from requests.exceptions import ConnectionError  # pylint: disable=W0622
+import configparser as config
 
 #########
 # class #
@@ -98,15 +95,15 @@ class Connection(object):
                 if fileconf.get('cluster_url'):
                     self.cluster = fileconf.get('cluster_url')
                 auth = fileconf.get('client_auth')
-                self.timeout = fileconf.get('cluster_timeout')
+                self.timeout: int = int(fileconf.get('cluster_timeout'))
                 if fileconf.get('cluster_unsafe'):
                     self._http.verify = False
                 elif fileconf.get('cluster_custom_certificate'):
                     self._http.verify = fileconf.get('cluster_custom_certificate')
             else:
                 cfg = config.ConfigParser()
-                with open(fileconf) as cfgfile:
-                    cfg.readfp(cfgfile)
+                with open(fileconf) as cfg_file:
+                    cfg.read_string(cfg_file.read())
 
                     self.cluster = None
                     if cfg.has_option('cluster', 'url'):
@@ -143,7 +140,7 @@ class Connection(object):
             auth = client_token
 
         if not self._http.verify:
-            requests.packages.urllib3.disable_warnings()
+            urllib3.disable_warnings()
 
         if self.cluster is None:
             self.cluster = os.getenv("QARNOT_CLUSTER_URL")
@@ -284,7 +281,7 @@ class Connection(object):
             else:
                 last_chance = True
 
-    def _post(self, url, json=None, *args, **kwargs):
+    def _post(self, url, json=None, **kwargs):
         """perform a POST request on the cluster
 
         :param url: :class:`str`,
@@ -310,7 +307,7 @@ class Connection(object):
                     kwargs['headers']['Content-Type'] = 'application/json'
                     kwargs['data'] = json_dumps(json)
                 ret = self._http.post(self.cluster + url,
-                                      timeout=self.timeout, *args, **kwargs)
+                                      timeout=self.timeout, **kwargs)
                 if ret.ok:
                     return ret
                 if ret.status_code == 401:
@@ -445,7 +442,7 @@ class Connection(object):
         return buckets
 
     @deprecation.deprecated(deprecated_in="2.5.0", removed_in="3.0",
-                            current_version=__version__,
+                            current_version=__version__,  # type: ignore
                             details="Use the all_pools function instead")
     def pools(self, summary=True, tags_intersect=None, tags=None):
         """Get the list of pools stored on this cluster for this user.
@@ -469,7 +466,7 @@ class Connection(object):
         return list(self.all_pools(summary=summary, tags=tags, tags_intersect=tags_intersect))
 
     @deprecation.deprecated(deprecated_in="2.5.0", removed_in="3.0",
-                            current_version=__version__,
+                            current_version=__version__,  # type: ignore
                             details="Use the all_tasks function instead")
     def tasks(self, tags=None, summary=True, tags_intersect=None):
         """Get the list of tasks stored on this cluster for this user.
@@ -494,7 +491,7 @@ class Connection(object):
         return list(self.all_tasks(summary=summary, tags=tags, tags_intersect=tags_intersect))
 
     @deprecation.deprecated(deprecated_in="2.5.0", removed_in="3.0",
-                            current_version=__version__,
+                            current_version=__version__,  # type: ignore
                             details="Use the all_jobs function instead")
     def jobs(self, tags=None, tags_intersect=None):
         """Get the list of jobs stored on this cluster for this user.
@@ -582,14 +579,14 @@ class Connection(object):
             for task in page.page_data:
                 yield task
 
-    def _paginate_request(self, filter: Dict, token: str, maximum: Union[int, None]) -> Dict:
+    def _paginate_request(self, filters: Dict, token: Optional[str], maximum: int) -> Dict:
         """A paginate request creator.
 
         :return: The json request to be call.
         :rtype: Dict
         """
         return {
-            "filter": filter,
+            "filter": filters,
             "token": token,
             "maximumResults": maximum
         }
@@ -607,7 +604,7 @@ class Connection(object):
         raise_on_error(response)
         return response.json()
 
-    def pools_page(self, token: str = None, maximum: Union[int, None] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
+    def pools_page(self, token: Optional[str] = None, maximum: Optional[int] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
         """Return a paginate pool object retriver.
 
         :param summary: retrive a pool or a pool summary, defaults to True
@@ -617,18 +614,18 @@ class Connection(object):
         :param token: the first paginate token to be used, defaults to None
         :type token: str, optional
         :param maximum: the maximum number of pages to retrieve, defaults to 10
-        :type maximum: Union[int, None], optional
+        :type maximum: Optional[int]
         :return: A paginate object
         :rtype: :class:`paginate.PaginateResponse`
         """
 
-        filter = create_pool_filter(tags=tags, tags_intersect=tags_intersect)
-        url = get_url('paginate pools summaries') if summary and filter is None else get_url('paginate pools')
-        result = self._page_call(url, self._paginate_request(filter, token, maximum))
+        filters = create_pool_filter(tags=tags, tags_intersect=tags_intersect)
+        url = get_url('paginate pools summaries') if summary and filters is None else get_url('paginate pools')
+        result = self._page_call(url, self._paginate_request(filters, token, maximum))
         data = [Pool.from_json(self, pool, summary) for pool in result["data"]]
         return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
 
-    def tasks_page(self, token: str = None, maximum: Union[int, None] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
+    def tasks_page(self, token: Optional[str] = None, maximum: Optional[int] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
         """Return a paginate task object.
 
         :param summary: retrive a task or a task summary, defaults to True
@@ -638,18 +635,18 @@ class Connection(object):
         :param token: the first paginate token to be used, defaults to None
         :type token: str, optional
         :param maximum: the maximum number of pages to retrieve, defaults to 10
-        :type maximum: Union[int, None], optional
+        :type maximum: Optional[int]
         :return: A paginate object
         :rtype: :class:`paginate.PaginateResponse`
         """
 
-        filter = create_task_filter(tags=tags, tags_intersect=tags_intersect)
-        url = get_url('paginate tasks summaries') if summary and filter is None else get_url('paginate tasks')
-        result = self._page_call(url, self._paginate_request(filter, token, maximum))
+        filters = create_task_filter(tags=tags, tags_intersect=tags_intersect)
+        url = get_url('paginate tasks summaries') if summary and filters is None else get_url('paginate tasks')
+        result = self._page_call(url, self._paginate_request(filters, token, maximum))
         data = [Task.from_json(self, task, summary) for task in result["data"]]
         return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
 
-    def jobs_page(self, token: str = None, maximum: Union[int, None] = None, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
+    def jobs_page(self, token: Optional[str] = None, maximum: Optional[int] = None, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
         """Return a paginate job object.
 
         :param tags_intersect: use a tag exclusive filter, defaults to None
@@ -657,13 +654,13 @@ class Connection(object):
         :param token: the first paginate token to be used, defaults to None
         :type token: str, optional
         :param maximum: the maximum number of pages to retrieve, defaults to 10
-        :type maximum: Union[int, None], optional
+        :type maximum: Optional[int]
         :return: A paginate object
         :rtype: :class:`paginate.PaginateResponse`
         """
 
-        filter = create_job_filter(tags=tags, tags_intersect=tags_intersect)
-        result = self._page_call(get_url('paginate jobs'), self._paginate_request(filter, token, maximum))
+        filters = create_job_filter(tags=tags, tags_intersect=tags_intersect)
+        result = self._page_call(get_url('paginate jobs'), self._paginate_request(filters, token, maximum))
         data = [Job.from_json(self, job) for job in result["data"]]
         return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
 

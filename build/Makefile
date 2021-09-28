@@ -35,39 +35,57 @@ install-optional-requirements: install-requirements
 
 install-all-requirements: install-dev-requirements install-optional-requirements install-doc-requirements
 
-############ Linting and testing area
+############ Linting
 
 flake8:
 	flake8 --ignore E501,F405,F403,W503 setup.py qarnot
 
 pylint:
-	pylint --rcfile=setup.cfg qarnot/*.py --disable=C,R,W0212,W1620,$(PYLINT_IGNORES),W1636,W1656,E1133 
+	pylint --rcfile=setup.cfg qarnot/*.py --disable=C,R,W0212,W1620
 	# W0212: Access to a protected member "" of a client class (protected-access)
 	# W1620: Calling a dict.iter*() method
 
 pylint-advice:
 	pylint --rcfile=setup.cfg qarnot/*.py --disable=C,R --enable=C0114,C0115,R0205,C0103,R1720,R0801:
 
-lint: flake8 pylint
+typing:
+	mypy qarnot/ --no-strict-optional --ignore-missing-import --pretty --show-error-context --show-column-numbers --show-error-codes --tb --raise-exceptions --check-untyped-defs
 
-quick-coverage:
-	pytest  -v -m "not (slow)" --cov=qarnot --cov-report=html  test
-	@echo "test index in ./htmlcov/index.html"
-coverage:
-	pytest --cov --cov-report html
+lint: typing flake8 pylint
+
+############ Testing area
 
 quick-tests:
-	pytest -v -m "not (slow)"
+	pytest -v -m "not (slow)" test/
+
 unit-tests:
-	pytest -v
+	pytest -v test/
 
 integration-tests:
 	@echo "for intergration tests, see the internal simple"
 
+quick-coverage:
+	pytest  -v -m "not (slow)" --cov=qarnot --cov-report=html  test
+	@echo "test index in ./htmlcov/index.html"
+
+unit-test-coverage: lint
+	pytest --cov --cov-report html test/
+	@echo "test index in ./htmlcov/index.html"
+
+
+full-tests: lint unit-tests integration-tests
+
+tests: lint quick-tests integration-tests
+
+coverage: lint quick-coverage
+
+full-coverage: lint unit-test-coverage
+
+############ Doc
+
 doc:
 	make -C doc html
 
-tests: unit-tests integration-tests
 
 re: clean build
 

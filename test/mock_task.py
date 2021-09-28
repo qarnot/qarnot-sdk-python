@@ -1,4 +1,6 @@
-default_json_task = {
+import copy
+
+default_json_task: dict = {
     "uuid":  "e4af4f1f-32ae-4e78-8d1b-1b9d8260d78b",
     "name":  "test",
     "shortname":  "e4af4f1f-32ae-4e78-8d1b-1b9d8260d78b",
@@ -42,7 +44,8 @@ default_json_task = {
             "cpuModel":  "AMD Ryzen 7 2700 Eight-Core Processor",
             "coreCount":  16,
             "clockRatio":  0.999,
-            "averageGHz":  3.198245
+            "averageGHz":  3.198245,
+            "executionAttemptCount": 43,
         }
     ],
     "status":  {
@@ -125,3 +128,60 @@ default_json_task = {
     "completionTimeToLive":  "00:00:00",
     "maxRetriesPerInstance":  0
 }
+
+
+task_with_running_instances = copy.deepcopy(default_json_task)
+task_with_running_instances.update({
+    "state":  "FullyExecuting",
+    "previousState":  "FullyDispatched",
+})
+
+
+task_with_running_instances['status']['runningInstancesInfo']['perRunningInstanceInfo'] = [
+        {
+            "phase": "execution",
+            "instanceId": 0,
+            "maxFrequencyGHz": 3.4,
+            "currentFrequencyGHz": 3.4,
+            "cpuUsage": 48.75,
+            "maxMemoryMB": 359,
+            "currentMemoryMB": 356,
+            "networkInKbps": 0,
+            "networkOutKbps": 3,
+            "progress": 0,
+            "executionTimeSec": 994,
+            "executionTimeGHz": 3335.2075,
+            "cpuModel": "AMD Ryzen 7 1700X Eight-Core Processor",
+            "coreCount": 16,
+            "executionAttemptCount": 1,
+            "activeForwards": [
+            ],
+            "vpnConnections": [
+            ],
+            "memoryUsage": 0.9916434,
+            "clockRatio": 1
+        },
+        {
+            "phase": "execution",
+            "instanceId": 1,
+            "maxFrequencyGHz": 3.901,
+            "currentFrequencyGHz": 3.901,
+            "cpuUsage": 0,
+            "maxMemoryMB": 313,
+            "currentMemoryMB": 310,
+            "networkInKbps": 0,
+            "networkOutKbps": 0,
+            "progress": 0,
+            "executionTimeSec": 992,
+            "executionTimeGHz": 3868.6113,
+            "cpuModel": "Intel(R) Core(TM) i7-3770K CPU @ 3.50GHz",
+            "coreCount": 4,
+            "executionAttemptCount": 2,
+            "activeForwards": [
+            ],
+            "vpnConnections": [
+            ],
+            "memoryUsage": 0.99041533,
+            "clockRatio": 1
+        }
+    ]

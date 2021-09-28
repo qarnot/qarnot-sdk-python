@@ -71,6 +71,7 @@ class Job(object):
         self._last_auto_update_state = self._auto_update
         self._tags = []
 
+        self._last_modified = None
         self._last_cache = time.time()
         self._completion_time_to_live = "00:00:00"
         self._auto_delete = False
@@ -273,7 +274,6 @@ class Job(object):
 
     @staticmethod
     def _retrieve(connection, uuid):
-        resp = connection._get(get_url('job update', uuid=uuid))
         """Retrieve a submitted job given its uuid.
 
         :param qarnot.connection.Connection connection:
@@ -287,6 +287,7 @@ class Job(object):
         :raises qarnot.exceptions.UnauthorizedException: invalid credentials
         :raises qarnot.exceptions.MissingJobException: no such job
         """
+        resp = connection._get(get_url('job update', uuid=uuid))
         if resp.status_code == 404:
             raise MissingJobException(resp.json()['message'])
         raise_on_error(resp)

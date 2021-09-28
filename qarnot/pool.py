@@ -78,9 +78,9 @@ class Pool(object):
         self._errors = None
         self._creation_date = None
         self._uuid = None
-        self._max_objects_exceptions_class = MaxPoolException
         self._is_summary = False
         self._preparation_task = None
+        self._status = None
 
         self._is_elastic = False
         self._elastic_minimum_slots = 0
@@ -390,7 +390,7 @@ class Pool(object):
 
         resp = self._connection._delete(get_url('pool update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise self._max_objects_exceptions_class(resp.json()['message'])
+            raise MissingPoolException(resp.json()['message'])
         raise_on_error(resp)
 
         if purge_resources and len(self.resources) != 0:

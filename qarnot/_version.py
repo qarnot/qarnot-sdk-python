@@ -9,12 +9,16 @@
 # versioneer-0.17 (https://github.com/warner/python-versioneer)
 
 """Git implementation of _version.py."""
+# pylint: disable=all
+# type: ignore
+# mypy: ignore-errors
 
 import errno
 import os
 import re
 import subprocess
 import sys
+from typing import Dict, Any
 
 
 def get_keywords():
@@ -52,7 +56,7 @@ class NotThisMethod(Exception):
     """Exception raised if a method is not valid for the current scenario."""
 
 
-LONG_VERSION_PY = {}
+LONG_VERSION_PY: Dict[str, Any] = {}
 HANDLERS = {}
 
 

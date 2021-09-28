@@ -23,13 +23,13 @@ class Filters:
     """The qarnot advance filtering methods
     """
     @staticmethod
-    def data_detail(filter: ApiFilter = None, select: List[str] = None, maximum_results: Optional[int] = None) -> Dict[str, Any]:
+    def data_detail(filters: ApiFilter = None, select: List[str] = None, maximum_results: Optional[int] = None) -> Dict[str, Any]:
         """The qarnot data detail filter,
         it allow to filter the task, pools and jobs and select the fields to be retrieve.
         It is not compatible with the pagination.
 
-        :param filter: the filtering option, defaults to None
-        :type filter: Dict, optional
+        :param filters: the filtering option, defaults to None
+        :type filters: Dict, optional
         :param select: a list of fields to retrieve, defaults to None
         :type select: List[str], optional
         :param maximum_results: [description], defaults to None
@@ -38,7 +38,7 @@ class Filters:
         :rtype: Dict
         """
         return {
-            "filter": filter,
+            "filter": filters,
             "select": select,
             "maximumResults": maximum_results,
         }
