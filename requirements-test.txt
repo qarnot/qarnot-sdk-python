@@ -4,3 +4,6 @@ simplejson
 mypy
 pytest-cov
 pytest-picked
+types-requests
+flake8
+pylint

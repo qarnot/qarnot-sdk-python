@@ -291,6 +291,7 @@ class Task(object):
            1. Upload new files on your resource bucket,
            2. Call this method,
            3. The new files will appear on all the compute nodes in the $DOCKER_WORKDIR folder
+
         Note: There is no way to know when the files are effectively transfered. This information is available on the compute node only.
         Note: The update is additive only: files deleted from the bucket will NOT be deleted from the task's resources directory.
 
@@ -1127,7 +1128,7 @@ class Task(object):
 
     @property
     def creation_date(self):
-        """:type: :class:`datetime`
+        """:type: :class:`datetime.datetime`
 
         :getter: Returns this task's creation date
 
@@ -1137,7 +1138,7 @@ class Task(object):
 
     @property
     def errors(self):
-        """:type: list(:class:`Error`)
+        """:type: list(:class:``Error``)
         :getter: Returns this task's errors if any.
 
         Error reason if any, empty string if none
@@ -1205,7 +1206,7 @@ class Task(object):
         :getter: Returns this task's wait_for_pool_resources_synchronization.
         :setter: set the task's wait_for_pool_resources_synchronization.
 
-        :raises qarnot.exceptions.AttributeError: can't set this attribute on a launched task
+        :raises AttributeError: can't set this attribute on a launched task
         """
         return self._wait_for_pool_resources_synchronization
 
@@ -1256,7 +1257,7 @@ class Task(object):
 
     @property
     def upload_results_on_cancellation(self) -> Optional[bool]:
-        """:type: :class:`Optional[bool]`
+        """:type: :class:`bool`, optional
 
         :getter: Whether task results will be uploaded upon task cancellation
         :setter: Set to `True` to upload results on task cancellation, `False` to

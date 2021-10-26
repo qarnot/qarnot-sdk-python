@@ -6,4 +6,5 @@ Storage
 
    storage
    bucket
+   advanced_bucket
 

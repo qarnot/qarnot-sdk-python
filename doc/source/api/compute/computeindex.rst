@@ -8,4 +8,5 @@ Compute
    job
    pool
    status
+   paginate
 

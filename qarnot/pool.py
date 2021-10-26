@@ -55,6 +55,7 @@ class Pool(object):
         self._profile = profile
         self._connection = connection
         self._constants = {}
+        self._status = None
         """
          :type: dict(str, str)
 
@@ -328,6 +329,7 @@ class Pool(object):
            1. Upload new files on your resource bucket,
            2. Call this method,
            3. The new files will appear on all the compute nodes in the $DOCKER_WORKDIR folder
+
         Note: There is no way to know when the files are effectively transfered. This information is available on the compute node only.
         Note: The update is additive only: files deleted from the bucket will NOT be deleted from the pool's resources directory.
 
@@ -425,6 +427,101 @@ class Pool(object):
         raise_on_error(resp)
 
         self.update(True)
+
+    def stdout(self):
+        """Get the standard output of the pool
+        since the submission of the pool.
+
+        :rtype: :class:`str`
+        :returns: The standard output.
+
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+
+        .. note:: The buffer is circular, if stdout is too big, prefer calling
+          :meth:`fresh_stdout` regularly.
+        """
+        if self._uuid is None:
+            return ""
+        resp = self._connection._get(
+            get_url('pool stdout', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingPoolException(resp.json()['message'])
+
+        raise_on_error(resp)
+
+        return resp.text
+
+    def fresh_stdout(self):
+        """Get what has been written on the standard output since last time
+        this function was called or since the pool has been submitted.
+
+        :rtype: :class:`str`
+        :returns: The new output since last call.
+
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        """
+        if self._uuid is None:
+            return ""
+        resp = self._connection._post(
+            get_url('pool stdout', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingPoolException(resp.json()['message'])
+
+        raise_on_error(resp)
+        return resp.text
+
+    def stderr(self):
+        """Get the standard error of the pool
+        since the submission of the pool.
+
+        :rtype: :class:`str`
+        :returns: The standard error.
+
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+
+        .. note:: The buffer is circular, if stderr is too big, prefer calling
+          :meth:`fresh_stderr` regularly.
+        """
+        if self._uuid is None:
+            return ""
+        resp = self._connection._get(
+            get_url('pool stderr', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingPoolException(resp.json()['message'])
+
+        raise_on_error(resp)
+        return resp.text
+
+    def fresh_stderr(self):
+        """Get what has been written on the standard error since last time
+        this function was called or since the pool has been submitted.
+
+        :rtype: :class:`str`
+        :returns: The new error messages since last call.
+
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        """
+        if self._uuid is None:
+            return ""
+        resp = self._connection._post(
+            get_url('pool stderr', uuid=self._uuid))
+
+        if resp.status_code == 404:
+            raise MissingPoolException(resp.json()['message'])
+
+        raise_on_error(resp)
+        return resp.text
 
     @property
     def uuid(self):
@@ -897,7 +994,7 @@ class Pool(object):
         :getter: Returns this task's tasks_default_wait_for_pool_resources_synchronization.
         :setter: set the task's tasks_default_wait_for_pool_resources_synchronization.
 
-        :raises qarnot.exceptions.AttributeError: can't set this attribute on a launched task
+        :raises AttributeError: can't set this attribute on a launched task
         """
         return self._tasks_wait_for_synchronization
 

@@ -86,8 +86,12 @@ full-coverage: lint unit-test-coverage
 doc:
 	make -C doc html
 
+clean-doc:
+	rm -r doc/_build
+
+re-doc: clean-doc doc
 
 re: clean build
 
 
-.PHONY: flake8 lint integration-tests unit-tests tests install clean build
+.PHONY: flake8 lint integration-tests unit-tests tests install clean build doc re-doc clean-doc

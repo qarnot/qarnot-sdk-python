@@ -16,6 +16,7 @@
 from __future__ import print_function
 
 import hashlib
+import io
 import os
 import posixpath
 import shutil
@@ -106,7 +107,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         * new_bucket = bucket.with_filtering(BucketPrefixFiltering("prefix1"))
         * new_bucket = Bucket(connection, "name", False).with_filtering(BucketPrefixFiltering("prefix1"))
 
-        :param :class:`~qarnot.advance_bucket.AbstractFiltering` filtering: Filtering to add to the bucket.
+        :param :class:``~qarnot.advance_bucket.AbstractFiltering`` filtering: Filtering to add to the bucket.
         :returns: The created :class:`~qarnot.bucket.Bucket`.
         """
         bucket_copy = Bucket(self._connection, self._uuid,
@@ -120,7 +121,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         * new_bucket = Bucket(connection, "name", False).with_resource_transformation(PrefixResourcesTransformation("prefix2"))
         * new_bucket = bucket.with_resource_transformation(PrefixResourcesTransformation("prefix2")).with_filtering(BucketPrefixFiltering("prefix1"))
 
-        :param :class:`~qarnot.advance_bucket.AbstractResourcesTransformation` resource: The resource transformation to add to the bucket.
+        :param :class:``~qarnot.advance_bucket.AbstractResourcesTransformation`` resource: The resource transformation to add to the bucket.
         :returns: The created :class:`~qarnot.bucket.Bucket`.
         """
         bucket_copy = Bucket(self._connection, self._uuid,
@@ -336,6 +337,14 @@ class Bucket(Storage):  # pylint: disable=W0223
                 if verbose:
                     print("Copy", entry[0].name, "to", link.name)
                 self.copy_file(entry[0].name, link.name)
+
+    def add_string(self, string, remote):
+        """Add a string on the storage.
+
+        :param str string: the string to add
+        :param str remote: name of the remote file
+        """
+        self.add_file(io.BytesIO(bytes(string, 'utf-8')), remote)
 
     @_util.copy_docs(Storage.add_file)
     def add_file(self, local_or_file, remote=None):

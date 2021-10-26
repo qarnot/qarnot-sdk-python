@@ -30,6 +30,7 @@ class GetRequest:
 
 class MockResponse:
     def __init__(self, status_code, json=None):
+        self.ok = status_code < 400
         self.status_code = status_code
         self._json = json
 

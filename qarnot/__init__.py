@@ -60,6 +60,8 @@ def get_url(key, **kwargs):
         'pools search': u'/pools/search',  # POST -> make a custom search on pools
         'pool close': u'/pools/{uuid}/close',  # POST -> close pool
         'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete, PATCH -> update resources
+        'pool stdout': u'/pools/{uuid}/stdout',  # GET -> pool stdout
+        'pool stderr': u'/pools/{uuid}/stderr',  # GET -> pool stderr
         'user': u'/info',  # GET -> user info
         'profiles': u'/profiles',  # GET -> profiles list
         'profile details': u'/profiles/{profile}',  # GET -> profile details

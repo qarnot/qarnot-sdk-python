@@ -43,7 +43,7 @@ class BucketPrefixFiltering(AbstractFiltering):
         """Static method called to create the class obj from a json object.
 
         :param json: the json elements of the class
-        :type json: Dict
+        :type json: `dict`
         "bucket_or_bucket_name""
         """
         prefix: str = json.get("prefix")
@@ -55,7 +55,7 @@ class BucketPrefixFiltering(AbstractFiltering):
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
         :return: the json elements of the class.
-        :rtype: Dict
+        :rtype: `dict`
 
         """
         return {
@@ -78,7 +78,7 @@ class Filtering(object):
         """Add a new filtering object
 
         :param filtering: a filtering object of the bucket
-        :type filtering: FilteringObject
+        :type filtering: `AbstractFiltering`
         """
         self._filters[filtering.name] = filtering
 
@@ -87,7 +87,7 @@ class Filtering(object):
         """Create the class sub objects of a Filtering from a json.
 
         :param json: the json elements of the class
-        :type json: Dict
+        :type json: `dict`
         """
         filtering = Filtering()
         for key in json:
@@ -125,7 +125,7 @@ class AbstractResourcesTransformation(metaclass=abc.ABCMeta):
         """Static method called to create the class obj from a json object.
 
         :param json: the json elements of the class
-        :type json: Dict
+        :type json: `dict`
         """
 
 
@@ -139,7 +139,7 @@ class PrefixResourcesTransformation(AbstractResourcesTransformation):
         """The PrefixResourcesTransformation constructor
 
         :param prefix: the prefix path of the resource bucket to be removed.
-        :type prefix: str
+        :type prefix: `str`
         """
         self.prefix = prefix
 
@@ -151,9 +151,9 @@ class PrefixResourcesTransformation(AbstractResourcesTransformation):
         """Create a new instance of the class using the given json object.
 
         :param json: The Json object representation.
-        :type json: Dict
+        :type json: `dict`
         :return: The PrefixResourcesTransformation new object
-        :rtype: PrefixResourcesTransformation
+        :rtype: :class:`PrefixResourcesTransformation`
         """
         return PrefixResourcesTransformation(json["prefix"])
 
@@ -176,7 +176,7 @@ class ResourcesTransformation(object):
         """Add a new resource transformation object
 
         :param filtering: a filtering object of the bucket
-        :type filtering: FilteringObject
+        :type filtering: `AbstractResourcesTransformation`
         """
         self._resource_transformers[resource.name] = resource
 
@@ -188,7 +188,7 @@ class ResourcesTransformation(object):
         """Create the class sub objects of a ResourcesTransformation from a json.
 
         :param json: the json elements of the class
-        :type json: Dict
+        :type json: `dict`
         """
         resource = ResourcesTransformation()
         for key in json.keys():

@@ -4,11 +4,12 @@ import sys
 
 class Status(object):
     """Status
-    The status object of the running pools and tasks.
-    To retrieve the status of a pool, use:
-        * my_pool.status
-    To retrieve the status of a task, use:
-        * my_task.status
+        The status object of the running pools and tasks.
+        To retrieve the status of a pool, use:
+            * my_pool.status
+
+        To retrieve the status of a task, use:
+            * my_task.status
 
     .. note:: Read-only class
     """

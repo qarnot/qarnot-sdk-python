@@ -24,19 +24,18 @@ from .paginate import PaginateResponse
 from .bucket import Bucket
 from .job import Job
 from ._filter import create_pool_filter, create_task_filter, create_job_filter
-from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, UnauthorizedException,
+from ._retry import with_retry
+from .exceptions import (QarnotGenericException, BucketStorageUnavailableException,
                          MissingTaskException, MissingPoolException, MissingJobException)
 import requests
 import warnings
 import os
-import time
 import boto3
 import concurrent.futures
 import botocore
 import deprecation
 from json import dumps as json_dumps
 from requests.packages import urllib3
-from requests.exceptions import ConnectionError  # pylint: disable=W0622
 import configparser as config
 
 #########
@@ -199,6 +198,7 @@ class Connection(object):
                                             endpoint_url=self.storage,
                                             config=conf)
 
+    @with_retry
     def _get(self, url, **kwargs):
         """Perform a GET request on the cluster.
 
@@ -213,30 +213,9 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :func:`requests.Pool.get`.
         """
+        return self._http.get(self.cluster + url, timeout=self.timeout, **kwargs)
 
-        retry = self._retry_count
-        last_chance = False
-        while True:
-            try:
-                ret = self._http.get(self.cluster + url, timeout=self.timeout,
-                                     **kwargs)
-                if ret.ok:
-                    return ret
-                if ret.status_code == 401:
-                    raise UnauthorizedException()
-                if 400 <= ret.status_code <= 499:
-                    return ret
-                if last_chance:
-                    return ret
-            except ConnectionError:
-                if last_chance:
-                    raise
-            if retry > 0:
-                retry -= 1
-                time.sleep(self._retry_wait * (self._retry_count - retry))
-            else:
-                last_chance = True
-
+    @with_retry
     def _patch(self, url, json=None, **kwargs):
         """perform a PATCH request on the cluster
 
@@ -252,35 +231,10 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Pool.post()`.
         """
+        kwargs = Connection._prepare_json_payload(json, kwargs)
+        return self._http.patch(self.cluster + url, timeout=self.timeout, **kwargs)
 
-        retry = self._retry_count
-        last_chance = False
-        while True:
-            try:
-                if json is not None:
-                    if 'headers' not in kwargs:
-                        kwargs['headers'] = dict()
-                    kwargs['headers']['Content-Type'] = 'application/json'
-                    kwargs['data'] = json_dumps(json)
-                ret = self._http.patch(self.cluster + url,
-                                       timeout=self.timeout, **kwargs)
-                if ret.ok:
-                    return ret
-                if ret.status_code == 401:
-                    raise UnauthorizedException()
-                if 400 <= ret.status_code <= 499:
-                    return ret
-                if last_chance:
-                    return ret
-            except ConnectionError:
-                if last_chance:
-                    raise
-            if retry > 0:
-                retry -= 1
-                time.sleep(self._retry_wait * (self._retry_count - retry))
-            else:
-                last_chance = True
-
+    @with_retry
     def _post(self, url, json=None, **kwargs):
         """perform a POST request on the cluster
 
@@ -296,36 +250,10 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Pool.post()`.
         """
+        kwargs = Connection._prepare_json_payload(json, kwargs)
+        return self._http.post(self.cluster + url, timeout=self.timeout, **kwargs)
 
-        retry = self._retry_count
-        last_chance = False
-        while True:
-            try:
-                if json is not None:
-                    if 'headers' not in kwargs:
-                        kwargs['headers'] = dict()
-                    kwargs['headers']['Content-Type'] = 'application/json'
-                    kwargs['data'] = json_dumps(json)
-                ret = self._http.post(self.cluster + url,
-                                      timeout=self.timeout, **kwargs)
-                if ret.ok:
-                    return ret
-                if ret.status_code == 401:
-                    raise UnauthorizedException()
-                if 400 <= ret.status_code <= 499:
-                    return ret
-                if last_chance:
-                    return ret
-
-            except ConnectionError:
-                if last_chance:
-                    raise
-            if retry > 0:
-                retry -= 1
-                time.sleep(self._retry_wait * (self._retry_count - retry))
-            else:
-                last_chance = True
-
+    @with_retry
     def _delete(self, url, **kwargs):
         """Perform a DELETE request on the cluster.
 
@@ -340,61 +268,25 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
           :attr:`requests.Pool.delete()`.
         """
+        return self._http.delete(self.cluster + url, timeout=self.timeout, **kwargs)
 
-        retry = self._retry_count
-        last_chance = False
-        while True:
-            try:
-                ret = self._http.delete(self.cluster + url,
-                                        timeout=self.timeout, **kwargs)
-                if ret.ok:
-                    return ret
-                if ret.status_code == 401:
-                    raise UnauthorizedException()
-                if 400 <= ret.status_code <= 499:
-                    return ret
-                if last_chance:
-                    return ret
-            except ConnectionError:
-                if last_chance:
-                    raise
-            if retry > 0:
-                retry -= 1
-                time.sleep(self._retry_wait * (self._retry_count - retry))
-            else:
-                last_chance = True
-
+    @with_retry
     def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
+        kwargs = Connection._prepare_json_payload(json, kwargs)
+        return self._http.put(self.cluster + url, timeout=self.timeout, **kwargs)
 
-        retry = self._retry_count
-        last_chance = False
-        while True:
-            try:
-                if json is not None:
-                    if 'headers' not in kwargs:
-                        kwargs['headers'] = dict()
-                    kwargs['headers']['Content-Type'] = 'application/json'
-                    kwargs['data'] = json_dumps(json)
-                ret = self._http.put(self.cluster + url,
-                                     timeout=self.timeout, **kwargs)
-                if ret.ok:
-                    return ret
-                if ret.status_code == 401:
-                    raise UnauthorizedException()
-                if 400 <= ret.status_code <= 499:
-                    return ret
-                if last_chance:
-                    return ret
+    @staticmethod
+    def _prepare_json_payload(json, **kwargs):
+        if json is None:
+            return
 
-            except ConnectionError:
-                if last_chance:
-                    raise
-            if retry > 0:
-                retry -= 1
-                time.sleep(self._retry_wait * (self._retry_count - retry))
-            else:
-                last_chance = True
+        if 'headers' not in kwargs:
+            kwargs['headers'] = dict()
+        kwargs['headers']['Content-Type'] = 'application/json'
+        kwargs['data'] = json_dumps(json)
+
+        return kwargs
 
     @property
     def s3client(self):
@@ -461,7 +353,8 @@ class Connection(object):
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
 
         .. deprecated:: 2.5.0
-        This function can be inefficient, Use :func:`all_pools` instead.
+          This function can be inefficient, Use :func:`all_pools` instead.
+
         """
         return list(self.all_pools(summary=summary, tags=tags, tags_intersect=tags_intersect))
 
@@ -486,7 +379,8 @@ class Connection(object):
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
 
         .. deprecated:: 2.5.0
-        This function can be inefficient, Use :func:`all_tasks` instead.
+          This function can be inefficient, Use :func:`all_tasks` instead.
+
         """
         return list(self.all_tasks(summary=summary, tags=tags, tags_intersect=tags_intersect))
 
@@ -506,7 +400,8 @@ class Connection(object):
         :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
 
         .. deprecated:: 2.5.0
-        This function can be inefficient, Use :func:`all_jobs` instead.
+          This function can be inefficient, Use :func:`all_jobs` instead.
+
         """
         return list(self.all_jobs(tags=tags, tags_intersect=tags_intersect))
 
@@ -608,15 +503,15 @@ class Connection(object):
         """Return a paginate pool object retriver.
 
         :param summary: retrive a pool or a pool summary, defaults to True
-        :type summary: bool, optional
+        :type summary: `bool`, optional
         :param tags_intersect: use a tag exclusive filter, defaults to None
-        :type tags_intersect: List, optional
+        :type tags_intersect: list of :class:`str` , optional
         :param token: the first paginate token to be used, defaults to None
-        :type token: str, optional
+        :type token: `str`, optional
         :param maximum: the maximum number of pages to retrieve, defaults to 10
-        :type maximum: Optional[int]
+        :type maximum: `int`, optional
         :return: A paginate object
-        :rtype: :class:`paginate.PaginateResponse`
+        :rtype: `qarnot.paginate.PaginateResponse`
         """
 
         filters = create_pool_filter(tags=tags, tags_intersect=tags_intersect)
@@ -629,15 +524,15 @@ class Connection(object):
         """Return a paginate task object.
 
         :param summary: retrive a task or a task summary, defaults to True
-        :type summary: bool, optional
+        :type summary: `bool`, optional
         :param tags_intersect: use a tag exclusive filter, defaults to None
-        :type tags_intersect: List, optional
+        :type tags_intersect: list of :class:`str`, optional
         :param token: the first paginate token to be used, defaults to None
-        :type token: str, optional
+        :type token: `str`, optional
         :param maximum: the maximum number of pages to retrieve, defaults to 10
-        :type maximum: Optional[int]
+        :type maximum: `int`, optional
         :return: A paginate object
-        :rtype: :class:`paginate.PaginateResponse`
+        :rtype: `qarnot.paginate.PaginateResponse`
         """
 
         filters = create_task_filter(tags=tags, tags_intersect=tags_intersect)
@@ -650,13 +545,13 @@ class Connection(object):
         """Return a paginate job object.
 
         :param tags_intersect: use a tag exclusive filter, defaults to None
-        :type tags_intersect: List, optional
+        :type tags_intersect: list of :class:`str`
         :param token: the first paginate token to be used, defaults to None
-        :type token: str, optional
+        :type token: `str`, optional
         :param maximum: the maximum number of pages to retrieve, defaults to 10
-        :type maximum: Optional[int]
+        :type maximum: `int`, optional
         :return: A paginate object
-        :rtype: :class:`paginate.PaginateResponse`
+        :rtype: `qarnot.paginate.PaginateResponse`
         """
 
         filters = create_job_filter(tags=tags, tags_intersect=tags_intersect)
