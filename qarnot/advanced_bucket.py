@@ -1,4 +1,3 @@
-from __future__ import annotations
 from typing import Any, Dict
 import abc
 
@@ -84,7 +83,7 @@ class Filtering(object):
         self._filters[filtering.name] = filtering
 
     @classmethod
-    def from_json(cls, json) -> Filtering:
+    def from_json(cls, json) -> 'Filtering':
         """Create the class sub objects of a Filtering from a json.
 
         :param json: the json elements of the class
@@ -185,7 +184,7 @@ class ResourcesTransformation(object):
         return "[" + ",".join(map(str, self._resource_transformers.values())) + "]"
 
     @classmethod
-    def from_json(cls, json) -> ResourcesTransformation:
+    def from_json(cls, json) -> 'ResourcesTransformation':
         """Create the class sub objects of a ResourcesTransformation from a json.
 
         :param json: the json elements of the class
