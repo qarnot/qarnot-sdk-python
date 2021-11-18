@@ -231,7 +231,7 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Pool.post()`.
         """
-        kwargs = Connection._prepare_json_payload(json, kwargs)
+        kwargs = Connection._prepare_json_payload(json, **kwargs)
         return self._http.patch(self.cluster + url, timeout=self.timeout, **kwargs)
 
     @with_retry
@@ -250,7 +250,7 @@ class Connection(object):
         .. note:: Additional keyword arguments are passed to the underlying
            :attr:`requests.Pool.post()`.
         """
-        kwargs = Connection._prepare_json_payload(json, kwargs)
+        kwargs = Connection._prepare_json_payload(json, **kwargs)
         return self._http.post(self.cluster + url, timeout=self.timeout, **kwargs)
 
     @with_retry
@@ -273,7 +273,7 @@ class Connection(object):
     @with_retry
     def _put(self, url, json=None, **kwargs):
         """Performs a PUT on the cluster."""
-        kwargs = Connection._prepare_json_payload(json, kwargs)
+        kwargs = Connection._prepare_json_payload(json, **kwargs)
         return self._http.put(self.cluster + url, timeout=self.timeout, **kwargs)
 
     @staticmethod
