@@ -1,5 +1,6 @@
 from typing import Any, Dict
 import abc
+from . import _util
 
 # ********************************************************
 # *******************  Filtering  ************************
@@ -26,6 +27,13 @@ class AbstractFiltering(metaclass=abc.ABCMeta):
         :param json: the json elements of the class
         :type json: Dict
         :raises NotImplementedError: this is an abstaract method, override it in it's child classes.
+        """
+
+    @abc.abstractmethod
+    def sanitize_filter_paths(self):
+        """Sanitize the filters bucket path by removing extra separators
+
+        :raises NotImplementedError: this is an abstract method, it should be overridden in child classes
         """
 
 
@@ -61,6 +69,10 @@ class BucketPrefixFiltering(AbstractFiltering):
         return {
             "prefix": self.prefix
         }
+
+    def sanitize_filter_paths(self, show_warnings: bool):
+        """ Sanitize bucket prefix path"""
+        self.prefix = _util.get_sanitized_bucket_path(self.prefix, show_warnings)
 
 
 class Filtering(object):
@@ -103,6 +115,10 @@ class Filtering(object):
             json[key] = self._filters[key].to_json()
         return json
 
+    def sanitize_filter_paths(self, show_warning: bool):
+        for resource_name in self._filters:
+            self._filters[resource_name].sanitize_filter_paths(show_warning)
+
 # ********************************************************
 # *************  ResourcesTransformation  ****************
 # ********************************************************
@@ -126,6 +142,13 @@ class AbstractResourcesTransformation(metaclass=abc.ABCMeta):
 
         :param json: the json elements of the class
         :type json: `dict`
+        """
+
+    @abc.abstractmethod
+    def sanitize_transformation_paths(self):
+        """Sanitize the bucket path by removing extra separators
+
+        :raises NotImplementedError: this is an abstract method, it should be overridden in child classes
         """
 
 
@@ -163,6 +186,10 @@ class PrefixResourcesTransformation(AbstractResourcesTransformation):
         return {
             "prefix": self.prefix
         }
+
+    def sanitize_transformation_paths(self, show_warnings: bool):
+        """ Sanitize bucket strip prefix path"""
+        self.prefix = _util.get_sanitized_bucket_path(self.prefix, show_warnings)
 
 
 class ResourcesTransformation(object):
@@ -204,3 +231,7 @@ class ResourcesTransformation(object):
         for key in self._resource_transformers.keys():
             json[key] = self._resource_transformers[key].to_json()
         return json
+
+    def sanitize_transformation_paths(self, show_warning: bool):
+        for resource_name in self._resource_transformers:
+            self._resource_transformers[resource_name].sanitize_transformation_paths(show_warning)

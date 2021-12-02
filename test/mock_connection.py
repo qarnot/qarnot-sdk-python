@@ -46,6 +46,8 @@ class FakeS3:
 
 class MockConnection:
     def __init__(self):
+        self._sanitize_bucket_paths = True
+        self._show_bucket_warnings = True
         self.requests = []
         self._responses = []
         self.s3client = FakeS3()  # fake but must not be None

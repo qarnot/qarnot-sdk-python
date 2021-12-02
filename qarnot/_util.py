@@ -112,3 +112,25 @@ def parse_timedelta(string):
         raise ValueError("parse_timedelta format should be [d'.']hh':'mm':'ss['.'fffffff].")
 
     return timedelta(day, second, 0, millisecond, minute, hour)
+
+
+def get_sanitized_bucket_path(path: str, show_warning: bool = True):
+    if path is not None:
+        original_path = path
+        warning = ""
+        directory_separators = ['/', '\\']
+        for separator in directory_separators:
+            double_separator = separator + separator
+            while path.__contains__(double_separator):
+                warning = "Warning: Bucket path should not contain duplicated slashes (" + double_separator + ")\n"
+                path = path.replace(double_separator, separator)
+            if path.startswith(separator):
+                warning += "Warning: Bucket path should not start with a slash (" + separator + ")\n"
+                path = path.lstrip(separator)
+        if path != original_path:
+            warning += "Path changed from " + original_path + " to " + path + "\n"
+            warning += "If bucket path sanitization is not wanted, please open a new connection with the constructor flag 'sanitize_bucket_paths=False'"
+        if show_warning:
+            print(warning)
+        return path.strip()
+    return path

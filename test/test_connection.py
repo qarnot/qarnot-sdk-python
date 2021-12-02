@@ -2,6 +2,7 @@
 
 import qarnot
 import pytest
+from unittest import TestCase
 from unittest.mock import patch, Mock, PropertyMock
 import requests
 import simplejson
@@ -15,7 +16,7 @@ expected_and_or_tags_filter = {"operator": "And", "filters": [
                 "operator": "Equal", "field": "Tags", "value": "tag_inter2"}]}
         ]}
 
-class TestConnectionMethods:
+class TestConnectionMethods(TestCase):
     @pytest.mark.slow
     def test_connection_with_bad_ssl_return_the_good_exception(self):
         with pytest.raises(requests.exceptions.SSLError):
@@ -26,7 +27,7 @@ class TestConnectionMethods:
         with pytest.raises(simplejson.errors.JSONDecodeError):
             assert qarnot.Connection(cluster_url="https://expired.badssl.com", client_token="token", cluster_unsafe=True)
 
-class TestConnectionPaginateMethods:
+class TestConnectionPaginateMethods():
     @patch("qarnot.connection.Connection._get")
     def get_connection(self, mock_get):
         mock_get.return_value.status_code = 200
@@ -330,6 +331,11 @@ class TestConnectionPaginateMethods:
         assert {"filter": None, "token": None, "maximumResults": None} == connec._paginate_request(None, None, None)
         assert {"filter": {}, "token": "token", "maximumResults": 12} == connec._paginate_request({}, "token", 12)
 
+    def test_offset_request(self):
+        connec = self.get_connection()
+        assert {"limit": None, "offset": None} == connec._offset_request(None, None)
+        assert {"limit": 20, "offset": 1} == connec._offset_request(20, 1)
+
     def test_page_call_call_post(self):
         connec = self.get_connection()
         with patch("qarnot.connection.Connection._post") as mock_post:
@@ -421,6 +427,21 @@ class TestConnectionPaginateMethods:
                 next(iterator)
             mock_page_call.assert_called_once()
 
+    def test_all_hardware_constraints(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection.hardware_constraints_page") as mock_page_call:
+            mock_page_call.return_value = qarnot.paginate.OffsetResponse(2, 0, 50, []) # if total is less than the limit, call only one page is enough
+            iterator = connec.all_hardware_constraints()
+            with pytest.raises(StopIteration):
+                next(iterator)
+            mock_page_call.assert_called_once()
+        with patch("qarnot.connection.Connection.hardware_constraints_page") as mock_page_call:
+            mock_page_call.side_effect = [qarnot.paginate.OffsetResponse(100, 0, 50, []), qarnot.paginate.OffsetResponse(100, 51, 50, [])] # if total more than the limit, multiple pages need to be called
+            iterator = connec.all_hardware_constraints()
+            with pytest.raises(StopIteration):
+                next(iterator)
+            assert mock_page_call.call_count == 2
+
     def test_user_information(self):
         connec = self.get_connection()
         with patch("qarnot.connection.Connection._get") as get_user:
@@ -461,3 +482,50 @@ class TestConnectionPaginateMethods:
             assert user.running_pool_count == user_json['runningPoolCount']
             assert user.running_instance_count == user_json['runningInstanceCount']
             assert user.running_core_count == user_json['runningCoreCount']
+
+    def test_user_hardware_constraints(self):
+        connect = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as get_hw_constraints:
+            hw_constraints_page_json = {
+                "data":[
+                {
+                    "discriminator": "MinimumCoreHardwareConstraint",
+                    "coreCount": 16
+                },
+                {
+                    "discriminator": "MaximumCoreHardwareConstraint",
+                    "coreCount": 32
+                },
+                {
+                    "discriminator": "MinimumRamCoreRatioHardwareConstraint",
+                    "minimumMemoryGBCoreRatio": 0.4
+                },
+                {
+                    "discriminator": "MaximumRamCoreRatioHardwareConstraint",
+                    "maximumMemoryGBCoreRatio": 0.7
+                },
+                {
+                    "discriminator": "SpecificHardwareConstraint",
+                    "specificationKey": "R7-2700X"
+                },
+                {
+                    "discriminator": "MinimumRamHardwareConstraint",
+                    "minimumMemoryMB": 4000
+                },
+                {
+                    "discriminator": "MaximumRamHardwareConstraint",
+                    "maximumMemoryMB": 32000
+                },
+                {
+                    "discriminator": "GpuHardwareConstraint"
+                }],
+                "offset": 0,
+                "limit": 50,
+                "total": 8
+            }
+            get_hw_constraints.return_value.status_code = 200
+            get_hw_constraints.return_value.json.return_value = hw_constraints_page_json
+            ret = connect.hardware_constraints_page()
+            assert ret.total == hw_constraints_page_json['total']
+            assert ret.page_data != None
+            assert len(ret.page_data) == 8

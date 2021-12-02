@@ -23,6 +23,7 @@ from typing import Dict, Optional, Union, List, Any, Callable
 
 from . import get_url, raise_on_error, _util
 from .status import Status
+from .hardware_constraint import HardwareConstraint
 from .bucket import Bucket
 from .pool import Pool
 from .error import Error
@@ -121,6 +122,7 @@ class Task(object):
 
         self._last_cache = time.time()
         self._constraints: Dict[str, str] = {}
+        self._labels: Dict[str, str] = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
         self._snapshots: Union[int, bool] = False
@@ -153,6 +155,7 @@ class Task(object):
         self._wall_time = None
         self._end_date = None
         self._upload_results_on_cancellation: Optional[bool] = None
+        self._hardware_constraints: List[HardwareConstraint] = []
 
     @classmethod
     def _retrieve(cls, connection: ConnectionType, uuid: str) -> TaskType:
@@ -470,6 +473,8 @@ class Task(object):
         self._execution_time = json_task.get("executionTime", None)
         self._wall_time = json_task.get("wallTime", None)
         self._end_date = json_task.get("endDate", None)
+        self._labels = json_task.get("labels", {})
+        self._hardware_constraints = json_task.get("hardwareConstraints", [])
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
@@ -1155,9 +1160,9 @@ class Task(object):
         :getter: Returns this task's constants dictionary.
         :setter: set the task's constants dictionary.
 
-        Update the constants if needed
-        Constants are the parametrazer of the profils.
-        Use them to adjust your profile parametter.
+        Update the constants if needed.
+        Constants are used to configure the profiles,
+        set them to change your profile's parameters.
         """
         self._update_if_summary()
         if self._auto_update:
@@ -1181,7 +1186,7 @@ class Task(object):
         :getter: Returns this task's constraints dictionary.
         :setter: set the task's constraints dictionary.
 
-        Update the constraints if needed
+        Update the constraints if needed.
         advance usage
         """
         self._update_if_summary()
@@ -1199,6 +1204,36 @@ class Task(object):
             self.update()
 
         self._constraints = value
+
+    @property
+    def labels(self):
+        """:type: dictionary{:class:`str` : :class:`str`}
+        :getter: Returns this task's labels dictionary.
+        :setter: Set the task's labels dictionary.
+
+        Update the labels if needed.
+        Labels are used to attach arbitrary key / value pairs
+        to a task in order to find them later with greater ease.
+        They do not affect the execution of a task.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._labels
+
+    @labels.setter
+    def labels(self, value):
+        """Setter for labels
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._labels = value
 
     @property
     def wait_for_pool_resources_synchronization(self):
@@ -1286,6 +1321,26 @@ class Task(object):
         """Setter for the task dependencies using tasks
         """
         self._dependentOn += [task._uuid for task in tasks]
+
+    @property
+    def hardware_constraints(self):
+        """:type: :class:`list`, optional
+
+        :getter: setup the hardware constraints
+        :setter: Set up specific hardware constraints.
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._hardware_constraints
+
+    @hardware_constraints.setter
+    def hardware_constraints(self, value):
+        """Setter for hardware_constraints
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._hardware_constraints = value
 
     @property
     def auto_delete(self):
@@ -1456,7 +1511,8 @@ class Task(object):
             'constraints': constr_list,
             'dependencies': {},
             'waitForPoolResourcesSynchronization': self._wait_for_pool_resources_synchronization,
-            'uploadResultsOnCancellation': self._upload_results_on_cancellation
+            'uploadResultsOnCancellation': self._upload_results_on_cancellation,
+            'labels': self._labels,
         }
         json_task['dependencies']["dependsOn"] = self._dependentOn
 
@@ -1487,6 +1543,7 @@ class Task(object):
 
         json_task['autoDeleteOnCompletion'] = self._auto_delete
         json_task['completionTimeToLive'] = self._completion_time_to_live
+        json_task['hardwareConstraints'] = [x.to_json() for x in self._hardware_constraints]
 
         return json_task
 

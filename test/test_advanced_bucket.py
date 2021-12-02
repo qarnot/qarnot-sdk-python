@@ -4,7 +4,7 @@ import qarnot
 from qarnot.pool import Pool
 from qarnot.task import Task
 from qarnot.bucket import Bucket
-from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransformation
+from qarnot.advanced_bucket import AbstractFiltering, BucketPrefixFiltering, Filtering, PrefixResourcesTransformation, ResourcesTransformation
 import datetime
 from .mock_connection import MockConnection
 
@@ -63,3 +63,22 @@ class TestAdvancedResourceBucketsMethods:
         assert "name" == bucket.uuid
         assert "prefix1" == bucket._filtering._filters["prefixFiltering"].prefix
         assert "prefix2" == bucket._resources_transformation._resource_transformers["stripPrefix"].prefix
+
+    def test_sanitize_advanced_bucket(self):
+        filtering = Filtering()
+        filtering.append(BucketPrefixFiltering("/some//Invalid///Path/"))
+        filtering.sanitize_filter_paths(True)
+        assert "some/Invalid/Path/" == filtering._filters[BucketPrefixFiltering.name].prefix
+        filtering = Filtering()
+        filtering.append(BucketPrefixFiltering("\\some\\\\Invalid\\\\\\Path\\"))
+        filtering.sanitize_filter_paths(True)
+        assert "some\\Invalid\\Path\\" == filtering._filters[BucketPrefixFiltering.name].prefix
+
+        transformation = ResourcesTransformation()
+        transformation.append(PrefixResourcesTransformation("/some//Invalid///Path/"))
+        transformation.sanitize_transformation_paths(True)
+        assert "some/Invalid/Path/" == transformation._resource_transformers[PrefixResourcesTransformation.name].prefix
+        transformation = ResourcesTransformation()
+        transformation.append(PrefixResourcesTransformation("\\some\\\\Invalid\\\\\\Path\\"))
+        transformation.sanitize_transformation_paths(True)
+        assert "some\\Invalid\\Path\\" == transformation._resource_transformers[PrefixResourcesTransformation.name].prefix

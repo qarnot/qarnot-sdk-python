@@ -15,10 +15,12 @@
 # limitations under the License.
 import time
 import warnings
+from typing import List
 
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
 from .status import Status
+from .hardware_constraint import HardwareConstraint
 from .error import Error
 from .exceptions import MissingPoolException, MaxPoolException, NotEnoughCreditsException, \
     BucketStorageUnavailableException, MissingBucketException
@@ -59,13 +61,14 @@ class Pool(object):
         """
          :type: dict(str, str)
 
-         Constants of the task.
+         Constants of the pool.
          Can be set until :meth:`submit` is called
 
         .. note:: See available constants for a specific profile
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
         self._constraints = {}
+        self._labels = {}
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
@@ -106,6 +109,7 @@ class Pool(object):
         self._last_modified = None
         self._execution_time = None
         self._end_date = None
+        self._hardware_constraints: List[HardwareConstraint] = []
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -174,6 +178,7 @@ class Pool(object):
         if 'constants' in json_pool:
             for constant in json_pool['constants']:
                 self._constants[constant.get('key')] = constant.get('value')
+
         self._uuid = json_pool['uuid']
         self._state = json_pool['state']
         self._preparation_task = json_pool.get('preparationTask')
@@ -204,6 +209,8 @@ class Pool(object):
         self._last_modified = json_pool.get('lastModified', None)
         self._execution_time = json_pool.get('executionTime', None)
         self._end_date = json_pool.get('endDate', None)
+        self._labels = json_pool.get('labels', {})
+        self._hardware_constraints = json_pool.get("hardwareConstraints", [])
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -235,7 +242,8 @@ class Pool(object):
             'tags': self._tags,
             'preparationTask': self._preparation_task,
             'elasticProperty': elastic_dict,
-            'taskDefaultWaitForPoolResourcesSynchronization': self._tasks_wait_for_synchronization
+            'taskDefaultWaitForPoolResourcesSynchronization': self._tasks_wait_for_synchronization,
+            'labels': self._labels,
         }
 
         if self._shortname is not None:
@@ -246,6 +254,7 @@ class Pool(object):
 
         json_pool['autoDeleteOnCompletion'] = self._auto_delete
         json_pool['completionTimeToLive'] = self._completion_time_to_live
+        json_pool['hardwareConstraints'] = [x.to_json() for x in self._hardware_constraints]
 
         return json_pool
 
@@ -943,9 +952,9 @@ class Pool(object):
         :getter: Returns this pool's constants dictionary.
         :setter: set the pool's constants dictionary.
 
-        Update the constants if needed
-        Constants are the parametrazer of the profils.
-        Use them to adjust your profile parametter.
+        Update the constants if needed.
+        Constants are used to configure the profiles,
+        set them to change your profile's parameters.
         """
         self._update_if_summary()
         if self._auto_update:
@@ -987,6 +996,35 @@ class Pool(object):
             self.update()
 
         self._constraints = value
+
+    @property
+    def labels(self):
+        """:type: dictionary{:class:`str` : :class:`str`}
+        :getter: Return this pool's labels dictionary.
+        :setter: set the pool's labels constraints dictionary.
+
+        Labels are used to attach arbitrary key / value pairs
+        to a pool in order to find them later with greater ease.
+        They do not affect the execution of a pool.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._labels
+
+    @labels.setter
+    def labels(self, value):
+        """Setter for labels
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._labels = value
 
     @property
     def tasks_default_wait_for_pool_resources_synchronization(self):
@@ -1147,6 +1185,26 @@ class Pool(object):
         :getter: Returns count of task instances dispatched in the pool
         """
         return self._queued_or_running_task_instances_count
+
+    @property
+    def hardware_constraints(self):
+        """:type: :class:`list`, optional
+
+        :getter: setup the hardware constraints
+        :setter: Set up specific hardware constraints.
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._hardware_constraints
+
+    @hardware_constraints.setter
+    def hardware_constraints(self, value):
+        """Setter for hardware_constraints
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._hardware_constraints = value
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

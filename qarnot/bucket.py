@@ -77,6 +77,10 @@ class Bucket(Storage):  # pylint: disable=W0223
         self._resources_transformation: Optional[ResourcesTransformation] = \
             resources_transformation or ResourcesTransformation()
 
+        if (self._connection._sanitize_bucket_paths):
+            self._filtering.sanitize_filter_paths(self._connection._show_bucket_warnings)
+            self._resources_transformation.sanitize_transformation_paths(self._connection._show_bucket_warnings)
+
         if create:
             self._connection.s3client.create_bucket(Bucket=name)
 
@@ -296,6 +300,8 @@ class Bucket(Storage):  # pylint: disable=W0223
             return Comparable(object_.key, object_.e_tag, None)
 
         localfiles = set()
+        if self._connection._sanitize_bucket_paths:
+            remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
         for name, filepath in files.items():
             localfiles.add(localtocomparable(name.replace(os.path.sep, '/'), filepath, remote))
 
@@ -349,6 +355,8 @@ class Bucket(Storage):  # pylint: disable=W0223
     @_util.copy_docs(Storage.add_file)
     def add_file(self, local_or_file, remote=None):
         tobeclosed = False
+        if self._connection._sanitize_bucket_paths:
+            remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
         if _util.is_string(local_or_file):
             file_ = open(local_or_file, 'rb')
             tobeclosed = True
@@ -390,6 +398,8 @@ class Bucket(Storage):  # pylint: disable=W0223
     def add_directory(self, local, remote=""):
         if not os.path.isdir(local):
             raise IOError("Not a valid directory")
+        if self._connection._sanitize_bucket_paths:
+            remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
         if remote and not remote.endswith('/'):
             remote += '/'
         for dirpath, _, files in os.walk(local):
@@ -433,6 +443,8 @@ class Bucket(Storage):  # pylint: disable=W0223
 
     @_util.copy_docs(Storage.delete_file)
     def delete_file(self, remote):
+        if self._connection._sanitize_bucket_paths:
+            remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
         self._connection.s3client.delete_object(Bucket=self._uuid, Key=remote)
 
     @property

@@ -17,10 +17,12 @@
 # limitations under the License.
 
 from typing import Dict, Iterable, Iterator, List, Optional
+
 from . import get_url, raise_on_error, __version__  # type: ignore
+from .hardware_constraint import HardwareConstraint
 from .task import Task, BulkTaskResponse
 from .pool import Pool
-from .paginate import PaginateResponse
+from .paginate import PaginateResponse, OffsetResponse
 from .bucket import Bucket
 from .job import Job
 from ._filter import create_pool_filter, create_task_filter, create_job_filter
@@ -49,7 +51,9 @@ class Connection(object):
     def __init__(self, fileconf=None, client_token=None,
                  cluster_url=None, cluster_unsafe=False, cluster_timeout=None,
                  storage_url=None, storage_unsafe=False,
-                 retry_count=5, retry_wait=1.0, cluster_custom_certificate=None, storage_custom_certificate=None):
+                 retry_count=5, retry_wait=1.0,
+                 cluster_custom_certificate=None, storage_custom_certificate=None,
+                 sanitize_bucket_paths=True, show_bucket_warnings=True):
         """Create a connection to a cluster with given config file, options or environment variables.
         Available environment variable are
         `QARNOT_CLUSTER_URL`, `QARNOT_CLUSTER_UNSAFE`, `QARNOT_CLUSTER_TIMEOUT` and `QARNOT_CLIENT_TOKEN`.
@@ -64,6 +68,8 @@ class Connection(object):
         :param bool storage_unsafe: (optional) Disable certificate check
         :param int retry_count: (optional) ConnectionError retry count. Default to 5.
         :param float retry_wait: (optional) Retry on error wait time, progressive. (wait * (retry_count - retry_num). Default to 1s
+        :param bool sanitize_bucket_paths: (optional) Flag to automatically sanitize bucket paths (remove extra slashes). Default to true
+        :param bool show_bucket_warnings: (optional) Flag to show warnings of bucket paths sanitization. Default to true
 
         Configuration sample:
 
@@ -86,6 +92,8 @@ class Connection(object):
         self._http = requests.session()
         self._retry_count = retry_count
         self._retry_wait = retry_wait
+        self._sanitize_bucket_paths = sanitize_bucket_paths
+        self._show_bucket_warnings = show_bucket_warnings
         if fileconf is not None:
             self.storage = None
             if isinstance(fileconf, dict):
@@ -474,6 +482,32 @@ class Connection(object):
             for task in page.page_data:
                 yield task
 
+    def all_hardware_constraints(self) -> Iterator[Iterable]:
+        """Get all the hardware constraints.
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+        return self._all_offset_pages(self.hardware_constraints_page)
+
+    def _all_offset_pages(self, page_function, **kwargs) -> Iterator[Iterable]:
+        """Return all the offset pages of an object.
+
+        :param page_function: the call function used to retrieve an offset page list.
+        :type page_function: Function
+        :yield: An object
+        :rtype: Iterator[Iterable]
+        """
+
+        next_offset = 0
+        is_truncated = True
+        while is_truncated:
+            page = page_function(offset=next_offset, **kwargs)
+            next_offset = page.offset + page.limit
+            is_truncated = page.total > next_offset
+            for data in page.page_data:
+                yield data
+
     def _paginate_request(self, filters: Dict, token: Optional[str], maximum: int) -> Dict:
         """A paginate request creator.
 
@@ -485,6 +519,30 @@ class Connection(object):
             "token": token,
             "maximumResults": maximum
         }
+
+    def _offset_request(self, limit: int, offset: int) -> Dict:
+        """An offset request creator.
+
+        :return: The dictionary of query parameters to add to request.
+        :rtype: Dict
+        """
+        return {
+            "limit": limit,
+            "offset": offset
+        }
+
+    def _offset_call(self, url, params) -> Dict:
+        """Call the api and return the response body of the GET request
+
+        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
+
+        :return: The response body
+        :rtype: Dict
+        """
+        response = self._get(url, params=params)
+        raise_on_error(response)
+        return response.json()
 
     def _page_call(self, url, request) -> Dict:
         """Call the api and return the response body
@@ -558,6 +616,21 @@ class Connection(object):
         result = self._page_call(get_url('paginate jobs'), self._paginate_request(filters, token, maximum))
         data = [Job.from_json(self, job) for job in result["data"]]
         return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
+
+    def hardware_constraints_page(self, limit: Optional[int] = 50, offset: Optional[int] = 0) -> OffsetResponse:
+        """Return a list of hardware constraints limited with offset.
+
+        :param limit: limit the number of displayed constraints, defaults to 50
+        :type limit: `int`, optional
+        :param offset: the number of constraints ignored in the response, defaults to 0
+        :type token: `int`, optional
+        :return: An offset object
+        :rtype: `qarnot.paginate.OffsetResponse`
+        """
+
+        result = self._offset_call(get_url('hardware constraints'), self._offset_request(limit, offset))
+        data = [HardwareConstraint.from_json(hw_constraint) for hw_constraint in result["data"]]
+        return OffsetResponse(total=result["total"], limit=result["limit"], offset=result["offset"], page_data=data)
 
     def retrieve_pool(self, uuid):
         """Retrieve a :class:`qarnot.pool.Pool` from its uuid

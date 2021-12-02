@@ -14,13 +14,14 @@ def mock_connection_base(mock_s3buckets=None):
     mock_connection.s3client = Mock()
     mock_connection.s3resource = Mock()
     mock_connection.s3resource.Bucket.return_value = mock_s3buckets
+    mock_connection._sanitize_bucket_paths = True
+    mock_connection._show_bucket_warnings = True
     return mock_connection
 
 
 class TestBucketPublicMethods(TestCase):
     def test_init_bucket(self):
-        mock_connection = Mock({'other.side_effect': KeyError})
-        mock_connection.s3client = Mock()
+        mock_connection = mock_connection_base()
         bucket = Bucket(mock_connection, "name", True)
         mock_connection.s3client.create_bucket.assert_called_once()
 

@@ -19,7 +19,7 @@
 from .exceptions import QarnotGenericException
 
 __all__ = ["task", "connection", "bucket", "pool",
-           "storage", "status", "job", "advanced_bucket"]
+           "storage", "status", "job", "advanced_bucket", "hardware_constraint"]
 
 
 def raise_on_error(response):
@@ -65,6 +65,7 @@ def get_url(key, **kwargs):
         'user': u'/info',  # GET -> user info
         'profiles': u'/profiles',  # GET -> profiles list
         'profile details': u'/profiles/{profile}',  # GET -> profile details
+        'hardware constraints': u'/hardware-constraints',  # GET -> user hardware constraints list
         'settings': u'/settings',  # GET -> instance settings
     }
     return urls[key].format(**kwargs)
