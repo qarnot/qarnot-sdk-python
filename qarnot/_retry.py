@@ -2,32 +2,38 @@ import time
 from .exceptions import UnauthorizedException
 
 
+TRANSIENT_ERROR_CODES = [
+    429,
+    500,
+    502,
+    503,
+    504,
+]
+
+
 def with_retry(http_request_func):
     def _with_retry(self, *args, **kwargs):
-        retry = self._retry_count
-        last_chance = False
+        tries = 0
 
         while True:
             try:
                 ret = http_request_func(self, *args, **kwargs)
             except ConnectionError:
-                if last_chance:
+                if tries >= self._retry_count:
                     raise
+                continue
 
             if ret.ok:
                 return ret
             if ret.status_code == 401:
                 raise UnauthorizedException()
-            # Do not retry on error except for rate limiting errors.
-            if 400 <= ret.status_code <= 499 and ret.status_code != 429:
-                return ret
-            if last_chance:
+            if ret.status_code not in TRANSIENT_ERROR_CODES:
                 return ret
 
-            if retry > 1:
-                retry -= 1
-                time.sleep(self._retry_wait * (self._retry_count - retry))
+            if tries < self._retry_count:
+                time.sleep((2 ** tries) * self._retry_wait)
+                tries += 1
             else:
-                last_chance = True
+                return ret
 
     return _with_retry

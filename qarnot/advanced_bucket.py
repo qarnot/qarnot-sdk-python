@@ -8,10 +8,12 @@ from . import _util
 
 
 class AbstractFiltering(metaclass=abc.ABCMeta):
-    name: str = 'abstractFiltering'
     """
     Abstract base class for resources filtering, allowing to select only a subset of a resources bucket as task resources.
     """
+
+    name: str = 'abstractFiltering'
+
     @abc.abstractmethod
     def to_json(self):
         """Get a dict ready to be json packed.
@@ -38,11 +40,11 @@ class AbstractFiltering(metaclass=abc.ABCMeta):
 
 
 class BucketPrefixFiltering(AbstractFiltering):
-    name: str = 'prefixFiltering'
-
     """
         Allows to filter a resources bucket by name prefix. Only bucket files starting with the given prefix will be used as task resources.
     """
+    name: str = 'prefixFiltering'
+
     def __init__(self, prefix: str):
         self.prefix = prefix
 

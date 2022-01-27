@@ -195,7 +195,7 @@ class SpecificHardware(HardwareConstraint):
         """
         return {
             "discriminator": self._discriminator,
-            "_specificationKey": self._specification_key
+            "specificationKey": self._specification_key
         }
 
 
