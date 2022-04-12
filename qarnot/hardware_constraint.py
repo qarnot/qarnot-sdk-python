@@ -65,6 +65,9 @@ class HardwareConstraint():
         :raises NotImplementedError: this is an abstract method, it should be overridden in child classes
         """
 
+    def __str__(self) -> str:
+        return "hardware constraint {}.".format(self._discriminator)
+
 
 class MinimumCoreHardware(HardwareConstraint):
     """Represents an hardware constraint to limit the minimum number of cores"""
@@ -83,6 +86,9 @@ class MinimumCoreHardware(HardwareConstraint):
             "discriminator": self._discriminator,
             "coreCount": self._core_count
         }
+
+    def __str__(self) -> str:
+        return "Minimum core hardware constraint with a minimum of {} cores.".format(self._core_count)
 
 
 class MaximumCoreHardware(HardwareConstraint):
@@ -103,6 +109,9 @@ class MaximumCoreHardware(HardwareConstraint):
             "coreCount": self._core_count
         }
 
+    def __str__(self) -> str:
+        return "Maximum core hardware constraint with a maximum of {} cores.".format(self._core_count)
+
 
 class MinimumRamCoreRatioHardware(HardwareConstraint):
     """Represents an hardware constraint to limit the minimum memory core ratio"""
@@ -121,6 +130,9 @@ class MinimumRamCoreRatioHardware(HardwareConstraint):
             "discriminator": self._discriminator,
             "minimumMemoryGBCoreRatio": self._minimum_memory_gb_core_ratio
         }
+
+    def __str__(self) -> str:
+        return "Minimum Ram core ratio hardware constraint with a minimum of {} GB / core.".format(self._minimum_memory_gb_core_ratio)
 
 
 class MaximumRamCoreRatioHardware(HardwareConstraint):
@@ -141,6 +153,9 @@ class MaximumRamCoreRatioHardware(HardwareConstraint):
             "maximumMemoryGBCoreRatio": self._maximum_memory_gb_core_ratio
         }
 
+    def __str__(self) -> str:
+        return "Maximum Ram core ratio hardware constraint with a maximum of {} GB / core.".format(self._maximum_memory_gb_core_ratio)
+
 
 class MinimumRamHardware(HardwareConstraint):
     """Represents an hardware constraint to limit the minimum memory"""
@@ -159,6 +174,9 @@ class MinimumRamHardware(HardwareConstraint):
             "discriminator": self._discriminator,
             "minimumMemoryMB": self._minimum_memory_mb
         }
+
+    def __str__(self) -> str:
+        return "Minimum Ram hardware constraint with a minimum of {}MB.".format(self._minimum_memory_mb)
 
 
 class MaximumRamHardware(HardwareConstraint):
@@ -179,6 +197,9 @@ class MaximumRamHardware(HardwareConstraint):
             "maximumMemoryMB": self._maximum_memory_mb
         }
 
+    def __str__(self) -> str:
+        return "Maximum Ram hardware constraint with a maximum of {}MB.".format(self._maximum_memory_mb)
+
 
 class SpecificHardware(HardwareConstraint):
     """Represents an hardware constraint to limit to a specific hardware"""
@@ -198,6 +219,9 @@ class SpecificHardware(HardwareConstraint):
             "specificationKey": self._specification_key
         }
 
+    def __str__(self) -> str:
+        return "Specific hardware constraint with key: {}.".format(self._specification_key)
+
 
 class GpuHardware(HardwareConstraint):
     """Represents an hardware constraint to limit hardware with gpu"""
@@ -212,3 +236,6 @@ class GpuHardware(HardwareConstraint):
         return {
             "discriminator": self._discriminator
         }
+
+    def __str__(self) -> str:
+        return "Hardware with graphic card."
