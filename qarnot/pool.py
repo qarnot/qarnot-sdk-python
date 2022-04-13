@@ -210,7 +210,7 @@ class Pool(object):
         self._execution_time = json_pool.get('executionTime', None)
         self._end_date = json_pool.get('endDate', None)
         self._labels = json_pool.get('labels', {})
-        self._hardware_constraints = json_pool.get("hardwareConstraints", [])
+        self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_pool.get("hardwareConstraints", [])]
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""

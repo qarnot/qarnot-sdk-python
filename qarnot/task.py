@@ -474,7 +474,7 @@ class Task(object):
         self._wall_time = json_task.get("wallTime", None)
         self._end_date = json_task.get("endDate", None)
         self._labels = json_task.get("labels", {})
-        self._hardware_constraints = json_task.get("hardwareConstraints", [])
+        self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_task.get("hardwareConstraints", [])]
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
