@@ -101,6 +101,8 @@ class Connection(object):
                 self.cluster = None
                 if fileconf.get('cluster_url'):
                     self.cluster = fileconf.get('cluster_url')
+                if fileconf.get('storage_url'):
+                    self.storage = fileconf.get('storage_url')
                 auth = fileconf.get('client_auth')
                 self.timeout: int = int(fileconf.get('cluster_timeout'))
                 if fileconf.get('cluster_unsafe'):

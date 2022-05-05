@@ -9,4 +9,5 @@ Compute
    pool
    status
    paginate
+   privileges
 

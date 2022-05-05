@@ -1,7 +1,9 @@
 import datetime
+import uuid
 import pytest
 
 from qarnot.task import Task
+from qarnot.privileges import Privileges
 from qarnot.bucket import Bucket
 from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransformation
 import datetime
@@ -59,10 +61,11 @@ class TestTaskProperties:
         ("execution_time", None),
         ("wall_time", None),
         ("end_date", None),
+        ("privileges", Privileges()),
     ])
     def test_task_property_default_value(self, mock_conn, property_name,  expected_value):
         task = Task(mock_conn, "task-name")
-        assert getattr(task, property_name) is expected_value
+        assert getattr(task, property_name) == expected_value
 
     @pytest.mark.parametrize("property_name, expected_value", [
         ("previous_state", default_json_task["previousState"]),
@@ -74,20 +77,22 @@ class TestTaskProperties:
         ("execution_time", default_json_task["executionTime"]),
         ("wall_time", default_json_task["wallTime"]),
         ("end_date", default_json_task["endDate"]),
+        ("privileges", Privileges()),
     ])
     def test_task_property_update_value(self, mock_conn, property_name,  expected_value):
         task = Task(mock_conn, "task-name")
         task._update(default_json_task)
-        assert getattr(task, property_name) is expected_value
+        assert getattr(task, property_name) == expected_value
 
     @pytest.mark.parametrize("property_name, expected_value", [
         ("name", default_json_task["name"]),
+        ("privileges", default_json_task["privileges"]),
     ])
     def test_task_property_send_to_json_representation(self, mock_conn, property_name, expected_value):
         task = Task(mock_conn, "task-name")
         task._update(default_json_task)
         task_json = task._to_json()
-        assert task_json[property_name] is expected_value
+        assert task_json[property_name] == expected_value
 
     @pytest.mark.parametrize("property_name, set_value, expected_value", [
         ("name", "name", "name")
@@ -157,7 +162,8 @@ class TestTaskProperties:
                 "stripPrefix": {
                     "prefix": "prefix2"
                 }
-            }
+            },
+            "cacheTTLSec": 1000
         }
         json_task = {
             "name": "taskName",
@@ -177,6 +183,7 @@ class TestTaskProperties:
         assert "name" == task.resources[0].uuid
         assert "prefix1" == task.resources[0]._filtering._filters["prefixFiltering"].prefix
         assert "prefix2" == task.resources[0]._resources_transformation._resource_transformers["stripPrefix"].prefix
+        assert 1000 == task.resources[0]._cache_ttl_sec
 
 
     def test_execution_attempt_count_in_running_instances(self, mock_conn):
@@ -191,3 +198,25 @@ class TestTaskProperties:
         task = Task(mock_conn, "task-name")
         task._update(default_json_task)
         assert task.completed_instances[0].execution_attempt_count == 43
+
+    def test_task_privileges(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task.allow_credentials_to_be_exported_to_task_environment()
+        assert task.privileges is not None
+        assert task.privileges._exportApiAndStorageCredentialsInEnvironment == True
+
+        json_task = task._to_json()
+        assert json_task['privileges'] is not None
+        assert json_task['privileges']['exportApiAndStorageCredentialsInEnvironment'] is True
+
+        # fields that need to be non null for the deserialization to not fail
+        json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_task['uuid'] = str(uuid.uuid4())
+        json_task['state'] = 'Submitted'
+        json_task['runningCoreCount'] = 0
+        json_task['runningInstanceCount'] = 0
+
+        pool_from_json = Task(mock_conn, "task-name")
+        pool_from_json._update(json_task)
+        assert pool_from_json.privileges is not None
+        assert pool_from_json.privileges._exportApiAndStorageCredentialsInEnvironment is True

@@ -126,7 +126,10 @@ default_json_task: dict = {
     "dependencies":  None,
     "autoDeleteOnCompletion":  False,
     "completionTimeToLive":  "00:00:00",
-    "maxRetriesPerInstance":  0
+    "maxRetriesPerInstance":  0,
+    "privileges":  {
+        "exportApiAndStorageCredentialsInEnvironment": False
+    }
 }
 
 

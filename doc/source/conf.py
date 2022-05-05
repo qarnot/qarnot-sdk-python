@@ -86,7 +86,7 @@ language = None
 exclude_patterns = ["_build"]
 
 nitpicky = True
-nitpick_ignore = [("py:class", "exceptions.Exception"), ("py:obj", "File"), ("py:obj", "function")]
+nitpick_ignore = [("py:class", "exceptions.Exception"), ("py:obj", "File"), ("py:obj", "function"), ("py:class", "File"), ("py:class", "function")]
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 

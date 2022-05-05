@@ -54,7 +54,6 @@ class BucketPrefixFiltering(AbstractFiltering):
 
         :param json: the json elements of the class
         :type json: `dict`
-        "bucket_or_bucket_name""
         """
         prefix: str = json.get("prefix")
         return BucketPrefixFiltering(prefix)

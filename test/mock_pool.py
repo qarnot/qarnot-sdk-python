@@ -89,5 +89,8 @@ default_json_pool = {
     "executionTime":  "00:00:00",
     "wallTime":  "00:00:15",
     "taskDefaultWaitForPoolResourcesSynchronization":  None,
-    "credits":  0.01
+    "credits":  0.01,
+    "privileges":  {
+        "exportApiAndStorageCredentialsInEnvironment": False
+    }
 }

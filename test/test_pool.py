@@ -1,9 +1,13 @@
+import uuid
 import pytest
 import qarnot
 from qarnot.pool import Pool
+from qarnot.privileges import Privileges
 from qarnot.bucket import Bucket
 from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransformation
 import datetime
+
+from qarnot.privileges import Privileges
 from .mock_connection import MockConnection, PatchRequest, none_function
 from .mock_pool import default_json_pool
 
@@ -61,10 +65,11 @@ class TestPoolProperties:
         ("execution_time", None),
         ("end_date", None),
         ("tasks_default_wait_for_pool_resources_synchronization", False),
+        ("privileges", Privileges()),
     ])
     def test_pool_property_default_value(self, property_name,  expected_value):
         pool = Pool(self.conn, "pool-name", "profile")
-        assert getattr(pool, property_name) is expected_value
+        assert getattr(pool, property_name) == expected_value
 
     @pytest.mark.parametrize("property_name, expected_value", [
         ("previous_state", default_json_pool["previousState"]),
@@ -74,20 +79,22 @@ class TestPoolProperties:
         ("execution_time", default_json_pool["executionTime"]),
         ("end_date", default_json_pool["endDate"]),
         ("tasks_default_wait_for_pool_resources_synchronization", default_json_pool["taskDefaultWaitForPoolResourcesSynchronization"]),
+        ("privileges", Privileges()),
     ])
     def test_pool_property_update_value(self, property_name,  expected_value):
         pool = Pool(self.conn, "pool-name", "profile")
         pool._update(default_json_pool)
-        assert getattr(pool, property_name) is expected_value
+        assert getattr(pool, property_name) == expected_value
 
     @pytest.mark.parametrize("property_name, expected_value", [
         ("taskDefaultWaitForPoolResourcesSynchronization", default_json_pool["taskDefaultWaitForPoolResourcesSynchronization"]),
+        ("privileges", default_json_pool["privileges"]),
     ])
     def test_pool_property_send_to_json_representation(self, property_name, expected_value):
         pool = Pool(self.conn, "pool-name", "profile")
         pool._update(default_json_pool)
         pool_json = pool._to_json()
-        assert pool_json[property_name] is expected_value
+        assert pool_json[property_name] == expected_value
 
     @pytest.mark.parametrize("property_name, set_value, expected_value", [
         ("name", "name", "name")
@@ -157,7 +164,8 @@ class TestPoolProperties:
                 "stripPrefix": {
                     "prefix": "prefix2"
                 }
-            }
+            },
+            "cacheTTLSec": 1000
         }
         json_pool = {
             "name":"poolName",
@@ -177,3 +185,24 @@ class TestPoolProperties:
         assert "name" == pool.resources[0].uuid
         assert "prefix1" == pool.resources[0]._filtering._filters["prefixFiltering"].prefix
         assert "prefix2" == pool.resources[0]._resources_transformation._resource_transformers["stripPrefix"].prefix
+        assert 1000 == pool.resources[0]._cache_ttl_sec
+
+    def test_pool_privileges(self):
+        pool = Pool(self.conn, "pool-name", "profile")
+        pool.allow_credentials_to_be_exported_to_pool_environment()
+        assert pool.privileges is not None
+        assert pool.privileges._exportApiAndStorageCredentialsInEnvironment == True
+
+        json_pool = pool._to_json()
+        assert json_pool['privileges'] is not None
+        assert json_pool['privileges']['exportApiAndStorageCredentialsInEnvironment'] is True
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+
+        pool_from_json = Pool(self.conn, "pool-name", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.privileges is not None
+        assert pool_from_json.privileges._exportApiAndStorageCredentialsInEnvironment is True

@@ -66,7 +66,7 @@ class Bucket(Storage):  # pylint: disable=W0223
        **must** be valid unix-like paths.
     """
 
-    def __init__(self, connection, name, create=True, filtering: Filtering = None, resources_transformation: ResourcesTransformation = None):
+    def __init__(self, connection, name, create=True, filtering: Filtering = None, resources_transformation: ResourcesTransformation = None, cacheTTLSec: Optional[int] = None):
         super().__init__()
         if connection.s3client is None:
             raise BucketStorageUnavailableException()
@@ -76,6 +76,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         self._filtering: Optional[Filtering] = filtering or Filtering()
         self._resources_transformation: Optional[ResourcesTransformation] = \
             resources_transformation or ResourcesTransformation()
+        self._cache_ttl_sec: Optional[int] = cacheTTLSec
 
         if (self._connection._sanitize_bucket_paths):
             self._filtering.sanitize_filter_paths(self._connection._show_bucket_warnings)
@@ -91,6 +92,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         as_json_dict['filtering'] = None if self._filtering is None else self._filtering.to_json()
         as_json_dict['resourcesTransformation'] = (None if self._resources_transformation is None
                                                    else self._resources_transformation.to_json())
+        as_json_dict['cacheTTLSec'] = self._cache_ttl_sec
         return as_json_dict
 
     @classmethod
@@ -102,7 +104,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         """
         filtering = Filtering.from_json(json_bucket['filtering'])
         resource_transformation = ResourcesTransformation.from_json(json_bucket['resourcesTransformation'])
-        bucket = Bucket(connection, json_bucket['bucketName'], create=False, filtering=filtering, resources_transformation=resource_transformation)
+        bucket = Bucket(connection, json_bucket['bucketName'], create=False, filtering=filtering, resources_transformation=resource_transformation, cacheTTLSec=json_bucket['cacheTTLSec'])
         return bucket
 
     def with_filtering(self, filtering):
@@ -131,6 +133,19 @@ class Bucket(Storage):  # pylint: disable=W0223
         bucket_copy = Bucket(self._connection, self._uuid,
                              create=False, filtering=self._filtering, resources_transformation=ResourcesTransformation())
         bucket_copy._resources_transformation.append(resource)
+        return bucket_copy
+
+    def with_cache_ttl(self, ttl: int):
+        """Create a new Bucket object from the given bucket with a specific cache ttl (in seconds).
+        examples :
+        * new_bucket = bucket.with_cache_ttl(2592000)
+        * new_bucket = Bucket(connection, "name", False).with_cache_ttl(2592000)
+
+        :param int ttl: Time to live for the bucket resource cache.
+        :returns: The created :class:`~qarnot.bucket.Bucket`.
+        """
+        bucket_copy = Bucket(self._connection, self._uuid,
+                             create=False, filtering=self._filtering, resources_transformation=self._resources_transformation, cacheTTLSec=ttl)
         return bucket_copy
 
     @classmethod

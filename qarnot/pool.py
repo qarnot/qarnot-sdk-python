@@ -15,12 +15,13 @@
 # limitations under the License.
 import time
 import warnings
-from typing import List
+from typing import List, Optional
 
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
 from .status import Status
 from .hardware_constraint import HardwareConstraint
+from .privileges import Privileges
 from .error import Error
 from .exceptions import MissingPoolException, MaxPoolException, NotEnoughCreditsException, \
     BucketStorageUnavailableException, MissingBucketException
@@ -110,6 +111,8 @@ class Pool(object):
         self._execution_time = None
         self._end_date = None
         self._hardware_constraints: List[HardwareConstraint] = []
+        self._default_resources_cache_ttl_sec: Optional[int] = None
+        self._privileges: Privileges = Privileges()
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -155,9 +158,9 @@ class Pool(object):
         self._profile = json_pool['profile']
         self._instancecount = json_pool['instanceCount']
 
-        if json_pool['runningCoreCount'] is not None:
+        if json_pool.get('runningCoreCount') is not None:
             self._running_core_count = json_pool['runningCoreCount']
-        if json_pool['runningInstanceCount'] is not None:
+        if json_pool.get('runningInstanceCount') is not None:
             self._running_instance_count = json_pool['runningInstanceCount']
 
         if 'errors' in json_pool:
@@ -211,6 +214,9 @@ class Pool(object):
         self._end_date = json_pool.get('endDate', None)
         self._labels = json_pool.get('labels', {})
         self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_pool.get("hardwareConstraints", [])]
+        self._default_resources_cache_ttl_sec = json_pool.get("defaultResourcesCacheTTLSec", None)
+        if 'privileges' in json_pool:
+            self._privileges = Privileges.from_json(json_pool["privileges"])
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -255,6 +261,8 @@ class Pool(object):
         json_pool['autoDeleteOnCompletion'] = self._auto_delete
         json_pool['completionTimeToLive'] = self._completion_time_to_live
         json_pool['hardwareConstraints'] = [x.to_json() for x in self._hardware_constraints]
+        json_pool['defaultResourcesCacheTTLSec'] = self._default_resources_cache_ttl_sec
+        json_pool['privileges'] = self._privileges.to_json()
 
         return json_pool
 
@@ -1205,6 +1213,54 @@ class Pool(object):
             raise AttributeError("can't set attribute on a launched task")
 
         self._hardware_constraints = value
+
+    @property
+    def default_resources_cache_ttl_sec(self) -> Optional[int]:
+        """:type: :class:`int`, optional
+
+        :getter: The default time to live used for all the pool resources cache
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._default_resources_cache_ttl_sec
+
+    @default_resources_cache_ttl_sec.setter
+    def default_resources_cache_ttl_sec(self, value: Optional[int]):
+        """Setter for default_resources_cache_ttl_sec
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+
+        self._default_resources_cache_ttl_sec = value
+
+    @property
+    def privileges(self) -> Privileges:
+        """:type: :class:``Privileges``
+
+        :getter: The privileges granted to the pool
+
+        :raises AttributeError: trying to set this after the pool is submitted
+        """
+        return self._privileges
+
+    @privileges.setter
+    def privileges(self, value: Privileges):
+        """Setter for privileges
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+
+        self._privileges = value
+
+    def allow_credentials_to_be_exported_to_pool_environment(self):
+        """Grant privilege to export api and storage credentials to the pool environment"""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+
+        if self._privileges is None:
+            self._privileges = Privileges()
+
+        self._privileges._exportApiAndStorageCredentialsInEnvironment = True
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

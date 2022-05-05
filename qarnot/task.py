@@ -24,6 +24,7 @@ from typing import Dict, Optional, Union, List, Any, Callable
 from . import get_url, raise_on_error, _util
 from .status import Status
 from .hardware_constraint import HardwareConstraint
+from .privileges import Privileges
 from .bucket import Bucket
 from .pool import Pool
 from .error import Error
@@ -156,6 +157,8 @@ class Task(object):
         self._end_date = None
         self._upload_results_on_cancellation: Optional[bool] = None
         self._hardware_constraints: List[HardwareConstraint] = []
+        self._default_resources_cache_ttl_sec: Optional[int] = None
+        self._privileges: Privileges = Privileges()
 
     @classmethod
     def _retrieve(cls, connection: ConnectionType, uuid: str) -> TaskType:
@@ -475,6 +478,9 @@ class Task(object):
         self._end_date = json_task.get("endDate", None)
         self._labels = json_task.get("labels", {})
         self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_task.get("hardwareConstraints", [])]
+        self._default_resources_cache_ttl_sec = json_task.get("defaultResourcesCacheTTLSec", None)
+        if 'privileges' in json_task:
+            self._privileges = Privileges.from_json(json_task["privileges"])
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
@@ -1345,6 +1351,54 @@ class Task(object):
         self._hardware_constraints = value
 
     @property
+    def default_resources_cache_ttl_sec(self) -> Optional[int]:
+        """:type: :class:`int`, optional
+
+        :getter: The default time to live used for all the task resources cache
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._default_resources_cache_ttl_sec
+
+    @default_resources_cache_ttl_sec.setter
+    def default_resources_cache_ttl_sec(self, value: Optional[int]):
+        """Setter for default_resources_cache_ttl_sec
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._default_resources_cache_ttl_sec = value
+
+    @property
+    def privileges(self) -> Privileges:
+        """:type: :class:``Privileges``
+
+        :getter: The privileges granted to the task
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._privileges
+
+    @privileges.setter
+    def privileges(self, value: Privileges):
+        """Setter for privileges
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._privileges = value
+
+    def allow_credentials_to_be_exported_to_task_environment(self):
+        """Grant privilege to export api and storage credentials to the task environment"""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        if self._privileges is None:
+            self._privileges = Privileges()
+
+        self._privileges._exportApiAndStorageCredentialsInEnvironment = True
+
+    @property
     def auto_delete(self):
         """Autodelete this Task if it is finished and your max number of task is reach
 
@@ -1546,6 +1600,8 @@ class Task(object):
         json_task['autoDeleteOnCompletion'] = self._auto_delete
         json_task['completionTimeToLive'] = self._completion_time_to_live
         json_task['hardwareConstraints'] = [x.to_json() for x in self._hardware_constraints]
+        json_task['defaultResourcesCacheTTLSec'] = self._default_resources_cache_ttl_sec
+        json_task['privileges'] = self._privileges.to_json()
 
         return json_task
 
