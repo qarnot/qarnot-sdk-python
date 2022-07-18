@@ -129,6 +129,10 @@ default_json_task: dict = {
     "maxRetriesPerInstance":  0,
     "privileges":  {
         "exportApiAndStorageCredentialsInEnvironment": False
+    },
+    "retrySettings":  {
+        "maxTotalRetries": 10,
+        "maxPerInstanceRetries": 2
     }
 }
 

@@ -52,13 +52,13 @@ class Bucket(Storage):  # pylint: disable=W0223
     """Represents a resource/result bucket.
 
     This class is the interface to manage resources or results from a
-    :class:`qarnot.bucket.Bucket`.
+    :class:`~qarnot.bucket.Bucket`.
 
     .. note::
        A :class:`Bucket` must be created with
-       :meth:`qarnot.connection.Connection.create_bucket`
-       or retrieved with :meth:`qarnot.connection.Connection.buckets`, :meth:`qarnot.connection.Connection.retrieve_bucket`,
-       or :meth:`qarnot.connection.Connection.retrieve_or_create_bucket`.
+       :meth:`.Connection.create_bucket`
+       or retrieved with :meth:`.Connection.buckets`, :meth:`.Connection.retrieve_bucket`,
+       or :meth:`.Connection.retrieve_or_create_bucket`.
 
     .. note::
        Paths given as 'remote' arguments,
@@ -98,22 +98,36 @@ class Bucket(Storage):  # pylint: disable=W0223
     @classmethod
     def from_json(cls, connection, json_bucket):
         """Create a Bucket object from a json advance bucket.
-        :param qarnot.connection.Connection connection: the cluster connection
+
+        :param ~qarnot.connection.Connection connection: the cluster connection
         :param dict json_bucket: Dictionary representing the bucket
         :returns: The created :class:`~qarnot.bucket.Bucket`.
         """
-        filtering = Filtering.from_json(json_bucket['filtering'])
-        resource_transformation = ResourcesTransformation.from_json(json_bucket['resourcesTransformation'])
+        filtering = None
+        if "filtering" in json_bucket and json_bucket['filtering']:
+            filtering = Filtering.from_json(json_bucket['filtering'])
+
+        resource_transformation = None
+        if "resourcesTransformation" in json_bucket and json_bucket['resourcesTransformation']:
+            resource_transformation = ResourcesTransformation.from_json(json_bucket['resourcesTransformation'])
+
         bucket = Bucket(connection, json_bucket['bucketName'], create=False, filtering=filtering, resources_transformation=resource_transformation, cacheTTLSec=json_bucket['cacheTTLSec'])
         return bucket
 
     def with_filtering(self, filtering):
         """Create a new Bucket object from the given bucket with a specific filtering.
-        examples :
-        * new_bucket = bucket.with_filtering(BucketPrefixFiltering("prefix1"))
-        * new_bucket = Bucket(connection, "name", False).with_filtering(BucketPrefixFiltering("prefix1"))
 
-        :param :class:``~qarnot.advance_bucket.AbstractFiltering`` filtering: Filtering to add to the bucket.
+        examples:
+
+        .. code-block:: python
+
+            filtered_bucket = bucket.with_filtering(BucketPrefixFiltering("prefix1"))
+
+        .. code-block:: python
+
+            other_filtered_bucket = Bucket(connection, "name", False).with_filtering(BucketPrefixFiltering("prefix1"))
+
+        :param ~qarnot.advanced_bucket.AbstractFiltering filtering: Filtering to add to the bucket.
         :returns: The created :class:`~qarnot.bucket.Bucket`.
         """
         bucket_copy = Bucket(self._connection, self._uuid,
@@ -123,11 +137,18 @@ class Bucket(Storage):  # pylint: disable=W0223
 
     def with_resource_transformation(self, resource):
         """Create a new Bucket object from the given bucket with a specific resource transformation.
-        examples :
-        * new_bucket = Bucket(connection, "name", False).with_resource_transformation(PrefixResourcesTransformation("prefix2"))
-        * new_bucket = bucket.with_resource_transformation(PrefixResourcesTransformation("prefix2")).with_filtering(BucketPrefixFiltering("prefix1"))
 
-        :param :class:``~qarnot.advance_bucket.AbstractResourcesTransformation`` resource: The resource transformation to add to the bucket.
+        examples:
+
+        .. code-block:: python
+
+            trans_bucket = Bucket(connection, "name", False).with_resource_transformation(PrefixResourcesTransformation("prefix2"))
+
+        .. code-block:: python
+
+            trans_filtered_bucket = bucket.with_resource_transformation(PrefixResourcesTransformation("prefix2")).with_filtering(BucketPrefixFiltering("prefix1"))
+
+        :param ~qarnot.advanced_bucket.AbstractResourcesTransformation resource: The resource transformation to add to the bucket.
         :returns: The created :class:`~qarnot.bucket.Bucket`.
         """
         bucket_copy = Bucket(self._connection, self._uuid,
@@ -137,9 +158,16 @@ class Bucket(Storage):  # pylint: disable=W0223
 
     def with_cache_ttl(self, ttl: int):
         """Create a new Bucket object from the given bucket with a specific cache ttl (in seconds).
-        examples :
-        * new_bucket = bucket.with_cache_ttl(2592000)
-        * new_bucket = Bucket(connection, "name", False).with_cache_ttl(2592000)
+
+        examples:
+
+        .. code-block:: python
+
+            new_bucket = bucket.with_cache_ttl(2592000)
+
+        .. code-block:: python
+
+            new_bucket = Bucket(connection, "name", False).with_cache_ttl(2592000)
 
         :param int ttl: Time to live for the bucket resource cache.
         :returns: The created :class:`~qarnot.bucket.Bucket`.
@@ -152,14 +180,14 @@ class Bucket(Storage):  # pylint: disable=W0223
     def _retrieve(cls, connection, bucket_uuid):
         """Retrieve information of a bucket on a cluster.
 
-        :param :class:`qarnot.connection.Connection` connection: the cluster
+        :param ~qarnot.connection.Connection connection: the cluster
             to get the bucket from
         :param str bucket_uuid: the UUID of the bucket to retrieve
 
-        :rtype: :class:`qarnot.bucket.Bucket`
+        :rtype: :class:`~qarnot.bucket.Bucket`
         :returns: The retrieved bucket.
 
-        :raises qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
+        :raises ~qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
         """
         return connection.retrieve_bucket(uuid=bucket_uuid)
 
@@ -325,10 +353,12 @@ class Bucket(Storage):  # pylint: disable=W0223
         adds = localfiles - remotefiles
         removes = remotefiles - localfiles
 
+        seen_tags = set()  # To avoid copying the same objects multiple times when renaming
         for file_ in removes:
             if remote is not None and not file_.name.startswith(remote):
                 continue
-            renames = (x for x in adds if x.e_tag == file_.e_tag and all(rem.name != x.name for rem in remotefiles))
+            renames = (x for x in adds if x.e_tag not in seen_tags and x.e_tag == file_.e_tag
+                       and all(rem.name != x.name for rem in remotefiles))
             for dup in renames:
                 if verbose:
                     print("Copy", file_.name, "to", dup.name)
@@ -336,6 +366,7 @@ class Bucket(Storage):  # pylint: disable=W0223
             if verbose:
                 print("Remove:", file_.name)
             self.delete_file(file_.name)
+            seen_tags.add(file_.e_tag)
 
         remotefiles = set(map(objectsummarytocomparable, self.list_files()))
 

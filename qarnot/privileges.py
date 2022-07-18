@@ -4,10 +4,14 @@ from typing import Dict
 
 
 class Privileges(object):
+    """Represents task privileges."""
+
     _exportApiAndStorageCredentialsInEnvironment: bool = False  # Export the Api and Storage credentials to the task/pool environment
 
     def __init__(self, exportCredentialsInEnv: bool = False):
-        """Create a new :class:``Privileges``"""
+        """Create a new :class:`~qarnot.privileges.Privileges`.
+
+        :param bool exportCredentialsInEnv: if the task should export its api and storage credentials to its environment. Default is False."""
         self._exportApiAndStorageCredentialsInEnvironment = exportCredentialsInEnv
 
     @classmethod
@@ -15,13 +19,14 @@ class Privileges(object):
         """Create the privileges from json.
 
         :param dict json: Dictionary representing the privileges
-        :returns: The created :class:``Privileges``
+        :returns: The created :class:`~qarnot.privileges.Privileges`
         """
         shouldExportCredentialsInEnvironment: bool = json["exportApiAndStorageCredentialsInEnvironment"]
         return Privileges(shouldExportCredentialsInEnvironment)
 
     def to_json(self) -> Dict[str, object]:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
         """

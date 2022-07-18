@@ -8,6 +8,7 @@ from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransfo
 import datetime
 
 from qarnot.privileges import Privileges
+from qarnot.retry_settings import RetrySettings
 from .mock_connection import MockConnection, PatchRequest, none_function
 from .mock_pool import default_json_pool
 
@@ -89,6 +90,7 @@ class TestPoolProperties:
     @pytest.mark.parametrize("property_name, expected_value", [
         ("taskDefaultWaitForPoolResourcesSynchronization", default_json_pool["taskDefaultWaitForPoolResourcesSynchronization"]),
         ("privileges", default_json_pool["privileges"]),
+        ("defaultRetrySettings", default_json_pool["defaultRetrySettings"]),
     ])
     def test_pool_property_send_to_json_representation(self, property_name, expected_value):
         pool = Pool(self.conn, "pool-name", "profile")
@@ -206,3 +208,30 @@ class TestPoolProperties:
         pool_from_json._update(json_pool)
         assert pool_from_json.privileges is not None
         assert pool_from_json.privileges._exportApiAndStorageCredentialsInEnvironment is True
+
+    def test_pool_retry_settings(self):
+        pool = Pool(self.conn, "pool-name", "profile")
+
+        json_pool = pool._to_json()
+        assert json_pool['defaultRetrySettings'] is not None
+        assert json_pool['defaultRetrySettings']['maxTotalRetries'] is None
+        assert json_pool['defaultRetrySettings']['maxPerInstanceRetries'] is None
+
+        pool.default_retry_settings = RetrySettings(36, 12)
+        json_pool = pool._to_json()
+        assert json_pool['defaultRetrySettings'] is not None
+        assert json_pool['defaultRetrySettings']['maxTotalRetries'] is 36
+        assert json_pool['defaultRetrySettings']['maxPerInstanceRetries'] is 12
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-name", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.default_retry_settings is not None
+        assert pool_from_json.default_retry_settings._maxTotalRetries is 36
+        assert pool_from_json.default_retry_settings._maxPerInstanceRetries is 12

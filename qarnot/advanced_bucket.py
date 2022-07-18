@@ -63,6 +63,7 @@ class BucketPrefixFiltering(AbstractFiltering):
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 

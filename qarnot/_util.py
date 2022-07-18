@@ -54,7 +54,7 @@ def parse_to_timespan_string(value):
         return value
     elif isinstance(value, timedelta):
         return convert_timedelta_to_timespan_string(value)
-    raise TypeError("value must be a timedelta or time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')")
+    raise TypeError("value must be a timedelta or time span format string (example: ``d.hh:mm:ss`` or ``hh:mm:ss`` )")
 
 
 def convert_timedelta_to_timespan_string(duration):
@@ -130,7 +130,7 @@ def get_sanitized_bucket_path(path: str, show_warning: bool = True):
         if path != original_path:
             warning += "Path changed from " + original_path + " to " + path + "\n"
             warning += "If bucket path sanitization is not wanted, please open a new connection with the constructor flag 'sanitize_bucket_paths=False'"
-        if show_warning:
+        if show_warning and warning != "":
             print(warning)
         return path.strip()
     return path

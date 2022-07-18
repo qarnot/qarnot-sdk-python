@@ -1,13 +1,15 @@
-from unittest import mock, TestCase
-import pytest
-import qarnot
-from qarnot.pool import Pool
-from qarnot.bucket import Bucket
-import datetime
-
-from unittest.mock import patch, mock_open, Mock, MagicMock, PropertyMock
-import os.path
 import boto3
+import hashlib
+import moto
+import os.path
+import qarnot
+
+from pathlib import Path
+from qarnot.bucket import Bucket
+from unittest import TestCase
+from unittest.mock import patch, Mock
+
+
 
 def mock_connection_base(mock_s3buckets=None):
     mock_connection = Mock({'other.side_effect': KeyError})
@@ -36,3 +38,77 @@ class TestBucketPublicMethods(TestCase):
         args = add_file.call_args[0]
         assert args[0].read() == string_to_send.encode('utf-8')
         assert args[1] == remote_path
+
+
+# ================================== Utils functions ==================================
+def write_in(path, text):
+    os.makedirs(path.parent, exist_ok=True)
+    with open(path, 'w+') as the_file:
+        the_file.write(text)
+
+
+def compute_etag(path):
+    hash_md5 = hashlib.md5()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return '%s' % hash_md5.hexdigest()
+
+
+# Returns a set containing the couple (filename, etag) for every file in a given folder
+def list_local_files(path):
+    set_of_filenames = set()
+    for root, _, files in os.walk(path):
+        for file_name in files:
+            relative_file_path = Path(os.path.join(root, file_name)).relative_to(path).as_posix()
+            set_of_filenames.add((relative_file_path, compute_etag(os.path.join(root, file_name))))
+    return set_of_filenames
+
+
+# This is just to keep track of how many times the copy_file method was called
+class BucketWithCopyCounter(Bucket):
+    def __init__(self, connection, name, create=True):
+        super().__init__(connection, name, create)
+        self._nbr_of_copies = 0
+
+    def copy_file(self, source, dest):
+        self._nbr_of_copies += 1
+        super().copy_file(source, dest)
+
+
+# ================================== Tests using Moto ==================================
+class TestBucketPublicMethodsMoto:
+
+    @moto.mock_s3
+    def test_sync_files_avoid_unnecessary_copies(self, tmp_path):
+        # cf QNET-5274
+        bucket_name = "dolly"
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Add 2 identical files in the bucket by our own way
+        bucket = BucketWithCopyCounter(q_conn, bucket_name, True)
+        bucket.add_string("Tu ne copieras point sur ton voisin", "remote1")
+        bucket.add_string("Tu ne copieras point sur ton voisin", "remote2")
+
+        # Write some files with identical content in a temporary folder
+        write_in(tmp_path / "local1", 'Tu ne copieras point sur ton voisin')
+        write_in(tmp_path / "local2", 'Tu ne copieras point sur ton voisin')
+
+        # Synchronize the content of this folder with the bucket
+        bucket.sync_directory(tmp_path.as_posix())
+
+        # Check that it's indeed synchronized
+        local_files = list_local_files(tmp_path)
+        bucket_files = set()
+        for file in bucket.list_files():
+            bucket_files.add((file.key, file.e_tag.strip('"')))
+        assert local_files == bucket_files, "Bucket and local folder have different content whereas they should be " \
+                                            "identical "
+
+        # Check that there were no unnecessary copies performed
+        assert bucket._nbr_of_copies == 2, "The copy method should have been called only twice\
+                                            ({} calls here)".format(bucket._nbr_of_copies)

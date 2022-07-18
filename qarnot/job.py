@@ -42,7 +42,7 @@ class Job(object):
         """Create a new :class:`Job`.
 
         :param connection: the cluster on which to send the job
-        :type connection: :class:`qarnot.connection.Connection`
+        :type connection: :class:`~qarnot.connection.Connection`
         :param name: given name of the job
         :type name: :class:`str`
         :param pool: which Pool to submit the job in,
@@ -138,6 +138,8 @@ class Job(object):
         :getter: Returns this job tasks
 
         The tasks submitted in this job.
+
+        .. note:: The tasks need to be actually submitted with :meth:`.Task.submit` to be recognized and displayed by the method :meth:`~qarnot.job.Job.tasks`
         """
         if self._uuid is None:
             return
@@ -234,7 +236,7 @@ class Job(object):
 
         The job's maximum wall time.
         It is a time span string.
-        Format example: 'd.hh:mm:ss' or 'hh:mm:ss'
+        Format example: ``d.hh:mm:ss`` or ``hh:mm:ss``
 
         Can be set until job is submitted.
         """
@@ -242,7 +244,7 @@ class Job(object):
 
     @max_wall_time.setter
     def max_wall_time(self, value):
-        """Setter for maximum wall time. In time span format example : 'd.hh:mm:ss' or 'hh:mm:ss' """
+        """Setter for maximum wall time. In time span format example : ``d.hh:mm:ss`` or ``hh:mm:ss`` """
         if self._uuid is not None:
             raise AttributeError("can't set attribute on a submitted job")
         elif _util.is_string(value):
@@ -250,7 +252,7 @@ class Job(object):
         elif isinstance(value, datetime.timedelta):
             self._max_wall_time = _util.convert_timedelta_to_timespan_string(value)
         else:
-            raise TypeError("Maximum wall time must be a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')")
+            raise TypeError("Maximum wall time must be a time span format string (example: ``d.hh:mm:ss`` or ``hh:mm:ss`` )")
 
     @property
     def pool(self):
@@ -283,9 +285,9 @@ class Job(object):
         :rtype: Job
         :returns: The retrieved job.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingJobException: no such job
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingJobException: no such job
         """
         resp = connection._get(get_url('job update', uuid=uuid))
         if resp.status_code == 404:
@@ -352,10 +354,10 @@ class Job(object):
     def submit(self):
         """Submit job to the cluster if it is not already submitted.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.MaxJobException: Job quota reached
-        :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.MaxJobException: Job quota reached
+        :raises ~qarnot.exceptions.NotEnoughCreditsException: Not enough credits
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
         """
         if self._uuid is not None and self._uuid != "":
             return self._state
@@ -379,9 +381,9 @@ class Job(object):
         will be served when accessing properties of the object.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingJobException: job does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingJobException: job does not exist
         """
         if self._uuid is None:
             return
@@ -402,9 +404,9 @@ class Job(object):
     def terminate(self):
         """Terminate this job on the server and abort all remaining tasks in the job.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingJobException: job does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingJobException: job does not exist
         """
 
         if self._uuid is None:
@@ -420,10 +422,10 @@ class Job(object):
 
         The forceAbort parameter can be used to force running task in the job to be aborted,
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.UnauthorizedException: job still contains running tasks
-        :raises qarnot.exceptions.MissingJobException: job does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.UnauthorizedException: job still contains running tasks
+        :raises ~qarnot.exceptions.MissingJobException: job does not exist
         """
 
         if self._uuid is None:
@@ -474,7 +476,7 @@ class Job(object):
 
         :raises AttributeError: if you try to set it after the job is submitted
 
-        The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
+        The `completion_ttl` must be a timedelta or a time span format string (example: ``d.hh:mm:ss`` or ``hh:mm:ss`` )
         """
         return self._completion_time_to_live
 

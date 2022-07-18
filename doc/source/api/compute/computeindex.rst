@@ -10,4 +10,6 @@ Compute
    status
    paginate
    privileges
+   hardware_constraint
+   retry_settings
 

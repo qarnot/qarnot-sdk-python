@@ -92,5 +92,9 @@ default_json_pool = {
     "credits":  0.01,
     "privileges":  {
         "exportApiAndStorageCredentialsInEnvironment": False
+    },
+    "defaultRetrySettings":  {
+        "maxTotalRetries": 10,
+        "maxPerInstanceRetries": 2
     }
 }

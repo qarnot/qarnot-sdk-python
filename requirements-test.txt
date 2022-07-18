@@ -7,3 +7,4 @@ pytest-picked
 types-requests
 flake8
 pylint
+moto

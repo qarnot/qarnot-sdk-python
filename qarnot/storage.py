@@ -32,9 +32,9 @@ class Storage(object):
         :param str output_dir: local directory for the retrieved files.
         :param progress: can be a callback (read,total,filename)  or True to display a progress bar
         :type progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.MissingBucketException: the bucket is not on the server
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingBucketException: the bucket is not on the server
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
 

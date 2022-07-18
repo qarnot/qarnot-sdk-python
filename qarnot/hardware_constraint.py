@@ -28,7 +28,7 @@ class HardwareConstraint():
 
         :param qarnot.connection.Connection connection: the cluster connection
         :param dict json: Dictionary representing the constraint
-        :returns: The created :class:`~qarnot.hardware_constraints.HardwareConstraint`.
+        :returns: The created :class:`~qarnot.hardware_constraint.HardwareConstraint`.
         """
 
         discriminator: str = json["discriminator"]
@@ -55,6 +55,9 @@ class HardwareConstraint():
             return SpecificHardware(specificationKey)
         elif discriminator == GpuHardware._discriminator:
             return GpuHardware()
+        elif discriminator == CpuModelHardware._discriminator:
+            cpu_model: str = json["cpuModel"]
+            return CpuModelHardware(cpu_model)
         else:
             return None
 
@@ -77,10 +80,14 @@ class MinimumCoreHardware(HardwareConstraint):
     _discriminator: str = "MinimumCoreHardwareConstraint"
 
     def __init__(self, coreCount: int):
+        """ Create a new hardware constraint to limit the minimum number of cores the hardware should have.
+
+        :param str ram: the minimum number of cores the hardware should have"""
         self._core_count: int = coreCount
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -102,10 +109,14 @@ class MaximumCoreHardware(HardwareConstraint):
     _discriminator: str = "MaximumCoreHardwareConstraint"
 
     def __init__(self, coreCount: int):
+        """ Create a new hardware constraint to limit the maximum number of cores the hardware should have.
+
+        :param str ram: the maximum number of cores the hardware should have"""
         self._core_count = coreCount
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -127,10 +138,14 @@ class MinimumRamCoreRatioHardware(HardwareConstraint):
     _discriminator: str = "MinimumRamCoreRatioHardwareConstraint"
 
     def __init__(self, ram: float):
+        """ Create a new hardware constraint to limit the minimum ram/core ratio the hardware should have.
+
+        :param str ram: the minimum memory/core ratio the hardware should have (in GB/core)"""
         self._minimum_memory_gb_core_ratio = ram
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -152,10 +167,14 @@ class MaximumRamCoreRatioHardware(HardwareConstraint):
     _discriminator: str = "MaximumRamCoreRatioHardwareConstraint"
 
     def __init__(self, ram: float):
+        """ Create a new hardware constraint to limit the maximum ram/core ratio the hardware should have.
+
+        :param str ram: the maximum memory/core ratio the hardware should have (in GB/core)"""
         self._maximum_memory_gb_core_ratio = ram
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -177,10 +196,14 @@ class MinimumRamHardware(HardwareConstraint):
     _discriminator: str = "MinimumRamHardwareConstraint"
 
     def __init__(self, ram: float):
+        """ Create a new hardware constraint to limit the minimum ram the hardware should have.
+
+        :param str ram: the minimum memory the hardware should have (in MB)"""
         self._minimum_memory_mb = ram
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -202,10 +225,14 @@ class MaximumRamHardware(HardwareConstraint):
     _discriminator: str = "MaximumRamHardwareConstraint"
 
     def __init__(self, ram: float):
+        """ Create a new hardware constraint to limit the maximum ram the hardware should have.
+
+        :param str ram: the maximum memory the hardware should have (in MB)"""
         self._maximum_memory_mb = ram
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -227,10 +254,14 @@ class SpecificHardware(HardwareConstraint):
     _discriminator: str = "SpecificHardwareConstraint"
 
     def __init__(self, key: str):
+        """ Create a new hardware constraint for a specific hardware using its specification key.
+
+        :param str key: the specification key of the hardware which should be used"""
         self._specification_key = key
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -253,6 +284,7 @@ class GpuHardware(HardwareConstraint):
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.
+
         :return: the json elements of the class.
         :rtype: `dict`
 
@@ -266,3 +298,32 @@ class GpuHardware(HardwareConstraint):
 
     def __repr__(self) -> str:
         return self._discriminator
+
+
+class CpuModelHardware(HardwareConstraint):
+    """Represents a hardware constraint to limit with a specific CPU"""
+    _discriminator: str = "CpuModelHardwareConstraint"
+
+    def __init__(self, cpu_model: str):
+        """ Create a new hardware constraint for a specific cpu model.
+
+        :param str cpu_model: the cpu model which should be used"""
+        self._cpu_model = cpu_model
+
+    def to_json(self) -> object:
+        """Get a dict ready to be json packed.
+
+        :return: the json elements of the class.
+        :rtype: `dict`
+
+        """
+        return {
+            "discriminator": self._discriminator,
+            "cpuModel": self._cpu_model,
+        }
+
+    def __str__(self) -> str:
+        return "Hardware with a {} CPU".format(self._cpu_model)
+
+    def __repr__(self) -> str:
+        return "{}: {} CPU".format(self._discriminator, self._cpu_model)

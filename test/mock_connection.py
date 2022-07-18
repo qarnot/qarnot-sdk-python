@@ -33,6 +33,7 @@ class MockResponse:
         self.ok = status_code < 400
         self.status_code = status_code
         self._json = json
+        self.text = json
 
     def json(self):
         return self._json

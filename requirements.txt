@@ -1,4 +1,4 @@
 requests==2.27.1
 boto3==1.21.38
-wheel==0.24.0
+wheel==0.38.1
 deprecation==2.1.0

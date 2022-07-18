@@ -17,6 +17,8 @@ import time
 import warnings
 from typing import List, Optional
 
+from qarnot.retry_settings import RetrySettings
+
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
 from .status import Status
@@ -40,7 +42,7 @@ class Pool(object):
         """Create a new :class:`Pool`.
 
         :param connection: the cluster on which to send the pool
-        :type connection: :class:`qarnot.connection.Connection`
+        :type connection: :class:`~qarnot.connection.Connection`
         :param name: given name of the pool
         :type name: :class:`str`
         :param profile: which profile to use with this task
@@ -113,6 +115,7 @@ class Pool(object):
         self._hardware_constraints: List[HardwareConstraint] = []
         self._default_resources_cache_ttl_sec: Optional[int] = None
         self._privileges: Privileges = Privileges()
+        self._default_retry_settings: RetrySettings = RetrySettings()
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -125,9 +128,9 @@ class Pool(object):
         :rtype: Pool
         :returns: The retrieved pool.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: no such pool
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: no such pool
         """
         resp = connection._get(get_url('pool update', uuid=uuid))
         if resp.status_code == 404:
@@ -217,6 +220,8 @@ class Pool(object):
         self._default_resources_cache_ttl_sec = json_pool.get("defaultResourcesCacheTTLSec", None)
         if 'privileges' in json_pool:
             self._privileges = Privileges.from_json(json_pool["privileges"])
+        if 'defaultRetrySettings' in json_pool:
+            self._default_retry_settings = RetrySettings.from_json(json_pool["defaultRetrySettings"])
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -263,16 +268,17 @@ class Pool(object):
         json_pool['hardwareConstraints'] = [x.to_json() for x in self._hardware_constraints]
         json_pool['defaultResourcesCacheTTLSec'] = self._default_resources_cache_ttl_sec
         json_pool['privileges'] = self._privileges.to_json()
+        json_pool['defaultRetrySettings'] = self._default_retry_settings.to_json()
 
         return json_pool
 
     def submit(self):
         """Submit pool to the cluster if it is not already submitted.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.MaxPoolException: Pool quota reached
-        :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.MaxPoolException: Pool quota reached
+        :raises ~qarnot.exceptions.NotEnoughCreditsException: Not enough credits
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Will ensure all added files are on the resource bucket
            regardless of their uploading mode.
@@ -301,9 +307,9 @@ class Pool(object):
         will be served when accessing properties of the object.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: pool does not represent a
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: pool does not represent a
           valid one
         """
         if self._uuid is None:
@@ -326,8 +332,8 @@ class Pool(object):
     def commit(self):
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         This function need to be call to apply the local elastic pool setting modifications.
         .. note:: When updating buckets' properties, auto update will be disabled until commit is called.
@@ -350,9 +356,9 @@ class Pool(object):
         Note: There is no way to know when the files are effectively transfered. This information is available on the compute node only.
         Note: The update is additive only: files deleted from the bucket will NOT be deleted from the pool's resources directory.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
         """
 
         self.update(True)
@@ -394,9 +400,9 @@ class Pool(object):
         :param bool purge_resources: parameter value is used to determine if the bucket is also deleted.
                 Defaults to False.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: pool does not exist
         """
         if purge_resources:
             self._update_if_summary()
@@ -430,9 +436,9 @@ class Pool(object):
     def close(self):
         """Close this pool if running.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
         """
         self.update(True)
 
@@ -445,24 +451,28 @@ class Pool(object):
 
         self.update(True)
 
-    def stdout(self):
-        """Get the standard output of the pool
-        since the submission of the pool.
+    def stdout(self, instanceId: Optional[int] = None):
+        """Get the standard output of the pool, or of a specific instance
+        of the pool, since the submission of the pool.
 
         :rtype: :class:`str`
         :returns: The standard output.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
           :meth:`fresh_stdout` regularly.
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._get(
-            get_url('pool stdout', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._get(
+                get_url('pool instance stdout', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._get(
+                get_url('pool stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingPoolException(resp.json()['message'])
@@ -471,21 +481,25 @@ class Pool(object):
 
         return resp.text
 
-    def fresh_stdout(self):
+    def fresh_stdout(self, instanceId: Optional[int] = None):
         """Get what has been written on the standard output since last time
-        this function was called or since the pool has been submitted.
+        the output of the pool or of the instance was retrieved.
 
         :rtype: :class:`str`
         :returns: The new output since last call.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._post(
-            get_url('pool stdout', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._post(
+                get_url('pool instance stdout', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._post(
+                get_url('pool stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingPoolException(resp.json()['message'])
@@ -493,24 +507,28 @@ class Pool(object):
         raise_on_error(resp)
         return resp.text
 
-    def stderr(self):
-        """Get the standard error of the pool
-        since the submission of the pool.
+    def stderr(self, instanceId: Optional[int] = None):
+        """Get the standard error of the pool, or of a specific instance
+        of the pool, since the submission of the pool.
 
         :rtype: :class:`str`
         :returns: The standard error.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
           :meth:`fresh_stderr` regularly.
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._get(
-            get_url('pool stderr', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._get(
+                get_url('pool instance stderr', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._get(
+                get_url('pool stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingPoolException(resp.json()['message'])
@@ -518,21 +536,25 @@ class Pool(object):
         raise_on_error(resp)
         return resp.text
 
-    def fresh_stderr(self):
+    def fresh_stderr(self, instanceId: Optional[int] = None):
         """Get what has been written on the standard error since last time
-        this function was called or since the pool has been submitted.
+        the standard error of the pool or of its instance was retrieved.
 
         :rtype: :class:`str`
         :returns: The new error messages since last call.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._post(
-            get_url('pool stderr', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._post(
+                get_url('pool instance stderr', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._post(
+                get_url('pool stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingPoolException(resp.json()['message'])
@@ -746,7 +768,7 @@ class Pool(object):
 
     @property
     def status(self):
-        """:type: :class:`qarnot.status.Status`
+        """:type: :class:`~qarnot.status.Status`
         :getter: Returns this pool's status
 
         Status of the pool
@@ -1091,7 +1113,7 @@ class Pool(object):
 
         :raises AttributeError: if you try to set it after the pool is submitted
 
-        The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
+        The `completion_ttl` must be a timedelta or a time span format string (example: ``d.hh:mm:ss`` or ``hh:mm:ss`` )
         """
         self._update_if_summary()
         return self._completion_time_to_live
@@ -1235,7 +1257,7 @@ class Pool(object):
 
     @property
     def privileges(self) -> Privileges:
-        """:type: :class:``Privileges``
+        """:type: :class:`~qarnot.privileges.Privileges`
 
         :getter: The privileges granted to the pool
 
@@ -1261,6 +1283,25 @@ class Pool(object):
             self._privileges = Privileges()
 
         self._privileges._exportApiAndStorageCredentialsInEnvironment = True
+
+    @property
+    def default_retry_settings(self) -> RetrySettings:
+        """:type: :class:`~qarnot.retry_settings.RetrySettings`
+
+        :getter: The default retry settings applied to the pool's tasks
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._default_retry_settings
+
+    @default_retry_settings.setter
+    def default_retry_settings(self, value: RetrySettings):
+        """Setter for default_retry_settings
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+
+        self._default_retry_settings = value
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

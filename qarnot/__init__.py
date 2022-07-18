@@ -53,6 +53,8 @@ def get_url(key, **kwargs):
         'task instant': u'/tasks/{uuid}/snapshot',  # POST -> get a snapshot
         'task stdout': u'/tasks/{uuid}/stdout',  # GET -> task stdout
         'task stderr': u'/tasks/{uuid}/stderr',  # GET -> task stderr
+        'task instance stdout': u'/tasks/{uuid}/stdout/{instanceId}',  # GET -> task instance stdout
+        'task instance stderr': u'/tasks/{uuid}/stderr/{instanceId}',  # GET -> task instance stderr
         'task abort': u'/tasks/{uuid}/abort',  # GET -> task
         'pools': u'/pools',  # POST -> submit pool
         'paginate pools': u'/pools/paginate',  # GET -> paginate pools
@@ -62,10 +64,13 @@ def get_url(key, **kwargs):
         'pool update': u'/pools/{uuid}',  # GET -> pool, DELETE -> close & delete, PATCH -> update resources
         'pool stdout': u'/pools/{uuid}/stdout',  # GET -> pool stdout
         'pool stderr': u'/pools/{uuid}/stderr',  # GET -> pool stderr
+        'pool instance stdout': u'/pools/{uuid}/stdout/{instanceId}',  # GET -> pool instance stdout
+        'pool instance stderr': u'/pools/{uuid}/stderr/{instanceId}',  # GET -> pool instance stderr
         'user': u'/info',  # GET -> user info
         'profiles': u'/profiles',  # GET -> profiles list
         'profile details': u'/profiles/{profile}',  # GET -> profile details
         'hardware constraints': u'/hardware-constraints',  # GET -> user hardware constraints list
+        'cpu model constraints search': u'/hardware-constraints/cpu-model-constraints/search',  # GET -> user hardware constraints list
         'settings': u'/settings',  # GET -> instance settings
     }
     return urls[key].format(**kwargs)

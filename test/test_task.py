@@ -1,6 +1,10 @@
+import copy
 import datetime
+from io import StringIO
+import sys
 import uuid
 import pytest
+from qarnot.retry_settings import RetrySettings
 
 from qarnot.task import Task
 from qarnot.privileges import Privileges
@@ -8,7 +12,7 @@ from qarnot.bucket import Bucket
 from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransformation
 import datetime
 
-from .mock_connection import MockConnection
+from .mock_connection import MockConnection, MockResponse
 from .mock_task import default_json_task, task_with_running_instances
 
 @pytest.fixture(name="mock_conn")
@@ -87,6 +91,7 @@ class TestTaskProperties:
     @pytest.mark.parametrize("property_name, expected_value", [
         ("name", default_json_task["name"]),
         ("privileges", default_json_task["privileges"]),
+        ("retrySettings", default_json_task["retrySettings"]),
     ])
     def test_task_property_send_to_json_representation(self, mock_conn, property_name, expected_value):
         task = Task(mock_conn, "task-name")
@@ -220,3 +225,107 @@ class TestTaskProperties:
         pool_from_json._update(json_task)
         assert pool_from_json.privileges is not None
         assert pool_from_json.privileges._exportApiAndStorageCredentialsInEnvironment is True
+
+    def test_task_retry_settings(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+
+        json_task = task._to_json()
+        assert json_task['retrySettings'] is not None
+        assert json_task['retrySettings']['maxTotalRetries'] is None
+        assert json_task['retrySettings']['maxPerInstanceRetries'] is None
+
+        task.retry_settings = RetrySettings(36, 12)
+        json_task = task._to_json()
+        assert json_task['retrySettings'] is not None
+        assert json_task['retrySettings']['maxTotalRetries'] is 36
+        assert json_task['retrySettings']['maxPerInstanceRetries'] is 12
+
+        # fields that need to be non null for the deserialization to not fail
+        json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_task['uuid'] = str(uuid.uuid4())
+        json_task['state'] = 'Submitted'
+        json_task['runningCoreCount'] = 0
+        json_task['runningInstanceCount'] = 0
+
+        pool_from_json = Task(mock_conn, "task-name")
+        pool_from_json._update(json_task)
+        assert pool_from_json.retry_settings is not None
+        assert pool_from_json.retry_settings._maxTotalRetries is 36
+        assert pool_from_json.retry_settings._maxPerInstanceRetries is 12
+
+    # WARNING: this test last at least 80s because task.wait() wait for 10s between each update calls and the task go through 8 different states
+    # To make the test faster some states can be removed (the 7 first states are all the states that correspond to a non complete task and keep
+    # the wait alive. The last state is one of the final status that stop the wait function)
+    # NOTE: Some of the states have been commented out and removed from the test to make it quicker (see comment above).
+    def test_task_wait_can_print_updated_state_stdout_stderr(self, mock_conn: MockConnection):
+        # Redirect standard output and error for assertions
+        capturedOutput = StringIO()
+        sys.stdout = capturedOutput
+        capturedStderr = StringIO()
+        sys.stderr = capturedStderr
+
+        # Mock the responses for task update
+        task = Task(mock_conn, "task-name")
+        task_json = copy.deepcopy(default_json_task)
+        task_json.update({
+            "state":  'Submitted',
+            "previousState":  None,
+        })
+        task._update(task_json)
+        last_State = 'Submitted'
+        i = 0
+        mock_conn.add_response(MockResponse(200, task_json))
+        states = [
+            #'PartiallyDispatched',
+            #'FullyDispatched',
+            #'PartiallyExecuting',
+            'FullyExecuting',
+            #'DownloadingResults',
+            #'UploadingResults',
+            'Success']
+        for new_state in states:
+
+            # Update task stdout
+            stdout_json = "stdout %s" % i
+            mock_conn.add_response(MockResponse(200, stdout_json))
+
+            # Update task stderr
+            stderr_json = "stderr %s" % i
+            mock_conn.add_response(MockResponse(200, stderr_json))
+
+            # Update task state
+            task_json = copy.deepcopy(default_json_task)
+            task_json.update({
+                "state":  new_state,
+                "previousState":  last_State,
+            })
+            mock_conn.add_response(MockResponse(200, task_json))
+            last_State = new_state
+
+            # keep same stdout for the second check after the update
+            stdout_json = "stdout %s" % i
+            mock_conn.add_response(MockResponse(200, stdout_json))
+
+            # keep same stderr for the second check after the update
+            stderr_json = "stderr %s" % i
+            mock_conn.add_response(MockResponse(200, stderr_json))
+
+            i += 1
+        mock_conn.add_response(MockResponse(200, default_json_task))
+
+        # Wait with calls to get and print the task progress
+        task.wait(follow_state=True, follow_stdout=True, follow_stderr=True)
+
+        # Reset redirections
+        sys.stdout = sys.__stdout__
+        sys.stderr = sys.__stderr__
+
+        output = capturedOutput.getvalue()
+        assert output is not None, "the output should contain task update output"
+        stderr = capturedStderr.getvalue()
+        assert stderr is not None, "the stderr should contain task update stderr"
+        for state in states:
+            assert state in output, "All state updates should be printed on stdout"
+        for i in range(0,len(states)):
+            assert "stdout %s" % i in output, "All task stdout should be printed to user stdout"
+            assert "stderr %s" % i in stderr, "All task stderr should be printed to user stderr"

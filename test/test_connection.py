@@ -462,6 +462,10 @@ class TestConnectionPaginateMethods():
                 "runningPoolCount":17,
                 "runningInstanceCount":18,
                 "runningCoreCount":19,
+                "maxFlexInstances":20,
+                "maxFlexCores":21,
+                "maxOnDemandInstances":22,
+                "maxOnDemandCores":23,
             }
             get_user.return_value.status_code = 200
             get_user.return_value.json.return_value = user_json
@@ -476,12 +480,17 @@ class TestConnectionPaginateMethods():
             assert user.running_task_count == user_json['runningTaskCount']
             assert user.max_running_task == user_json['maxRunningTask']
             assert user.max_instances == user_json['maxInstances']
+            assert user.max_cores == user_json['maxFlexCores']
             assert user.max_pool == user_json['maxPool']
             assert user.pool_count == user_json['poolCount']
             assert user.max_running_pool == user_json['maxRunningPool']
             assert user.running_pool_count == user_json['runningPoolCount']
             assert user.running_instance_count == user_json['runningInstanceCount']
             assert user.running_core_count == user_json['runningCoreCount']
+            assert user.max_flex_instances == user_json['maxFlexInstances']
+            assert user.max_flex_cores == user_json['maxFlexCores']
+            assert user.max_on_demand_instances == user_json['maxOnDemandInstances']
+            assert user.max_on_demand_cores == user_json['maxOnDemandCores']
 
     def test_user_hardware_constraints(self):
         connect = self.get_connection()

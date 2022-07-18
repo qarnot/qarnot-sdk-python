@@ -1,7 +1,7 @@
-Privileges
-----------
+Retry Settings
+--------------
 
-.. automodule:: qarnot.privileges
+.. automodule:: qarnot.retry_settings
     :members:
     :show-inheritance:
     :special-members:

@@ -21,6 +21,8 @@ import warnings
 import sys
 from typing import Dict, Optional, Union, List, Any, Callable
 
+from qarnot.retry_settings import RetrySettings
+
 from . import get_url, raise_on_error, _util
 from .status import Status
 from .hardware_constraint import HardwareConstraint
@@ -61,7 +63,7 @@ class Task(object):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
-        :type connection: :class:`qarnot.connection.Connection`
+        :type connection: :class:`~qarnot.connection.Connection`
         :param name: given name of the task
         :type name: :class:`str`
         :param profile_or_pool: which profile to use with this task, or which Pool to run task,
@@ -159,6 +161,7 @@ class Task(object):
         self._hardware_constraints: List[HardwareConstraint] = []
         self._default_resources_cache_ttl_sec: Optional[int] = None
         self._privileges: Privileges = Privileges()
+        self._retry_settings: RetrySettings = RetrySettings()
 
     @classmethod
     def _retrieve(cls, connection: ConnectionType, uuid: str) -> TaskType:
@@ -171,9 +174,9 @@ class Task(object):
         :rtype: Task
         :returns: The retrieved task.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: no such task
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: no such task
         """
         resp = connection._get(get_url('task update', uuid=uuid))
         if resp.status_code == 404:
@@ -181,7 +184,7 @@ class Task(object):
         raise_on_error(resp)
         return Task.from_json(connection, resp.json())
 
-    def run(self, output_dir: str = None, job_timeout: float = None, live_progress: bool = False, results_progress: bool = None) -> None:
+    def run(self, output_dir: str = None, job_timeout: float = None, live_progress: bool = False, results_progress: bool = None, follow_state: bool = False, follow_stdout: bool = False, follow_stderr: bool = False) -> None:
         """Submit a task, wait for the results and download them if required.
 
         :param str output_dir: (optional) path to a directory that will contain the results
@@ -190,10 +193,13 @@ class Task(object):
         :param bool live_progress: (optional) display a live progress
         :param results_progress: (optional) can be a callback (read,total,filename) or True to display a progress bar
         :type results_progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.MaxTaskException: Task quota reached
-        :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :param bool follow_state: (optional) print the task's state every time it changes
+        :param bool follow_stdout: (optional) refresh and print the task's stdout at every iteration
+        :param bool follow_stderr: (optional) refresh and print the task's stderr at every iteration
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.MaxTaskException: Task quota reached
+        :raises ~qarnot.exceptions.NotEnoughCreditsException: Not enough credits
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Will ensure all added file are on the resource bucket
            regardless of their uploading mode.
@@ -203,7 +209,7 @@ class Task(object):
         .. warning:: Will override *output_dir* content.
         """
         self.submit()
-        self.wait(timeout=job_timeout, live_progress=live_progress)
+        self.wait(timeout=job_timeout, live_progress=live_progress, follow_state=follow_state, follow_stdout=follow_stdout, follow_stderr=follow_stderr)
         if job_timeout is not None:
             self.abort()
         if output_dir is not None:
@@ -219,9 +225,9 @@ class Task(object):
         :param bool live_progress: display a live progress
         :param results_progress: can be a callback (read,total,filename) or True to display a progress bar
         :type results_progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
 
         .. note:: Do nothing if the task has not been submitted.
         .. warning:: Will override *output_dir* content.
@@ -233,10 +239,10 @@ class Task(object):
     def submit(self) -> None:
         """Submit task to the cluster if it is not already submitted.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.MaxTaskException: Task quota reached
-        :raises qarnot.exceptions.NotEnoughCreditsException: Not enough credits
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.MaxTaskException: Task quota reached
+        :raises ~qarnot.exceptions.NotEnoughCreditsException: Not enough credits
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: Will ensure all added files are on the resource bucket
            regardless of their uploading mode.
@@ -275,9 +281,9 @@ class Task(object):
     def abort(self) -> None:
         """Abort this task if running.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
         """
         self.update(True)
 
@@ -301,9 +307,9 @@ class Task(object):
         Note: There is no way to know when the files are effectively transfered. This information is available on the compute node only.
         Note: The update is additive only: files deleted from the bucket will NOT be deleted from the task's resources directory.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
         """
 
         self.update(True)
@@ -325,9 +331,9 @@ class Task(object):
         :param bool purge_results: parameter value is used to determine if the bucket is also deleted.
                 Defaults to False.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
         """
         if purge_resources or purge_results:
             self._update_if_summary()
@@ -380,9 +386,9 @@ class Task(object):
         Some methods will flush the cache, like :meth:`submit`, :meth:`abort`, :meth:`wait` and :meth:`instant`.
         Cache behavior is configurable with :attr:`auto_update` and :attr:`update_cache_time`.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not represent a
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not represent a
           valid one
         """
         if self._uuid is None:
@@ -481,6 +487,8 @@ class Task(object):
         self._default_resources_cache_ttl_sec = json_task.get("defaultResourcesCacheTTLSec", None)
         if 'privileges' in json_task:
             self._privileges = Privileges.from_json(json_task["privileges"])
+        if 'retrySettings' in json_task:
+            self._retry_settings = RetrySettings.from_json(json_task["retrySettings"])
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
@@ -505,8 +513,8 @@ class Task(object):
     def commit(self) -> None:
         """Replicate local changes on the current object instance to the REST API
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. note:: When updating buckets' properties, auto update will be disabled until commit is called.
         """
@@ -518,19 +526,22 @@ class Task(object):
 
         raise_on_error(resp)
 
-    def wait(self, timeout: float = None, live_progress: bool = False) -> bool:
+    def wait(self, timeout: float = None, live_progress: bool = False, follow_state: bool = False, follow_stdout: bool = False, follow_stderr: bool = False) -> bool:
         """Wait for this task until it is completed.
 
         :param float timeout: maximum time (in seconds) to wait before returning
            (None => no timeout)
         :param bool live_progress: display a live progress
+        :param bool follow_state: (optional) print the task's state every time it changes
+        :param bool follow_stdout: (optional) refresh and print the task's stdout at every iteration
+        :param bool follow_stderr: (optional) refresh and print the task's stderr at every iteration
 
         :rtype: :class:`bool`
         :returns: Is the task finished
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not represent a valid
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not represent a valid
           one
         """
 
@@ -555,8 +566,11 @@ class Task(object):
 
         nap = min(10, timeout) if timeout is not None else 10
 
+        last_state = None
+
         self.update(True)
         while self._state in RUNNING_DOWNLOADING_STATES:
+            last_state = self.print_progress(follow_state, last_state, follow_stdout, follow_stderr)
             if live_progress:
                 n = 0
                 progress = 0
@@ -572,6 +586,7 @@ class Task(object):
                 time.sleep(nap)
 
             self.update(True)
+            last_state = self.print_progress(follow_state, last_state, follow_stdout, follow_stderr)
 
             if timeout is not None:
                 elapsed = time.time() - start
@@ -581,9 +596,27 @@ class Task(object):
                 else:
                     nap = min(10, timeout - elapsed)
         self.update(True)
+        last_state = self.print_progress(follow_state, last_state, follow_stdout, follow_stderr)
         if live_progress:
             progressbar.finish()
         return True
+
+    def print_progress(self, print_state: bool = False, last_known_state: str = None, print_stdout: bool = False, print_stderr: bool = False) -> str:
+        if print_state:
+            if self.state != last_known_state:
+                print("** State| %s", self.state)
+
+        if print_stdout:
+            stdout = self.fresh_stdout()
+            if print_stdout and stdout:
+                sys.stdout.write("** Stdout| %s" % stdout)
+
+        if print_stderr:
+            stderr = self.fresh_stderr()
+            if print_stderr and stderr:
+                sys.stderr.write("** Stderr| %s" % stderr)
+
+        return self.state
 
     def snapshot(self, interval: int) -> None:
         """Start snapshooting results.
@@ -595,9 +628,9 @@ class Task(object):
 
         :param int interval: the interval in seconds at which to take snapshots
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not represent a
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not represent a
           valid one
 
         .. note:: To get the temporary results, call :meth:`download_results`.
@@ -620,9 +653,9 @@ class Task(object):
     def instant(self) -> None:
         """Make a snapshot of the current task.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
 
         .. note:: To get the temporary results, call :meth:`download_results`.
         """
@@ -722,9 +755,9 @@ class Task(object):
         :param str output_dir: local directory for the retrieved files.
         :param progress: can be a callback (read,total,filename)  or True to display a progress bar
         :type progress: bool or function(float, float, str)
-        :raises qarnot.exceptions.MissingBucketException: the bucket is not on the server
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingBucketException: the bucket is not on the server
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
 
         .. warning:: Will override *output_dir* content.
 
@@ -739,24 +772,28 @@ class Task(object):
         if self._dirty:
             self.results.get_all_files(output_dir, progress=progress)
 
-    def stdout(self):
-        """Get the standard output of the task
-        since the submission of the task.
+    def stdout(self, instanceId: Optional[int] = None):
+        """Get the standard output of the task, or of a specific instance
+        of the task, since its submission.
 
         :rtype: :class:`str`
         :returns: The standard output.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task or instance does not exist
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
           :meth:`fresh_stdout` regularly.
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._get(
-            get_url('task stdout', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._get(
+                get_url('task instance stdout', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._get(
+                get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'])
@@ -765,21 +802,25 @@ class Task(object):
 
         return resp.text
 
-    def fresh_stdout(self):
+    def fresh_stdout(self, instanceId: Optional[int] = None):
         """Get what has been written on the standard output since last time
-        this function was called or since the task has been submitted.
+        the output of the task or of the instance was retrieved.
 
         :rtype: :class:`str`
         :returns: The new output since last call.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task or instance does not exist
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._post(
-            get_url('task stdout', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._post(
+                get_url('task instance stdout', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._post(
+                get_url('task stdout', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'])
@@ -787,24 +828,28 @@ class Task(object):
         raise_on_error(resp)
         return resp.text
 
-    def stderr(self):
-        """Get the standard error of the task
-        since the submission of the task.
+    def stderr(self, instanceId: Optional[int] = None):
+        """Get the standard error of the task, or of a specific instance
+        of the task, since its submission.
 
         :rtype: :class:`str`
         :returns: The standard error.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task or instance does not exist
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
           :meth:`fresh_stderr` regularly.
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._get(
-            get_url('task stderr', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._get(
+                get_url('task instance stderr', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._get(
+                get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'])
@@ -812,21 +857,25 @@ class Task(object):
         raise_on_error(resp)
         return resp.text
 
-    def fresh_stderr(self):
+    def fresh_stderr(self, instanceId: Optional[int] = None):
         """Get what has been written on the standard error since last time
-        this function was called or since the task has been submitted.
+        the standard error of the task or of its instance was retrieved.
 
         :rtype: :class:`str`
         :returns: The new error messages since last call.
 
-        :raises qarnot.exceptions.QarnotGenericException: API general error, see message for details
-        :raises qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises qarnot.exceptions.MissingTaskException: task does not exist
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task or instance does not exist
         """
         if self._uuid is None:
             return ""
-        resp = self._connection._post(
-            get_url('task stderr', uuid=self._uuid))
+        if instanceId is not None:
+            resp = self._connection._post(
+                get_url('task instance stderr', uuid=self._uuid, instanceId=instanceId))
+        else:
+            resp = self._connection._post(
+                get_url('task stderr', uuid=self._uuid))
 
         if resp.status_code == 404:
             raise MissingTaskException(resp.json()['message'])
@@ -1116,7 +1165,7 @@ class Task(object):
 
     @property
     def status(self):
-        """:type: :class:`qarnot.status.Status`
+        """:type: :class:`~qarnot.status.Status`
         :getter: Returns this task's status
 
         Status of the task
@@ -1141,7 +1190,7 @@ class Task(object):
 
     @property
     def creation_date(self):
-        """:type: :class:`datetime.datetime`
+        """:type: :class:`~datetime.datetime`
 
         :getter: Returns this task's creation date
 
@@ -1151,7 +1200,7 @@ class Task(object):
 
     @property
     def errors(self):
-        """:type: list(:class:``Error``)
+        """:type: list(`Error`)
         :getter: Returns this task's errors if any.
 
         Error reason if any, empty string if none
@@ -1371,7 +1420,7 @@ class Task(object):
 
     @property
     def privileges(self) -> Privileges:
-        """:type: :class:``Privileges``
+        """:type: :class:`~qarnot.privileges.Privileges`
 
         :getter: The privileges granted to the task
 
@@ -1397,6 +1446,25 @@ class Task(object):
             self._privileges = Privileges()
 
         self._privileges._exportApiAndStorageCredentialsInEnvironment = True
+
+    @property
+    def retry_settings(self) -> RetrySettings:
+        """:type: :class:`~qarnot.retry_settings.RetrySettings`
+
+        :getter: The retry settings for the task instances
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._retry_settings
+
+    @retry_settings.setter
+    def retry_settings(self, value: RetrySettings):
+        """Setter for retry_settings
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._retry_settings = value
 
     @property
     def auto_delete(self):
@@ -1437,7 +1505,7 @@ class Task(object):
 
         :raises AttributeError: if you try to set it after the task is submitted
 
-        The `completion_ttl` must be a timedelta or a time span format string (example: 'd.hh:mm:ss' or 'hh:mm:ss')
+        The `completion_ttl` must be a timedelta or a time span format string (example: ``d.hh:mm:ss`` or ``hh:mm:ss`` )
         """
         self._update_if_summary()
         return self._completion_time_to_live
@@ -1602,6 +1670,7 @@ class Task(object):
         json_task['hardwareConstraints'] = [x.to_json() for x in self._hardware_constraints]
         json_task['defaultResourcesCacheTTLSec'] = self._default_resources_cache_ttl_sec
         json_task['privileges'] = self._privileges.to_json()
+        json_task['retrySettings'] = self._retry_settings.to_json()
 
         return json_task
 
