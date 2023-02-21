@@ -15,7 +15,7 @@ class Privileges(object):
         self._exportApiAndStorageCredentialsInEnvironment = exportCredentialsInEnv
 
     @classmethod
-    def from_json(cls, json: Dict[str, str]):
+    def from_json(cls, json: Dict[str, bool]):
         """Create the privileges from json.
 
         :param dict json: Dictionary representing the privileges
@@ -24,7 +24,7 @@ class Privileges(object):
         shouldExportCredentialsInEnvironment: bool = json["exportApiAndStorageCredentialsInEnvironment"]
         return Privileges(shouldExportCredentialsInEnvironment)
 
-    def to_json(self) -> Dict[str, object]:
+    def to_json(self) -> Dict[str, bool]:
         """Get a dict ready to be json packed.
 
         :return: the json elements of the class.

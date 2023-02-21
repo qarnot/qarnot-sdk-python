@@ -1,0 +1,9 @@
+
+mypy
+flake8
+pylint
+# libraries stubs for lint
+types-requests
+types-simplejson
+boto3-stubs
+botocore-stubs

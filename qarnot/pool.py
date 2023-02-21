@@ -15,7 +15,7 @@
 # limitations under the License.
 import time
 import warnings
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from qarnot.retry_settings import RetrySettings
 
@@ -23,10 +23,11 @@ from . import raise_on_error, get_url, _util
 from .bucket import Bucket
 from .status import Status
 from .hardware_constraint import HardwareConstraint
+from .scheduling_type import SchedulingType
 from .privileges import Privileges
 from .error import Error
 from .exceptions import MissingPoolException, MaxPoolException, NotEnoughCreditsException, \
-    BucketStorageUnavailableException, MissingBucketException
+    BucketStorageUnavailableException, MissingBucketException, MissingPoolInstanceException, UnauthorizedException
 
 
 class Pool(object):
@@ -38,7 +39,7 @@ class Pool(object):
        or retrieved with :meth:`qarnot.connection.Connection.pools` or :meth:`qarnot.connection.Connection.retrieve_pool`.
     """
 
-    def __init__(self, connection, name, profile, instancecount=1, shortname=None):
+    def __init__(self, connection, name, profile, instancecount=1, shortname=None, scheduling_type: SchedulingType = None):
         """Create a new :class:`Pool`.
 
         :param connection: the cluster on which to send the pool
@@ -52,6 +53,9 @@ class Pool(object):
         :type instancecount: int or str
         :param shortname: userfriendly pool name
         :type shortname: :class:`str`
+
+        :param logger: which job to attach the task to
+        :type logger: :class:`logging.Logger`
         """
 
         self._name = name
@@ -59,7 +63,7 @@ class Pool(object):
         self._state = 'UnSubmitted'  # RO property same for below
         self._profile = profile
         self._connection = connection
-        self._constants = {}
+        self._constants: Dict[str, str] = {}
         self._status = None
         """
          :type: dict(str, str)
@@ -70,23 +74,25 @@ class Pool(object):
         .. note:: See available constants for a specific profile
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
-        self._constraints = {}
-        self._labels = {}
+        self._constraints: Dict[str, str] = {}
+        self._labels: Dict[str, str] = {}
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
         self._update_cache_time = 5
+        self._scheduling_type = scheduling_type
+        self._targeted_reserved_machine_key: str = None
 
         self._last_cache = time.time()
         self._instancecount = instancecount
-        self._resource_object_advanced = []
-        self._resource_object_ids = []
-        self._resource_objects = []
-        self._tags = []
-        self._errors = None
+        self._resource_object_advanced: List[Bucket] = []
+        self._resource_object_ids: List[str] = []
+        self._resource_objects: List[Bucket] = []
+        self._tags: List[str] = []
+        self._errors: Optional[List[Error]] = None
         self._creation_date = None
         self._uuid = None
         self._is_summary = False
-        self._preparation_task = None
+        self._preparation_task: Dict[str, str] = None
         self._status = None
 
         self._is_elastic = False
@@ -130,11 +136,14 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid operation on non running pool
         :raises ~qarnot.exceptions.MissingPoolException: no such pool
         """
         resp = connection._get(get_url('pool update', uuid=uuid))
         if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            raise MissingPoolException(_util.get_error_message_from_http_response(resp))
+        elif resp.status_code == 403:
+            raise UnauthorizedException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
         return Pool.from_json(connection, resp.json())
 
@@ -218,10 +227,13 @@ class Pool(object):
         self._labels = json_pool.get('labels', {})
         self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_pool.get("hardwareConstraints", [])]
         self._default_resources_cache_ttl_sec = json_pool.get("defaultResourcesCacheTTLSec", None)
+        self._targeted_reserved_machine_key = json_pool.get("targetedReservedMachineKey", None)
         if 'privileges' in json_pool:
             self._privileges = Privileges.from_json(json_pool["privileges"])
         if 'defaultRetrySettings' in json_pool:
             self._default_retry_settings = RetrySettings.from_json(json_pool["defaultRetrySettings"])
+        if 'schedulingType' in json_pool:
+            self._scheduling_type = SchedulingType.from_string(json_pool["schedulingType"])
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -270,6 +282,12 @@ class Pool(object):
         json_pool['privileges'] = self._privileges.to_json()
         json_pool['defaultRetrySettings'] = self._default_retry_settings.to_json()
 
+        if self._scheduling_type is not None:
+            json_pool['schedulingType'] = self._scheduling_type.schedulingType
+
+        if self._targeted_reserved_machine_key is not None:
+            json_pool['targetedReservedMachineKey'] = self._targeted_reserved_machine_key
+
         return json_pool
 
     def submit(self):
@@ -279,6 +297,7 @@ class Pool(object):
         :raises ~qarnot.exceptions.MaxPoolException: Pool quota reached
         :raises ~qarnot.exceptions.NotEnoughCreditsException: Not enough credits
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingBucketException: resource bucket not found
 
         .. note:: Will ensure all added files are on the resource bucket
            regardless of their uploading mode.
@@ -291,11 +310,14 @@ class Pool(object):
         resp = self._connection._post(get_url('pools'), json=payload)
 
         if resp.status_code == 404:
-            raise MissingBucketException(resp.json()['message'])
+            raise MissingBucketException(_util.get_error_message_from_http_response(resp))
         elif resp.status_code == 403:
-            raise MaxPoolException(resp.json()['message'])
+            error_message = _util.get_error_message_from_http_response(resp)
+            if "maximum number of pools reached" in error_message.lower():
+                raise MaxPoolException(error_message)
+            raise UnauthorizedException(error_message)
         elif resp.status_code == 402:
-            raise NotEnoughCreditsException(resp.json()['message'])
+            raise NotEnoughCreditsException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
         self.update(True)
@@ -309,7 +331,7 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ~qarnot.exceptions.MissingTaskException: pool does not represent a
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not represent a
           valid one
         """
         if self._uuid is None:
@@ -322,7 +344,7 @@ class Pool(object):
         resp = self._connection._get(
             get_url('pool update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            raise MissingPoolException(_util.get_error_message_from_http_response(resp))
 
         raise_on_error(resp)
         self._update(resp.json())
@@ -334,6 +356,7 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
 
         This function need to be call to apply the local elastic pool setting modifications.
         .. note:: When updating buckets' properties, auto update will be disabled until commit is called.
@@ -342,7 +365,7 @@ class Pool(object):
         self._auto_update = self._last_auto_update_state
 
         if response.status_code == 404:
-            raise MissingPoolException(response.json()['message'])
+            raise MissingPoolException(_util.get_error_message_from_http_response(response))
         raise_on_error(response)
 
     def update_resources(self):
@@ -365,7 +388,7 @@ class Pool(object):
         resp = self._connection._patch(get_url('pool update', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            raise MissingPoolException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
 
         self.update(True)
@@ -402,7 +425,7 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ~qarnot.exceptions.MissingTaskException: pool does not exist
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
         """
         if purge_resources:
             self._update_if_summary()
@@ -415,7 +438,7 @@ class Pool(object):
 
         resp = self._connection._delete(get_url('pool update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            raise MissingPoolException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
 
         if purge_resources and len(self.resources) != 0:
@@ -438,6 +461,7 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid operation on non running pool
         :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
         """
         self.update(True)
@@ -446,7 +470,9 @@ class Pool(object):
             get_url('pool close', uuid=self._uuid))
 
         if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            raise MissingPoolException(_util.get_error_message_from_http_response(resp))
+        elif resp.status_code == 403:
+            raise UnauthorizedException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
 
         self.update(True)
@@ -460,7 +486,8 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.MissingPoolInstanceException: pool instance does not exist
 
         .. note:: The buffer is circular, if stdout is too big, prefer calling
           :meth:`fresh_stdout` regularly.
@@ -470,12 +497,13 @@ class Pool(object):
         if instanceId is not None:
             resp = self._connection._get(
                 get_url('pool instance stdout', uuid=self._uuid, instanceId=instanceId))
+            if resp.status_code == 404:
+                raise MissingPoolInstanceException(_util.get_error_message_from_http_response(resp))
         else:
             resp = self._connection._get(
                 get_url('pool stdout', uuid=self._uuid))
-
-        if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            if resp.status_code == 404:
+                raise MissingPoolException(_util.get_error_message_from_http_response(resp))
 
         raise_on_error(resp)
 
@@ -490,19 +518,21 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.MissingPoolInstanceException: pool instance does not exist
         """
         if self._uuid is None:
             return ""
         if instanceId is not None:
             resp = self._connection._post(
                 get_url('pool instance stdout', uuid=self._uuid, instanceId=instanceId))
+            if resp.status_code == 404:
+                raise MissingPoolInstanceException(_util.get_error_message_from_http_response(resp))
         else:
             resp = self._connection._post(
                 get_url('pool stdout', uuid=self._uuid))
-
-        if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            if resp.status_code == 404:
+                raise MissingPoolException(_util.get_error_message_from_http_response(resp))
 
         raise_on_error(resp)
         return resp.text
@@ -516,7 +546,8 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.MissingPoolInstanceException: pool instance does not exist
 
         .. note:: The buffer is circular, if stderr is too big, prefer calling
           :meth:`fresh_stderr` regularly.
@@ -526,12 +557,13 @@ class Pool(object):
         if instanceId is not None:
             resp = self._connection._get(
                 get_url('pool instance stderr', uuid=self._uuid, instanceId=instanceId))
+            if resp.status_code == 404:
+                raise MissingPoolInstanceException(_util.get_error_message_from_http_response(resp))
         else:
             resp = self._connection._get(
                 get_url('pool stderr', uuid=self._uuid))
-
-        if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            if resp.status_code == 404:
+                raise MissingPoolException(_util.get_error_message_from_http_response(resp))
 
         raise_on_error(resp)
         return resp.text
@@ -545,19 +577,21 @@ class Pool(object):
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
-        :raises ~qarnot.exceptions.MissingPoolException: pool or instance does not exist
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
+        :raises ~qarnot.exceptions.MissingPoolInstanceException: pool instance does not exist
         """
         if self._uuid is None:
             return ""
         if instanceId is not None:
             resp = self._connection._post(
                 get_url('pool instance stderr', uuid=self._uuid, instanceId=instanceId))
+            if resp.status_code == 404:
+                raise MissingPoolInstanceException(_util.get_error_message_from_http_response(resp))
         else:
             resp = self._connection._post(
                 get_url('pool stderr', uuid=self._uuid))
-
-        if resp.status_code == 404:
-            raise MissingPoolException(resp.json()['message'])
+            if resp.status_code == 404:
+                raise MissingPoolException(_util.get_error_message_from_http_response(resp))
 
         raise_on_error(resp)
         return resp.text
@@ -924,9 +958,9 @@ class Pool(object):
         :raises Exception: resize factor must be <= 1
         """
         if value <= 0:
-            raise Exception("resize factor must be > 0")
+            raise ValueError("resize factor must be > 0")
         elif value > 1:
-            raise Exception("resize factor must be <= 1")
+            raise ValueError("resize factor must be <= 1")
         self._elastic_resize_factor = value
 
     @property
@@ -1302,6 +1336,44 @@ class Pool(object):
             raise AttributeError("can't set attribute on a launched pool")
 
         self._default_retry_settings = value
+
+    @property
+    def scheduling_type(self) -> SchedulingType:
+        """:type: :class:`~qarnot.scheduling_type.SchedulingType`
+
+        :getter: The scheduling type for the pool
+
+        :raises AttributeError: trying to set this after the pool is submitted
+        """
+        return self._scheduling_type
+
+    @scheduling_type.setter
+    def scheduling_type(self, value: SchedulingType):
+        """Setter for scheduling_type
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+
+        self._scheduling_type = value
+
+    @property
+    def targeted_reserved_machine_key(self) -> str:
+        """:type: :class:`str`
+
+        :getter: The reserved machine key when using the "reserved" scheduling type
+
+        :raises AttributeError: trying to set this after the pool is submitted
+        """
+        return self._targeted_reserved_machine_key
+
+    @targeted_reserved_machine_key.setter
+    def targeted_reserved_machine_key(self, value: str):
+        """Setted for targeted_reserved_machine_key
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+
+        self._targeted_reserved_machine_key = value
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

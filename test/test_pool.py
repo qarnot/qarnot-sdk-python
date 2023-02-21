@@ -9,6 +9,7 @@ import datetime
 
 from qarnot.privileges import Privileges
 from qarnot.retry_settings import RetrySettings
+from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
 from .mock_connection import MockConnection, PatchRequest, none_function
 from .mock_pool import default_json_pool
 
@@ -235,3 +236,79 @@ class TestPoolProperties:
         assert pool_from_json.default_retry_settings is not None
         assert pool_from_json.default_retry_settings._maxTotalRetries is 36
         assert pool_from_json.default_retry_settings._maxPerInstanceRetries is 12
+
+    def test_pool_flex_scheduling_serialization(self):
+        pool = Pool(self.conn, "pool-with-flex-scheduling", "profile", scheduling_type=FlexScheduling())
+        assert pool.scheduling_type is not None
+        print(pool.scheduling_type)
+        assert isinstance(pool.scheduling_type, FlexScheduling)
+        assert pool.scheduling_type.schedulingType == "Flex"
+
+        json_pool = pool._to_json()
+        assert json_pool['schedulingType'] is not None
+        assert json_pool['schedulingType'] == FlexScheduling.schedulingType
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-with-flex-scheduling-from-json", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.scheduling_type is not None
+        assert isinstance(pool_from_json.scheduling_type, FlexScheduling)
+        assert pool_from_json.scheduling_type.schedulingType == FlexScheduling.schedulingType
+
+    def test_pool_onDemand_scheduling_serialization(self):
+        pool = Pool(self.conn, "pool-with-on-demand-scheduling", "profile", scheduling_type=OnDemandScheduling())
+        assert pool.scheduling_type is not None
+        print(pool.scheduling_type)
+        assert isinstance(pool.scheduling_type, OnDemandScheduling)
+        assert pool.scheduling_type.schedulingType == "OnDemand"
+
+        json_pool = pool._to_json()
+        assert json_pool['schedulingType'] is not None
+        assert json_pool['schedulingType'] == OnDemandScheduling.schedulingType
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-with-on-demand-scheduling-from-json", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.scheduling_type is not None
+        assert isinstance(pool_from_json.scheduling_type, OnDemandScheduling)
+        assert pool_from_json.scheduling_type.schedulingType == OnDemandScheduling.schedulingType
+
+    def test_pool_reserved_scheduling_serialization(self):
+        pool = Pool(self.conn, "pool-with-reserved-scheduling", "profile", scheduling_type=ReservedScheduling())
+        pool.targeted_reserved_machine_key = "reservedMachine"
+        assert pool.scheduling_type is not None
+        print(pool.scheduling_type)
+        assert isinstance(pool.scheduling_type, ReservedScheduling)
+        assert pool.scheduling_type.schedulingType == "Reserved"
+
+        json_pool = pool._to_json()
+        assert json_pool['schedulingType'] is not None
+        assert json_pool['schedulingType'] == ReservedScheduling.schedulingType
+        assert json_pool['targetedReservedMachineKey'] is not None
+        assert json_pool['targetedReservedMachineKey'] == "reservedMachine"
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-with-reserved-scheduling-from-json", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.scheduling_type is not None
+        assert isinstance(pool_from_json.scheduling_type, ReservedScheduling)
+        assert pool_from_json.scheduling_type.schedulingType == ReservedScheduling.schedulingType
+        assert pool.targeted_reserved_machine_key == "reservedMachine"

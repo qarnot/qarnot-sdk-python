@@ -22,6 +22,7 @@ import posixpath
 import shutil
 import itertools
 import deprecation
+
 from . import __version__
 from typing import Optional
 
@@ -30,7 +31,7 @@ from itertools import groupby
 from operator import attrgetter
 
 from . import _util
-from .exceptions import BucketStorageUnavailableException
+from .exceptions import BucketStorageUnavailableException, MissingBucketException
 from .storage import Storage
 
 from .advanced_bucket import Filtering, ResourcesTransformation
@@ -53,6 +54,8 @@ class Bucket(Storage):  # pylint: disable=W0223
 
     This class is the interface to manage resources or results from a
     :class:`~qarnot.bucket.Bucket`.
+
+    :raises ~qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
 
     .. note::
        A :class:`Bucket` must be created with
@@ -196,23 +199,26 @@ class Bucket(Storage):  # pylint: disable=W0223
 
         n = 1000  # delete object count max request
 
-        bucket = self._connection.s3resource.Bucket(self._uuid)
-        versioned_bucket = self._connection.s3resource.BucketVersioning(self._uuid)
+        try:
+            bucket = self._connection.s3resource.Bucket(self._uuid)
+            versioned_bucket = self._connection.s3resource.BucketVersioning(self._uuid)
 
-        if versioned_bucket.status == 'None':
-            objectlist = list(bucket.objects.all())
-            listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
-        else:
-            objectlist = list(bucket.object_versions.all())
-            listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
+            if versioned_bucket.status == 'None':
+                objectlist = list(bucket.objects.all())
+                listofobjectlist = [[{'Key': x.key} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
+            else:
+                objectlist = list(bucket.object_versions.all())
+                listofobjectlist = [[{'Key': x.key, 'VersionId': x.id} for x in objectlist[i:i + n]] for i in range(0, len(objectlist), n)]
 
-        for item in listofobjectlist:
-            bucket.delete_objects(
-                Delete={
-                    'Objects': item
-                }
-            )
-        self._connection.s3client.delete_bucket(Bucket=self._uuid)
+            for item in listofobjectlist:
+                bucket.delete_objects(
+                    Delete={
+                        'Objects': item
+                    }
+                )
+            self._connection.s3client.delete_bucket(Bucket=self._uuid)
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot delete {}. Bucket not found.".format(err.response['Error']['BucketName'])) from err
 
     def list_files(self):
         """List files in the bucket
@@ -361,10 +367,10 @@ class Bucket(Storage):  # pylint: disable=W0223
                        and all(rem.name != x.name for rem in remotefiles))
             for dup in renames:
                 if verbose:
-                    print("Copy", file_.name, "to", dup.name)
+                    self._connection.logger.info("Copy", file_.name, "to", dup.name)
                 self.copy_file(file_.name, dup.name)
             if verbose:
-                print("Remove:", file_.name)
+                self._connection.logger.info("Remove:", file_.name)
             self.delete_file(file_.name)
             seen_tags.add(file_.e_tag)
 
@@ -379,15 +385,15 @@ class Bucket(Storage):  # pylint: disable=W0223
                 if rem.name == entry[0].name:
                     continue
                 if verbose:
-                    print("Copy", rem.name, "to", entry[0].name)
+                    self._connection.logger.info("Copy", rem.name, "to", entry[0].name)
                 self.copy_file(rem.name, entry[0].name)
             except StopIteration:
                 if verbose:
-                    print("Upload:", entry[0].filepath, '->', entry[0].name)
+                    self._connection.logger.info("Upload:", entry[0].filepath, '->', entry[0].name)
                 self.add_file(entry[0].filepath, entry[0].name)
             for link in entry[1:]:  # duplicate files
                 if verbose:
-                    print("Copy", entry[0].name, "to", link.name)
+                    self._connection.logger.info("Copy", entry[0].name, "to", link.name)
                 self.copy_file(entry[0].name, link.name)
 
     def add_string(self, string, remote):

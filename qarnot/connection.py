@@ -16,7 +16,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from logging import Logger
+import sys
 from typing import Dict, Iterable, Iterator, List, Optional
+
+from qarnot.helper import Log
 
 from . import get_url, raise_on_error, __version__  # type: ignore
 from .hardware_constraint import HardwareConstraint, CpuModelHardware
@@ -27,8 +31,9 @@ from .bucket import Bucket
 from .job import Job
 from ._filter import create_pool_filter, create_task_filter, create_job_filter
 from ._retry import with_retry
-from .exceptions import (QarnotGenericException, BucketStorageUnavailableException,
+from .exceptions import (QarnotGenericException, BucketStorageUnavailableException, MissingProfileException,
                          MissingTaskException, MissingPoolException, MissingJobException)
+from ._util import get_error_message_from_http_response
 import requests
 import warnings
 import os
@@ -37,7 +42,7 @@ import concurrent.futures
 import botocore
 import deprecation
 from json import dumps as json_dumps
-from requests.packages import urllib3
+import urllib3
 import configparser as config
 
 #########
@@ -53,7 +58,7 @@ class Connection(object):
                  storage_url=None, storage_unsafe=False,
                  retry_count=5, retry_wait=1.0,
                  cluster_custom_certificate=None, storage_custom_certificate=None,
-                 sanitize_bucket_paths=True, show_bucket_warnings=True):
+                 sanitize_bucket_paths=True, show_bucket_warnings=True, logger: Logger = None):
         """Create a connection to a cluster with given config file, options or environment variables.
         Available environment variable are
         `QARNOT_CLUSTER_URL`, `QARNOT_CLUSTER_UNSAFE`, `QARNOT_CLUSTER_TIMEOUT` and `QARNOT_CLIENT_TOKEN`.
@@ -70,6 +75,8 @@ class Connection(object):
         :param float retry_wait: (optional) Retry on error wait time, progressive. (wait * (retry_count - retry_num). Default to 1s
         :param bool sanitize_bucket_paths: (optional) Flag to automatically sanitize bucket paths (remove extra slashes). Default to true
         :param bool show_bucket_warnings: (optional) Flag to show warnings of bucket paths sanitization. Default to true
+        :param logger: which job to attach the task to
+        :type logger: :class:`logging.Logger`
 
         Configuration sample:
 
@@ -88,6 +95,8 @@ class Connection(object):
            unsafe=False
 
         """
+        self.logger = logger if logger is not None else Log.get_logger_for_stream(sys.stdout)
+        self.logger_stderr = logger if logger is not None else Log.get_logger_for_stream(sys.stderr)  # to avoid breaking change of task stderr logs
         self._version = "qarnot-sdk-python/" + __version__
         self._http = requests.session()
         self._retry_count = retry_count
@@ -111,7 +120,7 @@ class Connection(object):
                     self._http.verify = fileconf.get('cluster_custom_certificate')
             else:
                 cfg = config.ConfigParser()
-                with open(fileconf) as cfg_file:
+                with open(fileconf, "r", encoding="utf-8") as cfg_file:
                     cfg.read_string(cfg_file.read())
 
                     self.cluster = None
@@ -333,6 +342,8 @@ class Connection(object):
 
         :rtype: list(:class:`~qarnot.bucket.Bucket`).
         :returns: List of buckets
+
+        :raises ~qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
         """
         if self._s3client is None:
             raise BucketStorageUnavailableException()
@@ -561,7 +572,7 @@ class Connection(object):
         return response.json()
 
     def pools_page(self, token: Optional[str] = None, maximum: Optional[int] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
-        """Return a paginate pool object retriver.
+        """Return a paginate pool object retriever.
 
         :param summary: retrieve a full pool details if False or a pool summary if True, defaults to True
         :type summary: `bool`, optional
@@ -646,6 +657,7 @@ class Connection(object):
         """
 
         response = self._get(get_url('cpu model constraints search'), params={'cpuModel': cpu_model})
+        raise_on_error(response)
         return [
             HardwareConstraint.from_json(hw_constraint)
             for hw_constraint in response.json()
@@ -664,7 +676,7 @@ class Connection(object):
 
         response = self._get(get_url('pool update', uuid=uuid))
         if response.status_code == 404:
-            raise MissingPoolException(response.json()['message'])
+            raise MissingPoolException(get_error_message_from_http_response(response))
         raise_on_error(response)
         return Pool.from_json(self, response.json())
 
@@ -681,7 +693,7 @@ class Connection(object):
 
         response = self._get(get_url('task update', uuid=uuid))
         if response.status_code == 404:
-            raise MissingTaskException(response.json()['message'])
+            raise MissingTaskException(get_error_message_from_http_response(response))
         raise_on_error(response)
         return Task.from_json(self, response.json())
 
@@ -698,7 +710,7 @@ class Connection(object):
 
         response = self._get(get_url('job update', uuid=uuid))
         if response.status_code == 404:
-            raise MissingJobException(response.json()['message'])
+            raise MissingJobException(get_error_message_from_http_response(response))
         raise_on_error(response)
         return Job.from_json(self, response.json())
 
@@ -708,6 +720,8 @@ class Connection(object):
         :param str uuid: the bucket uuid (name)
         :rtype: :class:`~qarnot.bucket.Bucket`
         :returns: Existing or newly created bucket defined by the given name
+
+        :raises ~qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
         """
         if self._s3client is None:
             raise BucketStorageUnavailableException()
@@ -720,6 +734,8 @@ class Connection(object):
         :param str uuid: Desired bucket uuid (name)
         :rtype: :class:`~qarnot.bucket.Bucket`
         :returns: Existing bucket defined by the given uuid (name)
+
+        :raises ~qarnot.exceptions.BucketStorageUnavailableException: the bucket storage engine is not available
         :raises: botocore.exceptions.ClientError: Bucket does not exist, or invalid credentials
         """
         if self._s3client is None:
@@ -803,6 +819,7 @@ class Connection(object):
 
         if responses.status_code == 503:
             raise QarnotGenericException("Service Unavailable")
+        raise_on_error(responses)
 
         bulk_responses = [BulkTaskResponse(x) for x in responses.json()]
 
@@ -862,14 +879,15 @@ class Connection(object):
         :rtype: :class:`Profile`
 
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingProfileException: profile not found
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
 
         url = get_url('profile details', profile=name)
         response = self._get(url)
-        raise_on_error(response)
         if response.status_code == 404:
-            raise QarnotGenericException(response.json()['message'])
+            raise MissingProfileException(get_error_message_from_http_response(response))
+        raise_on_error(response)
         return Profile(response.json())
 
     def create_bucket(self, name):

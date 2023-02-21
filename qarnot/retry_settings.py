@@ -24,17 +24,17 @@ class RetrySettings(object):
         self._maxPerInstanceRetries = maxPerInstanceRetries
 
     @classmethod
-    def from_json(cls, json: Dict[str, str]):
+    def from_json(cls, json: Dict[str, int]):
         """Create the retry settings from json.
 
         :param dict json: Dictionary representing the retry settings
         :returns: The created :class:`~qarnot.retry_settings.RetrySettings`
         """
-        maxTotalRetries: bool = json["maxTotalRetries"]
-        maxPerInstanceRetries: bool = json["maxPerInstanceRetries"]
+        maxTotalRetries: int = json["maxTotalRetries"]
+        maxPerInstanceRetries: int = json["maxPerInstanceRetries"]
         return RetrySettings(maxTotalRetries, maxPerInstanceRetries)
 
-    def to_json(self) -> Dict[str, object]:
+    def to_json(self) -> Dict[str, Optional[int]]:
         """Get a dict ready to be json packed.
 
         :return: the json elements of the class.

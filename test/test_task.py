@@ -4,7 +4,9 @@ from io import StringIO
 import sys
 import uuid
 import pytest
+from qarnot.helper import Log
 from qarnot.retry_settings import RetrySettings
+from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
 
 from qarnot.task import Task
 from qarnot.privileges import Privileges
@@ -253,6 +255,82 @@ class TestTaskProperties:
         assert pool_from_json.retry_settings._maxTotalRetries is 36
         assert pool_from_json.retry_settings._maxPerInstanceRetries is 12
 
+    def test_task_flex_scheduling_serialization(self, mock_conn):
+        task = Task(mock_conn, "task-with-flex-scheduling", scheduling_type=FlexScheduling())
+        assert task.scheduling_type is not None
+        print(task.scheduling_type)
+        assert isinstance(task.scheduling_type, FlexScheduling)
+        assert task.scheduling_type.schedulingType == "Flex"
+
+        json_task = task._to_json()
+        assert json_task['schedulingType'] is not None
+        assert json_task['schedulingType'] == FlexScheduling.schedulingType
+
+        # fields that need to be non null for the deserialization to not fail
+        json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_task['uuid'] = str(uuid.uuid4())
+        json_task['state'] = 'Submitted'
+        json_task['runningCoreCount'] = 0
+        json_task['runningInstanceCount'] = 0
+
+        task_from_json = Task(mock_conn, "task-with-flex-scheduling-from-json")
+        task_from_json._update(json_task)
+        assert task_from_json.scheduling_type is not None
+        assert isinstance(task_from_json.scheduling_type, FlexScheduling)
+        assert task_from_json.scheduling_type.schedulingType == FlexScheduling.schedulingType
+
+    def test_task_onDemand_scheduling_serialization(self, mock_conn):
+        task = Task(mock_conn, "task-with-on-demand-scheduling", scheduling_type=OnDemandScheduling())
+        assert task.scheduling_type is not None
+        print(task.scheduling_type)
+        assert isinstance(task.scheduling_type, OnDemandScheduling)
+        assert task.scheduling_type.schedulingType == "OnDemand"
+
+        json_task = task._to_json()
+        assert json_task['schedulingType'] is not None
+        assert json_task['schedulingType'] == OnDemandScheduling.schedulingType
+
+        # fields that need to be non null for the deserialization to not fail
+        json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_task['uuid'] = str(uuid.uuid4())
+        json_task['state'] = 'Submitted'
+        json_task['runningCoreCount'] = 0
+        json_task['runningInstanceCount'] = 0
+
+        task_from_json = Task(mock_conn, "task-with-on-demand-scheduling-from-json")
+        task_from_json._update(json_task)
+        assert task_from_json.scheduling_type is not None
+        assert isinstance(task_from_json.scheduling_type, OnDemandScheduling)
+        assert task_from_json.scheduling_type.schedulingType == OnDemandScheduling.schedulingType
+
+    def test_task_reserved_scheduling_serialization(self, mock_conn):
+        task = Task(mock_conn, "task-with-reserved-scheduling", scheduling_type=ReservedScheduling())
+        task.targeted_reserved_machine_key = "reservedMachine"
+        assert task.scheduling_type is not None
+        print(task.scheduling_type)
+        assert isinstance(task.scheduling_type, ReservedScheduling)
+        assert task.scheduling_type.schedulingType == "Reserved"
+
+        json_task = task._to_json()
+        assert json_task['schedulingType'] is not None
+        assert json_task['schedulingType'] == ReservedScheduling.schedulingType
+        assert json_task['targetedReservedMachineKey'] is not None
+        assert json_task['targetedReservedMachineKey'] == "reservedMachine"
+
+        # fields that need to be non null for the deserialization to not fail
+        json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_task['uuid'] = str(uuid.uuid4())
+        json_task['state'] = 'Submitted'
+        json_task['runningCoreCount'] = 0
+        json_task['runningInstanceCount'] = 0
+
+        task_from_json = Task(mock_conn, "task-with-reserved-scheduling-from-json")
+        task_from_json._update(json_task)
+        assert task_from_json.scheduling_type is not None
+        assert isinstance(task_from_json.scheduling_type, ReservedScheduling)
+        assert task_from_json.scheduling_type.schedulingType == ReservedScheduling.schedulingType
+        assert task.targeted_reserved_machine_key == "reservedMachine"
+
     # WARNING: this test last at least 80s because task.wait() wait for 10s between each update calls and the task go through 8 different states
     # To make the test faster some states can be removed (the 7 first states are all the states that correspond to a non complete task and keep
     # the wait alive. The last state is one of the final status that stop the wait function)
@@ -264,6 +342,8 @@ class TestTaskProperties:
         capturedStderr = StringIO()
         sys.stderr = capturedStderr
 
+        mock_conn.logger = Log.get_logger_for_stream(sys.stdout)
+        mock_conn.logger_stderr = Log.get_logger_for_stream(sys.stderr)
         # Mock the responses for task update
         task = Task(mock_conn, "task-name")
         task_json = copy.deepcopy(default_json_task)
@@ -320,12 +400,12 @@ class TestTaskProperties:
         sys.stdout = sys.__stdout__
         sys.stderr = sys.__stderr__
 
-        output = capturedOutput.getvalue()
-        assert output is not None, "the output should contain task update output"
-        stderr = capturedStderr.getvalue()
-        assert stderr is not None, "the stderr should contain task update stderr"
+        info_logs = capturedOutput.getvalue()
+        assert info_logs is not None, "the output should contain task update output"
+        warn_logs = capturedStderr.getvalue()
+        assert warn_logs is not None, "the stderr should contain task update stderr"
         for state in states:
-            assert state in output, "All state updates should be printed on stdout"
+            assert state in info_logs, "All state updates should be printed on stdout"
         for i in range(0,len(states)):
-            assert "stdout %s" % i in output, "All task stdout should be printed to user stdout"
-            assert "stderr %s" % i in stderr, "All task stderr should be printed to user stderr"
+            assert "stdout %s" % i in info_logs, "All task stdout should be printed to user logs stream with info level"
+            assert "stderr %s" % i in warn_logs, "All task stderr should be printed to user logs stream with warning level"

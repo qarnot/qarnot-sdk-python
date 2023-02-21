@@ -133,7 +133,8 @@ default_json_task: dict = {
     "retrySettings":  {
         "maxTotalRetries": 10,
         "maxPerInstanceRetries": 2
-    }
+    },
+    "schedulingType": "flex",
 }
 
 

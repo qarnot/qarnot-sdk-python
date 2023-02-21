@@ -1,3 +1,5 @@
+import sys
+from qarnot.helper import Log
 from qarnot.pool import Pool
 
 class PostRequest:
@@ -47,6 +49,8 @@ class FakeS3:
 
 class MockConnection:
     def __init__(self):
+        self.logger = Log.get_logger_for_stream(sys.stdout)
+        self.logger_stderr = Log.get_logger_for_stream(sys.stderr)
         self._sanitize_bucket_paths = True
         self._show_bucket_warnings = True
         self.requests = []

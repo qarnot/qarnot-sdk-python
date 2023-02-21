@@ -32,7 +32,7 @@ class AbstractFiltering(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def sanitize_filter_paths(self):
+    def sanitize_filter_paths(self, show_warnings: bool):
         """Sanitize the filters bucket path by removing extra separators
 
         :raises NotImplementedError: this is an abstract method, it should be overridden in child classes
@@ -147,7 +147,7 @@ class AbstractResourcesTransformation(metaclass=abc.ABCMeta):
         """
 
     @abc.abstractmethod
-    def sanitize_transformation_paths(self):
+    def sanitize_transformation_paths(self, show_warnings: bool):
         """Sanitize the bucket path by removing extra separators
 
         :raises NotImplementedError: this is an abstract method, it should be overridden in child classes

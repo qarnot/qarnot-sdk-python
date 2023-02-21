@@ -20,7 +20,10 @@ __all__ = ['QarnotException',
            'QarnotGenericException',
            'BucketStorageUnavailableException',
            'UnauthorizedException',
+           'MissingProfileException',
+           'MissingTaskInstanceException',
            'MissingTaskException',
+           'MissingPoolInstanceException',
            'MissingPoolException',
            'MaxTaskException',
            'MaxPoolException',
@@ -48,12 +51,24 @@ class UnauthorizedException(QarnotException):
     """Invalid token."""
 
 
+class MissingProfileException(QarnotException):
+    """Non existent profile."""
+
+
+class MissingTaskInstanceException(QarnotException):
+    """Non existent instance for task."""
+
+
 class MissingTaskException(QarnotException):
     """Non existent task."""
 
 
 class MissingBucketException(QarnotException):
     """Non existent bucket."""
+
+
+class MissingPoolInstanceException(QarnotException):
+    """Non existent instance for pool."""
 
 
 class MissingPoolException(QarnotException):
@@ -73,7 +88,7 @@ class NotEnoughCreditsException(QarnotException):
 
 
 class MissingJobException(Exception):
-    """Non existentjob."""
+    """Non existent job."""
 
 
 class MaxJobException(Exception):

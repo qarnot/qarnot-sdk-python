@@ -42,8 +42,8 @@ flake8:
 
 pylint:
 	pylint --rcfile=setup.cfg qarnot/*.py --disable=C,R,W0212,W1620
-	# W0212: Access to a protected member "" of a client class (protected-access)
-	# W1620: Calling a dict.iter*() method
+# W0212: Access to a protected member "" of a client class (protected-access)
+# W1620: Calling a dict.iter*() method
 
 pylint-advice:
 	pylint --rcfile=setup.cfg qarnot/*.py --disable=C,R --enable=C0114,C0115,R0205,C0103,R1720,R0801:

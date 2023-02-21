@@ -50,7 +50,10 @@ class Job(object):
         :param shortname: userfriendly job name
         :type shortname: :class:`str`
         :param use_dependencies: allow dependencies between tasks in this job
-        :type job: :class:`bool`
+        :type use_dependencies: :class:`bool`
+
+        :param logger: which job to attach the task to
+        :type logger: :class:`logging.Logger`
         """
         self._connection = connection
         self._name = name
@@ -145,7 +148,7 @@ class Job(object):
             return
         response = self._connection._get(get_url('job tasks', uuid=self._uuid))
         if response.status_code == 404:
-            raise MissingJobException(response.json()['message'])
+            raise MissingJobException(_util.get_error_message_from_http_response(response))
         raise_on_error(response)
         return [Task.from_json(self, task, True) for task in response.json()]
 
@@ -291,7 +294,7 @@ class Job(object):
         """
         resp = connection._get(get_url('job update', uuid=uuid))
         if resp.status_code == 404:
-            raise MissingJobException(resp.json()['message'])
+            raise MissingJobException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
         return Job.from_json(connection, resp.json())
 
@@ -365,11 +368,14 @@ class Job(object):
         resp = self._connection._post(get_url('jobs'), json=payload)
 
         if resp.status_code == 404:
-            raise MissingJobException(resp.json()['message'])
+            raise MissingJobException(_util.get_error_message_from_http_response(resp))
         elif resp.status_code == 403:
-            raise MaxJobException(resp.json()['message'])
+            error_message = _util.get_error_message_from_http_response(resp)
+            if "maximum number of jobs reached" in error_message.lower():
+                raise MaxJobException(error_message)
+            raise UnauthorizedException(error_message)
         elif resp.status_code == 402:
-            raise NotEnoughCreditsException(resp.json()['message'])
+            raise NotEnoughCreditsException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
         self._uuid = resp.json()['uuid']
         self.update(True)
@@ -395,7 +401,7 @@ class Job(object):
         resp = self._connection._get(
             get_url('job update', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingJobException(resp.json()['message'])
+            raise MissingJobException(_util.get_error_message_from_http_response(resp))
 
         raise_on_error(resp)
         self._update(resp.json())
@@ -413,7 +419,7 @@ class Job(object):
             return
         resp = self._connection._post(get_url('job terminate', uuid=self._uuid))
         if resp.status_code == 404:
-            raise MissingJobException(resp.json()['message'])
+            raise MissingJobException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
         self._state = JobState.Terminating
 
@@ -432,9 +438,9 @@ class Job(object):
             return
         resp = self._connection._delete(get_url('job delete', uuid=self._uuid, force=forceAbort))
         if resp.status_code == 404:
-            raise MissingJobException(resp.json()['message'])
+            raise MissingJobException(_util.get_error_message_from_http_response(resp))
         elif resp.status_code == 403:
-            raise UnauthorizedException(resp.json()['message'])
+            raise UnauthorizedException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
         self._state = JobState.Deleting
         self._uuid = None

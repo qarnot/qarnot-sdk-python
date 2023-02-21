@@ -1,0 +1,127 @@
+
+stages:
+  - lint
+  - test
+  - trigger
+  - package
+
+variables:
+  MAKEFILE_PATH: $CI_PROJECT_DIR/build/Makefile
+  PYTHON_IMAGE: python:3.10-alpine3.15
+
+default:
+  image: $PYTHON_IMAGE
+
+
+workflow:
+  rules:
+    # Run pipelines triggered from the web UI
+    - if: $CI_PIPELINE_SOURCE == "web"
+    # Run pipelines when triggered by webhooks or by API calls (for Draft: workaround)
+    - if: $CI_PIPELINE_SOURCE == "trigger" || $CI_PIPELINE_SOURCE == "api"
+    # Do not run pipelines on *-nocheck branches, even in a MR
+    - if: $CI_MERGE_REQUEST_SOURCE_BRANCH_NAME =~ /-nocheck$/
+      when: never
+    # Run pipelines on MR
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # Run pipelines only on master branch
+    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Run pipelines on tags
+    - if: $CI_COMMIT_TAG
+
+cache:
+  key: python-env
+  untracked: true
+  paths:
+    - venv
+
+.prepare-python-env:
+  before_script:
+    - if ! [[ -d venv ]]; then python3 -m venv venv; fi;
+    - source venv/bin/activate
+    - pip3 install -r requirements.txt
+    - pip3 install -r $EXTRA_REQUIREMENTS_FILE
+
+.install_make_command:
+  before_script:
+    - apk add g++ && apk add make
+
+
+# --- Building & Linting --- #
+
+# There's no building for a python app
+
+lint_python_sdk:
+  stage: lint
+  # rules:
+  #   - !reference [.default_rules, rules]
+  variables:
+    EXTRA_REQUIREMENTS_FILE: requirements-lint.txt
+  before_script:
+    - !reference [.prepare-python-env, before_script]
+    - !reference [.install_make_command, before_script]
+  script:
+    - make -f $MAKEFILE_PATH lint
+  allow_failure: true # to have only a warning and still the tests run even if there is an unfortunate missing whitespace
+
+
+# --- Testing & Coverage --- #
+
+unit_tests_python_sdk:
+  stage: test
+  variables:
+    EXTRA_REQUIREMENTS_FILE: requirements-test.txt
+  before_script:
+    - !reference [.prepare-python-env, before_script]
+  script:
+    - coverage run --omit="test/*" --source=qarnot -m pytest -v --junitxml=report.xml test
+    - coverage xml -o coverage.xml
+  artifacts:
+    when: always
+    expire_in: 1hour
+    paths:
+      - report.xml
+      - coverage.xml
+    reports:
+      junit: report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: 'coverage.xml'
+
+
+# --- Packaging --- #
+
+package-python-sdk:
+  stage: package
+  rules:
+    # Run pipelines on tags
+    - if: $CI_COMMIT_TAG
+  variables:
+    EXTRA_REQUIREMENTS_FILE: requirements-doc.txt
+  before_script:
+    - !reference [.prepare-python-env, before_script]
+  script:
+    - python setup.py sdist
+    - echo "Sdk version:" && python -c "import qarnot; print(qarnot.__version__)"
+  artifacts:
+    paths:
+      - dist
+    expire_in: 1hour
+
+
+# --- SDK Documentation generation --- #
+
+generate-doc-python-sdk:
+  stage: package
+  variables:
+    EXTRA_REQUIREMENTS_FILE: requirements-doc.txt
+  before_script:
+    - !reference [.prepare-python-env, before_script]
+    - !reference [.install_make_command, before_script]
+  script:
+    - make -f $MAKEFILE_PATH doc
+  artifacts:
+    paths:
+      - doc/_build
+    expire_in: 1hour
+

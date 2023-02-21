@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Dict
+from typing import Any, Dict
 import abc
 
 
@@ -23,7 +23,7 @@ class HardwareConstraint():
     _discriminator: str = None
 
     @classmethod
-    def from_json(cls, json: Dict[str, str]):
+    def from_json(cls, json: Dict[str, Any]):
         """Create an hardware constraint from json.
 
         :param qarnot.connection.Connection connection: the cluster connection
@@ -33,11 +33,11 @@ class HardwareConstraint():
 
         discriminator: str = json["discriminator"]
         if discriminator == MinimumCoreHardware._discriminator:
-            coreCount: int = json["coreCount"]
-            return MinimumCoreHardware(coreCount)
+            minCoreCount: int = json["coreCount"]
+            return MinimumCoreHardware(minCoreCount)
         elif discriminator == MaximumCoreHardware._discriminator:
-            coreCount: int = json["coreCount"]
-            return MaximumCoreHardware(coreCount)
+            maxCoreCount: int = json["coreCount"]
+            return MaximumCoreHardware(maxCoreCount)
         elif discriminator == MinimumRamCoreRatioHardware._discriminator:
             minimumMemoryGBCoreRatio: float = json["minimumMemoryGBCoreRatio"]
             return MinimumRamCoreRatioHardware(minimumMemoryGBCoreRatio)
@@ -55,6 +55,8 @@ class HardwareConstraint():
             return SpecificHardware(specificationKey)
         elif discriminator == GpuHardware._discriminator:
             return GpuHardware()
+        elif discriminator == NoGpuHardware._discriminator:
+            return NoGpuHardware()
         elif discriminator == CpuModelHardware._discriminator:
             cpu_model: str = json["cpuModel"]
             return CpuModelHardware(cpu_model)
@@ -72,7 +74,7 @@ class HardwareConstraint():
         return "hardware constraint {}.".format(self._discriminator)
 
     def __repr__(self) -> str:
-        return self._discriminator
+        return str(self._discriminator)
 
 
 class MinimumCoreHardware(HardwareConstraint):
@@ -295,6 +297,28 @@ class GpuHardware(HardwareConstraint):
 
     def __str__(self) -> str:
         return "Hardware with graphic card."
+
+    def __repr__(self) -> str:
+        return self._discriminator
+
+
+class NoGpuHardware(HardwareConstraint):
+    """Represents an hardware constraint to limit hardware without gpu"""
+    _discriminator: str = "NoGpuHardwareConstraint"
+
+    def to_json(self) -> object:
+        """Get a dict ready to be json packed.
+
+        :return: the json elements of the class.
+        :rtype: `dict`
+
+        """
+        return {
+            "discriminator": self._discriminator
+        }
+
+    def __str__(self) -> str:
+        return "Hardware without graphic card."
 
     def __repr__(self) -> str:
         return self._discriminator

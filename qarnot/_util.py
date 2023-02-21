@@ -13,6 +13,11 @@
 # limitations under the License.
 
 from datetime import datetime, timedelta
+from requests import Response
+from simplejson import JSONDecodeError as simpleJsonDecodeError
+from json import JSONDecodeError
+from http.client import responses
+
 import re
 
 _IS_PY2 = bytes is str
@@ -134,3 +139,14 @@ def get_sanitized_bucket_path(path: str, show_warning: bool = True):
             print(warning)
         return path.strip()
     return path
+
+
+def get_error_message_from_http_response(response: Response, message_is_status_code_if_null: bool = False) -> str:
+    error_message = ""
+    try:
+        error_message = response.json()['message']
+    except (JSONDecodeError, simpleJsonDecodeError):
+        error_message = response.text
+    if (error_message is None or error_message == "" or len(error_message) < 1) and message_is_status_code_if_null:
+        return responses[response.status_code]
+    return error_message
