@@ -23,6 +23,7 @@ from enum import Enum
 from typing import Dict, Optional, Union, List, Any, Callable
 
 from qarnot.retry_settings import RetrySettings
+from qarnot.forced_network_rule import ForcedNetworkRule
 
 from . import get_url, raise_on_error, _util
 from .status import Status
@@ -136,6 +137,7 @@ class Task(object):
         self._last_cache = time.time()
         self._constraints: Dict[str, str] = {}
         self._forced_constants: Dict[str, ForcedConstant] = {}
+        self._forced_network_rules: List[ForcedNetworkRule] = []
         self._labels: Dict[str, str] = {}
         self._state = 'UnSubmitted'  # RO property same for below
         self._uuid = None
@@ -513,6 +515,8 @@ class Task(object):
             self._retry_settings = RetrySettings.from_json(json_task["retrySettings"])
         if 'schedulingType' in json_task:
             self._scheduling_type = SchedulingType.from_string(json_task["schedulingType"])
+        if 'forcedNetworkRules' in json_task:
+            self._forced_network_rules = json_task['forcedNetworkRules']
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
@@ -1331,6 +1335,29 @@ class Task(object):
         self._forced_constants = value
 
     @property
+    def forced_network_rules(self):
+        """:type: list{:class:`~qarnot.forced_network_rule.ForcedNetworkRule`}
+        :getter: Returns this task's forced network rules list.
+        :setter: set the task's forced network rules list.
+
+        Update the forced network rules if needed.
+        Forced network rules are reserved for internal use.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._forced_network_rules
+
+    @forced_network_rules.setter
+    def forced_network_rules(self, value: List["ForcedNetworkRule"]):
+        """Setter for forced_constants
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._forced_network_rules = value
+
+    @property
     def labels(self):
         """:type: dictionary{:class:`str` : :class:`str`}
         :getter: Returns this task's labels dictionary.
@@ -1788,6 +1815,9 @@ class Task(object):
 
         if self._targeted_reserved_machine_key is not None:
             json_task["targetedReservedMachineKey"] = self._targeted_reserved_machine_key
+
+        if self._forced_network_rules is not None:
+            json_task['forcedNetworkRules'] = self._forced_network_rules
 
         return json_task
 

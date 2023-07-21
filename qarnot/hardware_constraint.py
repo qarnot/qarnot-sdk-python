@@ -57,6 +57,10 @@ class HardwareConstraint():
             return GpuHardware()
         elif discriminator == NoGpuHardware._discriminator:
             return NoGpuHardware()
+        elif discriminator == NoSSDHardware._discriminator:
+            return NoSSDHardware()
+        elif discriminator == SSDHardware._discriminator:
+            return SSDHardware()
         elif discriminator == CpuModelHardware._discriminator:
             cpu_model: str = json["cpuModel"]
             return CpuModelHardware(cpu_model)
@@ -297,6 +301,50 @@ class GpuHardware(HardwareConstraint):
 
     def __str__(self) -> str:
         return "Hardware with graphic card."
+
+    def __repr__(self) -> str:
+        return self._discriminator
+
+
+class SSDHardware(HardwareConstraint):
+    """Represents an hardware constraint to limit hardware with SSD"""
+    _discriminator: str = "SSDHardwareConstraint"
+
+    def to_json(self) -> object:
+        """Get a dict ready to be json packed.
+
+        :return: the json elements of the class.
+        :rtype: `dict`
+
+        """
+        return {
+            "discriminator": self._discriminator
+        }
+
+    def __str__(self) -> str:
+        return "Hardware with SSD storage."
+
+    def __repr__(self) -> str:
+        return self._discriminator
+
+
+class NoSSDHardware(HardwareConstraint):
+    """Represents an hardware constraint to limit hardware without SSD"""
+    _discriminator: str = "NoSSDHardwareConstraint"
+
+    def to_json(self) -> object:
+        """Get a dict ready to be json packed.
+
+        :return: the json elements of the class.
+        :rtype: `dict`
+
+        """
+        return {
+            "discriminator": self._discriminator
+        }
+
+    def __str__(self) -> str:
+        return "Hardware without SSD storage."
 
     def __repr__(self) -> str:
         return self._discriminator

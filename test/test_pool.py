@@ -1,6 +1,7 @@
 import uuid
 import pytest
 import qarnot
+from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.pool import Pool
 from qarnot.privileges import Privileges
 from qarnot.bucket import Bucket
@@ -312,3 +313,60 @@ class TestPoolProperties:
         assert isinstance(pool_from_json.scheduling_type, ReservedScheduling)
         assert pool_from_json.scheduling_type.schedulingType == ReservedScheduling.schedulingType
         assert pool.targeted_reserved_machine_key == "reservedMachine"
+
+    def test_pool_forced_network_rules_serialization(self):
+        pool = Pool(self.conn, "pool-with-forced-network-rules", "profile")
+        inbound_rule = ForcedNetworkRule(True, "tcp", "1234", "bound-to-be-alive", priority="1000", description="Inbound test")
+        outbound_rule = ForcedNetworkRule(False, "tcp", public_port="666", public_host="bound-to-the-devil", priority="1000", description="Outbound test")
+        rules = [
+            inbound_rule,
+            outbound_rule,
+        ]
+        pool.forced_network_rules = rules
+        assert pool.forced_network_rules is not None
+        assert len(pool.forced_network_rules) == 2
+
+        json_pool = pool._to_json()
+        assert json_pool['forcedNetworkRules'] is not None
+        assert len(json_pool['forcedNetworkRules']) == 2
+        json_inbound_rule = json_pool['forcedNetworkRules'][0]
+        assert isinstance(json_inbound_rule, ForcedNetworkRule)
+        assert json_inbound_rule.inbound == inbound_rule.inbound
+        assert json_inbound_rule.proto == inbound_rule.proto
+        assert json_inbound_rule.port == inbound_rule.port
+        assert json_inbound_rule.to == inbound_rule.to
+        assert json_inbound_rule.priority == inbound_rule.priority
+        assert json_inbound_rule.description == inbound_rule.description
+        json_outbound_rule = json_pool['forcedNetworkRules'][1]
+        assert json_outbound_rule.inbound == outbound_rule.inbound
+        assert json_outbound_rule.proto == outbound_rule.proto
+        assert json_outbound_rule.port == outbound_rule.port
+        assert json_outbound_rule.to == outbound_rule.to
+        assert json_outbound_rule.priority == outbound_rule.priority
+        assert json_outbound_rule.description == outbound_rule.description
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-with-forced-network-rules-from-json", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.forced_network_rules is not None
+        assert len(pool_from_json.forced_network_rules) == 2
+        inbound_from_json = pool_from_json.forced_network_rules[0]
+        assert inbound_from_json.inbound == inbound_rule.inbound
+        assert inbound_from_json.proto == inbound_rule.proto
+        assert inbound_from_json.port == inbound_rule.port
+        assert inbound_from_json.to == inbound_rule.to
+        assert inbound_from_json.priority == inbound_rule.priority
+        assert inbound_from_json.description == inbound_rule.description
+        outbound_from_json = pool_from_json.forced_network_rules[1]
+        assert outbound_from_json.inbound == outbound_rule.inbound
+        assert outbound_from_json.proto == outbound_rule.proto
+        assert outbound_from_json.port == outbound_rule.port
+        assert outbound_from_json.to == outbound_rule.to
+        assert outbound_from_json.priority == outbound_rule.priority
+        assert outbound_from_json.description == outbound_rule.description

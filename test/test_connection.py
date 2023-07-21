@@ -527,14 +527,20 @@ class TestConnectionPaginateMethods():
                 },
                 {
                     "discriminator": "GpuHardwareConstraint"
+                },
+                {
+                    "discriminator": "SSDHardwareConstraint"
+                },
+                {
+                    "discriminator": "NoSSDHardwareConstraint"
                 }],
                 "offset": 0,
                 "limit": 50,
-                "total": 8
+                "total": 10
             }
             get_hw_constraints.return_value.status_code = 200
             get_hw_constraints.return_value.json.return_value = hw_constraints_page_json
             ret = connect.hardware_constraints_page()
             assert ret.total == hw_constraints_page_json['total']
             assert ret.page_data != None
-            assert len(ret.page_data) == 8
+            assert len(ret.page_data) == 10

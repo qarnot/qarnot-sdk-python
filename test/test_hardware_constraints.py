@@ -1,6 +1,7 @@
 import pytest
 from qarnot.hardware_constraint import (HardwareConstraint, MinimumRamHardware, MaximumRamHardware, MinimumCoreHardware,
-    MaximumCoreHardware, MinimumRamCoreRatioHardware, MaximumRamCoreRatioHardware, GpuHardware, NoGpuHardware, SpecificHardware, CpuModelHardware)
+    MaximumCoreHardware, MinimumRamCoreRatioHardware, MaximumRamCoreRatioHardware, GpuHardware, NoGpuHardware,
+    NoSSDHardware, SSDHardware, SpecificHardware, CpuModelHardware)
 
 class TestHardwareConstraintsDeserialization:
     def test_valid_MinimumRamHardware_deserialization(self):
@@ -100,6 +101,26 @@ class TestHardwareConstraintsDeserialization:
         assert isinstance(constraint, NoGpuHardware), "Constraint should deserialize to NoGpuHardware using discriminator"
         json_dict = constraint.to_json()
         assert "NoGpuHardwareConstraint" == json_dict["discriminator"], "NoGpuHardware should serialize with correct discriminator"
+
+    def test_valid_NoSSDHardware_deserialization(self):
+        json = {
+            "discriminator": "NoSSDHardwareConstraint"
+        }
+        constraint = HardwareConstraint.from_json(json)
+        assert constraint is not None, "Constraint should deserialize to NoSSDHardware using discriminator"
+        assert isinstance(constraint, NoSSDHardware), "Constraint should deserialize to NoSSDHardware using discriminator"
+        json_dict = constraint.to_json()
+        assert "NoSSDHardwareConstraint" == json_dict["discriminator"], "NoSSDHardware should serialize with correct discriminator"
+
+    def test_valid_SSDHardware_deserialization(self):
+        json = {
+            "discriminator": "SSDHardwareConstraint"
+        }
+        constraint = HardwareConstraint.from_json(json)
+        assert constraint is not None, "Constraint should deserialize to SSDHardware using discriminator"
+        assert isinstance(constraint, SSDHardware), "Constraint should deserialize to SSDHardware using discriminator"
+        json_dict = constraint.to_json()
+        assert "SSDHardwareConstraint" == json_dict["discriminator"], "SSDHardware should serialize with correct discriminator"
 
     def test_valid_SpecificHardware_deserialization(self):
         json = {

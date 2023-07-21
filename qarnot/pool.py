@@ -18,6 +18,7 @@ import warnings
 from typing import Dict, List, Optional
 
 from qarnot.retry_settings import RetrySettings
+from qarnot.forced_network_rule import ForcedNetworkRule
 
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
@@ -122,6 +123,7 @@ class Pool(object):
         self._default_resources_cache_ttl_sec: Optional[int] = None
         self._privileges: Privileges = Privileges()
         self._default_retry_settings: RetrySettings = RetrySettings()
+        self._forced_network_rules: List[ForcedNetworkRule] = []
 
     @classmethod
     def _retrieve(cls, connection, uuid):
@@ -234,6 +236,8 @@ class Pool(object):
             self._default_retry_settings = RetrySettings.from_json(json_pool["defaultRetrySettings"])
         if 'schedulingType' in json_pool:
             self._scheduling_type = SchedulingType.from_string(json_pool["schedulingType"])
+        if 'forcedNetworkRules' in json_pool:
+            self._forced_network_rules = json_pool["forcedNetworkRules"]
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -287,6 +291,9 @@ class Pool(object):
 
         if self._targeted_reserved_machine_key is not None:
             json_pool['targetedReservedMachineKey'] = self._targeted_reserved_machine_key
+
+        if self._forced_network_rules is not None:
+            json_pool['forcedNetworkRules'] = self._forced_network_rules
 
         return json_pool
 
@@ -1062,6 +1069,29 @@ class Pool(object):
         self._constraints = value
 
     @property
+    def forced_network_rules(self):
+        """:type: list{:class:`~qarnot.forced_network_rule.ForcedNetworkRule`}
+        :getter: Returns this pool's forced network rules list.
+        :setter: set the pool's forced network rules list.
+
+        Update the forced network rules if needed.
+        Forced network rules are reserved for internal use.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._forced_network_rules
+
+    @forced_network_rules.setter
+    def forced_network_rules(self, value: List["ForcedNetworkRule"]):
+        """Setter for forced_constants
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+        self._forced_network_rules = value
+
+    @property
     def labels(self):
         """:type: dictionary{:class:`str` : :class:`str`}
         :getter: Return this pool's labels dictionary.
@@ -1086,7 +1116,7 @@ class Pool(object):
             self.update()
 
         if self.uuid is not None:
-            raise AttributeError("can't set attribute on a launched task")
+            raise AttributeError("can't set attribute on a launched pool")
 
         self._labels = value
 

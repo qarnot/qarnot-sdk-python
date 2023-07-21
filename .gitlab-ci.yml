@@ -1,4 +1,3 @@
-
 stages:
   - lint
   - test
@@ -8,6 +7,16 @@ stages:
 variables:
   MAKEFILE_PATH: $CI_PROJECT_DIR/build/Makefile
   PYTHON_IMAGE: python:3.10-alpine3.15
+  SAMPLES_BRANCH: "master"
+
+# Other possible variables:
+# * for samples:
+#   - TRIGGER_SAMPLES should be set to "true" when triggering the pipeline from the web UI when you want to trigger the samples
+#   - PYTHON_SAMPLES_WHITELIST to specify only a set of python samples to run
+#   - PYTHON_SAMPLES_BLACKLIST to specify set of python samples that should not be run run
+#   - API_ENDPOINT for the compute api endpoint
+#   - API_TOKEN for the compute api user token
+#   - STORAGE_ENDPOINT for the storage api endpoint
 
 default:
   image: $PYTHON_IMAGE
@@ -34,6 +43,19 @@ cache:
   untracked: true
   paths:
     - venv
+
+.samples_rules:
+  rules:
+    # Run pipelines triggered from the web UI
+    - if: $CI_PIPELINE_SOURCE == "web" && $TRIGGER_SAMPLES == "true"
+    # Run pipelines on tags
+    - if: $CI_COMMIT_TAG
+    # If files changed in commit or MR
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" || ($CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH)
+      changes:
+        paths:
+          - qarnot/**/*
+          - setup.py
 
 .prepare-python-env:
   before_script:
@@ -69,6 +91,8 @@ lint_python_sdk:
 
 unit_tests_python_sdk:
   stage: test
+  needs:
+    - job: lint_python_sdk
   variables:
     EXTRA_REQUIREMENTS_FILE: requirements-test.txt
   before_script:
@@ -88,6 +112,26 @@ unit_tests_python_sdk:
         coverage_format: cobertura
         path: 'coverage.xml'
 
+# Trigger samples if sdk changed
+
+trigger_samples:
+  stage: trigger
+  needs:
+    - job: lint_python_sdk
+  rules:
+    - !reference [.samples_rules, rules]
+  variables:
+    PYTHON_IMAGE: python:3.10
+    TRIGGER_SOURCE: "sdk-python"
+    PYTHON_SDK_BRANCH_OR_COMMIT: "$CI_COMMIT_SHA"
+    SAMPLES_CONF_API_URL: $API_ENDPOINT
+    SAMPLES_CONF_TOKEN: $API_TOKEN
+    SAMPLES_CONF_STORAGE_URL: $STORAGE_ENDPOINT
+  trigger:
+    project: sdk/sdks-samples
+    branch: $SAMPLES_BRANCH
+    strategy: depend
+
 
 # --- Packaging --- #
 
@@ -96,6 +140,9 @@ package-python-sdk:
   rules:
     # Run pipelines on tags
     - if: $CI_COMMIT_TAG
+  needs:
+    - unit_tests_python_sdk
+    - trigger_samples
   variables:
     EXTRA_REQUIREMENTS_FILE: requirements-doc.txt
   before_script:
@@ -113,6 +160,8 @@ package-python-sdk:
 
 generate-doc-python-sdk:
   stage: package
+  needs:
+    - job: lint_python_sdk
   variables:
     EXTRA_REQUIREMENTS_FILE: requirements-doc.txt
   before_script:
@@ -124,4 +173,3 @@ generate-doc-python-sdk:
     paths:
       - doc/_build
     expire_in: 1hour
-
