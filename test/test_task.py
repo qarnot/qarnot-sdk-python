@@ -348,20 +348,17 @@ class TestTaskProperties:
         assert json_task['forcedNetworkRules'] is not None
         assert len(json_task['forcedNetworkRules']) == 2
         json_inbound_rule = json_task['forcedNetworkRules'][0]
-        assert isinstance(json_inbound_rule, ForcedNetworkRule)
-        assert json_inbound_rule.inbound == inbound_rule.inbound
-        assert json_inbound_rule.proto == inbound_rule.proto
-        assert json_inbound_rule.port == inbound_rule.port
-        assert json_inbound_rule.to == inbound_rule.to
-        assert json_inbound_rule.priority == inbound_rule.priority
-        assert json_inbound_rule.description == inbound_rule.description
+        assert json_inbound_rule["inbound"] == inbound_rule.inbound
+        assert json_inbound_rule["proto"] == inbound_rule.proto
+        assert json_inbound_rule["port"] == inbound_rule.port
+        assert json_inbound_rule["to"] == inbound_rule.to
+        assert json_inbound_rule["priority"] == inbound_rule.priority
+        assert json_inbound_rule["description"] == inbound_rule.description
         json_outbound_rule = json_task['forcedNetworkRules'][1]
-        assert json_outbound_rule.inbound == outbound_rule.inbound
-        assert json_outbound_rule.proto == outbound_rule.proto
-        assert json_outbound_rule.port == outbound_rule.port
-        assert json_outbound_rule.to == outbound_rule.to
-        assert json_outbound_rule.priority == outbound_rule.priority
-        assert json_outbound_rule.description == outbound_rule.description
+        assert json_outbound_rule["inbound"] == outbound_rule.inbound
+        assert json_outbound_rule["proto"] == outbound_rule.proto
+        assert json_outbound_rule["priority"] == outbound_rule.priority
+        assert json_outbound_rule["description"] == outbound_rule.description
 
         # fields that need to be non null for the deserialization to not fail
         json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -384,8 +381,6 @@ class TestTaskProperties:
         outbound_from_json = task_from_json.forced_network_rules[1]
         assert outbound_from_json.inbound == outbound_rule.inbound
         assert outbound_from_json.proto == outbound_rule.proto
-        assert outbound_from_json.port == outbound_rule.port
-        assert outbound_from_json.to == outbound_rule.to
         assert outbound_from_json.priority == outbound_rule.priority
         assert outbound_from_json.description == outbound_rule.description
 

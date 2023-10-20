@@ -236,8 +236,7 @@ class Pool(object):
             self._default_retry_settings = RetrySettings.from_json(json_pool["defaultRetrySettings"])
         if 'schedulingType' in json_pool:
             self._scheduling_type = SchedulingType.from_string(json_pool["schedulingType"])
-        if 'forcedNetworkRules' in json_pool:
-            self._forced_network_rules = json_pool["forcedNetworkRules"]
+        self._forced_network_rules = [ForcedNetworkRule.from_json(forced_network_dict) for forced_network_dict in json_pool.get("forcedNetworkRules", [])]
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -293,7 +292,7 @@ class Pool(object):
             json_pool['targetedReservedMachineKey'] = self._targeted_reserved_machine_key
 
         if self._forced_network_rules is not None:
-            json_pool['forcedNetworkRules'] = self._forced_network_rules
+            json_pool['forcedNetworkRules'] = [x.to_json() for x in self._forced_network_rules]
 
         return json_pool
 

@@ -515,8 +515,7 @@ class Task(object):
             self._retry_settings = RetrySettings.from_json(json_task["retrySettings"])
         if 'schedulingType' in json_task:
             self._scheduling_type = SchedulingType.from_string(json_task["schedulingType"])
-        if 'forcedNetworkRules' in json_task:
-            self._forced_network_rules = json_task['forcedNetworkRules']
+        self._forced_network_rules = [ForcedNetworkRule.from_json(forced_network_dict) for forced_network_dict in json_task.get("forcedNetworkRules", [])]
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
@@ -1817,7 +1816,7 @@ class Task(object):
             json_task["targetedReservedMachineKey"] = self._targeted_reserved_machine_key
 
         if self._forced_network_rules is not None:
-            json_task['forcedNetworkRules'] = self._forced_network_rules
+            json_task['forcedNetworkRules'] = [x.to_json() for x in self._forced_network_rules]
 
         return json_task
 
