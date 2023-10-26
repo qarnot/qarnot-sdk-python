@@ -227,8 +227,11 @@ class Bucket(Storage):  # pylint: disable=W0223
         :returns: A list of ObjectSummary resources
 
         """
-        bucket = self._connection.s3resource.Bucket(self._uuid)
-        return bucket.objects.all()
+        try:
+            bucket = self._connection.s3resource.Bucket(self._uuid)
+            return [b for b in bucket.objects.all() if b.key is not None]
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot list files. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
 
     def directory(self, directory=''):
         """List files in a directory of the bucket according to prefix.
@@ -282,6 +285,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         :param dict files: Dictionary of synchronized files
         :param bool verbose: Print information about synchronization operations
         :param str remote: path of the directory on remote node (defaults to *local*)
+        :raises ~qarnot.exceptions.MissingBucketException: the bucket is not on the server
 
         Dictionary key is the remote file path while value is the local file
         path.
@@ -348,53 +352,56 @@ class Bucket(Storage):  # pylint: disable=W0223
         def objectsummarytocomparable(object_):
             return Comparable(object_.key, object_.e_tag, None)
 
-        localfiles = set()
-        if self._connection._sanitize_bucket_paths:
-            remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
-        for name, filepath in files.items():
-            localfiles.add(localtocomparable(name.replace(os.path.sep, '/'), filepath, remote))
+        try:
+            localfiles = set()
+            if self._connection._sanitize_bucket_paths:
+                remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
+            for name, filepath in files.items():
+                localfiles.add(localtocomparable(name.replace(os.path.sep, '/'), filepath, remote))
 
-        remotefiles = set(map(objectsummarytocomparable, self.list_files()))
+            remotefiles = set(map(objectsummarytocomparable, self.list_files()))
 
-        adds = localfiles - remotefiles
-        removes = remotefiles - localfiles
+            adds = localfiles - remotefiles
+            removes = remotefiles - localfiles
 
-        seen_tags = set()  # To avoid copying the same objects multiple times when renaming
-        for file_ in removes:
-            if remote is not None and not file_.name.startswith(remote):
-                continue
-            renames = (x for x in adds if x.e_tag not in seen_tags and x.e_tag == file_.e_tag
-                       and all(rem.name != x.name for rem in remotefiles))
-            for dup in renames:
-                if verbose:
-                    self._connection.logger.info("Copy", file_.name, "to", dup.name)
-                self.copy_file(file_.name, dup.name)
-            if verbose:
-                self._connection.logger.info("Remove:", file_.name)
-            self.delete_file(file_.name)
-            seen_tags.add(file_.e_tag)
-
-        remotefiles = set(map(objectsummarytocomparable, self.list_files()))
-
-        sadds = sorted(adds, key=lambda x: x.e_tag)
-        groupedadds = (list(g) for _, g in itertools.groupby(sadds, lambda x: x.e_tag))
-
-        for entry in groupedadds:
-            try:
-                rem = next(x for x in remotefiles if x.e_tag == entry[0].e_tag)
-                if rem.name == entry[0].name:
+            seen_tags = set()  # To avoid copying the same objects multiple times when renaming
+            for file_ in removes:
+                if remote is not None and not file_.name.startswith(remote):
                     continue
+                renames = (x for x in adds if x.e_tag not in seen_tags and x.e_tag == file_.e_tag
+                           and all(rem.name != x.name for rem in remotefiles))
+                for dup in renames:
+                    if verbose:
+                        self._connection.logger.info("Copy %s to %s" % (file_.name, dup.name))
+                    self.copy_file(file_.name, dup.name)
                 if verbose:
-                    self._connection.logger.info("Copy", rem.name, "to", entry[0].name)
-                self.copy_file(rem.name, entry[0].name)
-            except StopIteration:
-                if verbose:
-                    self._connection.logger.info("Upload:", entry[0].filepath, '->', entry[0].name)
-                self.add_file(entry[0].filepath, entry[0].name)
-            for link in entry[1:]:  # duplicate files
-                if verbose:
-                    self._connection.logger.info("Copy", entry[0].name, "to", link.name)
-                self.copy_file(entry[0].name, link.name)
+                    self._connection.logger.info("Remove: %s" % file_.name)
+                self.delete_file(file_.name)
+                seen_tags.add(file_.e_tag)
+
+            remotefiles = set(map(objectsummarytocomparable, self.list_files()))
+
+            sadds = sorted(adds, key=lambda x: x.e_tag)
+            groupedadds = (list(g) for _, g in itertools.groupby(sadds, lambda x: x.e_tag))
+
+            for entry in groupedadds:
+                try:
+                    rem = next(x for x in remotefiles if x.e_tag == entry[0].e_tag)
+                    if rem.name == entry[0].name:
+                        continue
+                    if verbose:
+                        self._connection.logger.info("Copy %s to %s" % (rem.name, entry[0].name))
+                    self.copy_file(rem.name, entry[0].name)
+                except StopIteration:
+                    if verbose:
+                        self._connection.logger.info("Upload: %s -> %s" % (entry[0].filepath, entry[0].name))
+                    self.add_file(entry[0].filepath, entry[0].name)
+                for link in entry[1:]:  # duplicate files
+                    if verbose:
+                        self._connection.logger.info("Copy %s to %s" % (entry[0].name, link.name))
+                    self.copy_file(entry[0].name, link.name)
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot sync files. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
 
     def add_string(self, string, remote):
         """Add a string on the storage.
@@ -416,14 +423,21 @@ class Bucket(Storage):  # pylint: disable=W0223
             file_ = local_or_file
         dest = remote or os.path.basename(file_.name)
 
-        self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
-        if tobeclosed:
-            file_.close()
+        try:
+            self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot add string. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
+        finally:
+            if tobeclosed:
+                file_.close()
 
     @_util.copy_docs(Storage.get_all_files)
     def get_all_files(self, output_dir, progress=None):
-        list_files_only = [x for x in self.list_files() if not x.key.endswith('/')]
-        list_directories_only = [x for x in self.list_files() if x.key.endswith('/')]
+        try:
+            list_files_only = [x for x in self.list_files() if not x.key.endswith('/')]
+            list_directories_only = [x for x in self.list_files() if x.key.endswith('/')]
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot get files. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
 
         for directory in list_directories_only:
             if not os.path.isdir(os.path.join(output_dir, directory.key.lstrip('/'))):
@@ -465,11 +479,14 @@ class Bucket(Storage):  # pylint: disable=W0223
 
     @_util.copy_docs(Storage.copy_file)
     def copy_file(self, source, dest):
-        copy_source = {
-            'Bucket': self._uuid,
-            'Key': source
-        }
-        return self._connection.s3client.copy_object(CopySource=copy_source, Bucket=self._uuid, Key=dest)
+        try:
+            copy_source = {
+                'Bucket': self._uuid,
+                'Key': source
+            }
+            return self._connection.s3client.copy_object(CopySource=copy_source, Bucket=self._uuid, Key=dest)
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot copy file {} to {} from bucket {}. Bucket not found.".format(source, dest, err.response['Error']['BucketName'])) from err
 
     @deprecation.deprecated(deprecated_in="2.6.0", removed_in="3.0",
                             current_version=__version__,  # type: ignore
@@ -490,14 +507,20 @@ class Bucket(Storage):  # pylint: disable=W0223
             if hasattr(remote, 'read'):
                 shutil.copyfileobj(remote, data)
             else:
-                self._connection.s3client.download_fileobj(self._uuid, remote, data)
+                try:
+                    self._connection.s3client.download_fileobj(self._uuid, remote, data)
+                except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+                    raise MissingBucketException("Cannot download file {} from bucket {}. Bucket not found.".format(remote, err.response['Error']['BucketName'])) from err
         return local
 
     @_util.copy_docs(Storage.delete_file)
     def delete_file(self, remote):
-        if self._connection._sanitize_bucket_paths:
-            remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
-        self._connection.s3client.delete_object(Bucket=self._uuid, Key=remote)
+        try:
+            if self._connection._sanitize_bucket_paths:
+                remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
+            self._connection.s3client.delete_object(Bucket=self._uuid, Key=remote)
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot delete file {} from bucket {}. Bucket not found.".format(remote, err.response['Error']['BucketName'])) from err
 
     @property
     def uuid(self):

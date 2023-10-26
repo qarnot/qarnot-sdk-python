@@ -24,6 +24,7 @@ from typing import Dict, Optional, Union, List, Any, Callable
 
 from qarnot.retry_settings import RetrySettings
 from qarnot.forced_network_rule import ForcedNetworkRule
+from qarnot.secrets import SecretsAccessRights
 
 from . import get_url, raise_on_error, _util
 from .status import Status
@@ -126,6 +127,7 @@ class Task(object):
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
 
+        self._secrets_access_rights: SecretsAccessRights = SecretsAccessRights()
         self._scheduling_type = scheduling_type
         self._targeted_reserved_machine_key: str = None
         self._dependentOn: List[Uuid] = []
@@ -467,6 +469,9 @@ class Task(object):
         if 'constants' in json_task:
             for constant in json_task['constants']:
                 self._constants[constant.get('key')] = constant.get('value')
+
+        if "secretsAccessRights" in json_task:
+            self._secrets_access_rights = SecretsAccessRights.from_json(json_task["secretsAccessRights"])
 
         self._uuid = json_task['uuid']
         self._state = json_task['state']
@@ -1284,6 +1289,31 @@ class Task(object):
         self._constants = value
 
     @property
+    def secrets_access_rights(self):
+        """:type: :class:`~qarnot.secrets.SecretsAccessRights`
+        :getter: Returns the description of the secrets this task will have access to when running.
+        :setter: set the secrets this task will have access to when running.
+
+        Secrets can be accessible either by exact match on the key or by using a prefix
+        in order to match all the secrets starting with said prefix.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._secrets_access_rights
+
+    @secrets_access_rights.setter
+    def secrets_access_rights(self, value: SecretsAccessRights):
+        """Setter for secrets access rights
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        self._secrets_access_rights = value
+
+    @property
     def constraints(self):
         """:type: dictionary{:class:`str` : :class:`str`}
         :getter: Returns this task's constraints dictionary.
@@ -1817,6 +1847,9 @@ class Task(object):
 
         if self._forced_network_rules is not None:
             json_task['forcedNetworkRules'] = [x.to_json() for x in self._forced_network_rules]
+
+        if self._secrets_access_rights:
+            json_task["secretsAccessRights"] = self._secrets_access_rights.to_json()
 
         return json_task
 

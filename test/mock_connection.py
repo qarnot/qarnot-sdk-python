@@ -25,6 +25,13 @@ class PutRequest:
         self.kwargs = kwargs
 
 
+class DeleteRequest:
+    def __init__(self, uri, body, kwargs):
+        self.uri = uri
+        self.body = body
+        self.kwargs = kwargs
+
+
 class GetRequest:
     def __init__(self, uri):
         self.uri = uri
@@ -86,6 +93,14 @@ class MockConnection:
         else:
             return MockResponse(200)
 
+    def _delete(self, url, json=None, **kwargs):
+        self.requests.append(DeleteRequest(url, json, kwargs))
+        if len(self._responses) > 0:
+            resp = self._responses[0]
+            self._responses = self._responses[1:]
+            return resp
+        else:
+            return MockResponse(200)
 
     def retrieve_pool(self, uuid):
         pool = Pool(self, "name", "profile", 2, "shortname")

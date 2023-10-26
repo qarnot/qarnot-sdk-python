@@ -144,7 +144,11 @@ def get_sanitized_bucket_path(path: str, show_warning: bool = True):
 def get_error_message_from_http_response(response: Response, message_is_status_code_if_null: bool = False) -> str:
     error_message = ""
     try:
-        error_message = response.json()['message']
+        error_response = response.json()
+        if 'message' in error_response:
+            error_message = error_response['message']
+        elif 'error' in error_response:
+            error_message = error_response['error']
     except (JSONDecodeError, simpleJsonDecodeError):
         error_message = response.text
     if (error_message is None or error_message == "" or len(error_message) < 1) and message_is_status_code_if_null:

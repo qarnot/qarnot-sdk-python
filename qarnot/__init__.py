@@ -16,7 +16,7 @@
 # limitations under the License.
 
 
-from .exceptions import QarnotGenericException, UnauthorizedException
+from .exceptions import QarnotGenericException, SecretConflictException, SecretNotFoundException, UnauthorizedException
 from ._util import get_error_message_from_http_response
 
 __all__ = ["task", "connection", "bucket", "pool",
@@ -33,6 +33,13 @@ def raise_on_error(response):
             raise QarnotGenericException(get_error_message_from_http_response(response, True))
         except ValueError as value:
             raise QarnotGenericException(response.text) from value
+
+
+def raise_on_secrets_specific_error(response):
+    if response.status_code == 404:
+        raise SecretNotFoundException()
+    if response.status_code == 409:
+        raise SecretConflictException()
 
 
 def get_url(key, **kwargs):
@@ -69,6 +76,8 @@ def get_url(key, **kwargs):
         'pool stderr': '/pools/{uuid}/stderr',  # GET -> pool stderr
         'pool instance stdout': '/pools/{uuid}/stdout/{instanceId}',  # GET -> pool instance stdout
         'pool instance stderr': '/pools/{uuid}/stderr/{instanceId}',  # GET -> pool instance stderr
+        'secrets data': '/secrets-manager/data/{secret_key}',  # GET -> get secret , PUT -> create secret, PATCH -> update secret, DELETE -> delete secret
+        'secrets search': '/secrets-manager/search/{secret_prefix}',  # GET -> lists secrets starting with prefix
         'user': '/info',  # GET -> user info
         'profiles': '/profiles',  # GET -> profiles list
         'profile details': '/profiles/{profile}',  # GET -> profile details
@@ -84,3 +93,4 @@ __version__ = get_versions()['version']  # type: ignore
 del get_versions
 
 from .connection import Connection  # noqa
+from .secrets import Secrets  # noqa

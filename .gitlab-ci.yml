@@ -6,7 +6,7 @@ stages:
 
 variables:
   MAKEFILE_PATH: $CI_PROJECT_DIR/build/Makefile
-  PYTHON_IMAGE: python:3.10-alpine3.15
+  PYTHON_IMAGE_VERSION: "3.10"
   SAMPLES_BRANCH: "master"
 
 # Other possible variables:
@@ -19,7 +19,7 @@ variables:
 #   - STORAGE_ENDPOINT for the storage api endpoint
 
 default:
-  image: $PYTHON_IMAGE
+  image: python:$PYTHON_IMAGE_VERSION
 
 
 workflow:
@@ -59,14 +59,17 @@ cache:
 
 .prepare-python-env:
   before_script:
+    - python3 --version
     - if ! [[ -d venv ]]; then python3 -m venv venv; fi;
     - source venv/bin/activate
     - pip3 install -r requirements.txt
     - pip3 install -r $EXTRA_REQUIREMENTS_FILE
 
-.install_make_command:
-  before_script:
-    - apk add g++ && apk add make
+.run_multiple_python_version: &multiple_python_version
+  parallel:
+    matrix:
+      - PYTHON_IMAGE_VERSION: ['3.10', '3.11', '3.12', 'latest']
+
 
 
 # --- Building & Linting --- #
@@ -74,14 +77,12 @@ cache:
 # There's no building for a python app
 
 lint_python_sdk:
+  <<: *multiple_python_version
   stage: lint
-  # rules:
-  #   - !reference [.default_rules, rules]
   variables:
     EXTRA_REQUIREMENTS_FILE: requirements-lint.txt
   before_script:
     - !reference [.prepare-python-env, before_script]
-    - !reference [.install_make_command, before_script]
   script:
     - make -f $MAKEFILE_PATH lint
   allow_failure: true # to have only a warning and still the tests run even if there is an unfortunate missing whitespace
@@ -90,6 +91,7 @@ lint_python_sdk:
 # --- Testing & Coverage --- #
 
 unit_tests_python_sdk:
+  <<: *multiple_python_version
   stage: test
   needs:
     - job: lint_python_sdk
@@ -121,7 +123,7 @@ trigger_samples:
   rules:
     - !reference [.samples_rules, rules]
   variables:
-    PYTHON_IMAGE: python:3.10
+    PYTHON_IMAGE: python:$PYTHON_IMAGE_VERSION
     TRIGGER_SOURCE: "sdk-python"
     PYTHON_SDK_BRANCH_OR_COMMIT: "$CI_COMMIT_SHA"
     SAMPLES_CONF_API_URL: $API_ENDPOINT
@@ -136,6 +138,7 @@ trigger_samples:
 # --- Packaging --- #
 
 package-python-sdk:
+  <<: *multiple_python_version
   stage: package
   rules:
     # Run pipelines on tags
@@ -166,7 +169,6 @@ generate-doc-python-sdk:
     EXTRA_REQUIREMENTS_FILE: requirements-doc.txt
   before_script:
     - !reference [.prepare-python-env, before_script]
-    - !reference [.install_make_command, before_script]
   script:
     - make -f $MAKEFILE_PATH doc
   artifacts:

@@ -1,3 +1,4 @@
+import copy
 import uuid
 import pytest
 import qarnot
@@ -11,6 +12,7 @@ import datetime
 from qarnot.privileges import Privileges
 from qarnot.retry_settings import RetrySettings
 from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
+from qarnot.secrets import SecretAccessRightByPrefix, SecretAccessRightBySecret, SecretsAccessRights
 from .mock_connection import MockConnection, PatchRequest, none_function
 from .mock_pool import default_json_pool
 
@@ -210,6 +212,76 @@ class TestPoolProperties:
         pool_from_json._update(json_pool)
         assert pool_from_json.privileges is not None
         assert pool_from_json.privileges._exportApiAndStorageCredentialsInEnvironment is True
+
+    def test_pool_secrets_access_rights_are_serialized_correctly(self):
+        pool = Pool(self.conn, "pool-secrets-access-rights-serialization", "profile")
+        
+        secrets = SecretsAccessRights()
+        secrets.add_secret_by_key("some key")
+        secrets.add_secret_by_key("some/other/key")
+        secrets.add_secret_by_prefix("some/prefix")
+        secrets.add_secret_by_prefix("another/prefix")
+        pool.secrets_access_rights = secrets
+
+        json_pool = pool._to_json()
+        assert "secretsAccessRights" in json_pool
+        assert "bySecret" in json_pool["secretsAccessRights"]
+        assert "byPrefix" in json_pool["secretsAccessRights"]
+        assert len(json_pool['secretsAccessRights']["bySecret"]) == 2
+        assert {"key": "some key"} in json_pool['secretsAccessRights']["bySecret"]
+        assert {"key": "some/other/key"} in json_pool['secretsAccessRights']["bySecret"]
+
+        assert len(json_pool['secretsAccessRights']["byPrefix"]) == 2
+        assert {"prefix": "some/prefix"} in json_pool['secretsAccessRights']["byPrefix"]
+        assert {"prefix": "another/prefix"} in json_pool['secretsAccessRights']["byPrefix"]
+
+
+    @pytest.mark.parametrize("json", [
+        {
+            "bySecret": [
+                {"key": "keyOne"},
+                {"key": "another/key"},
+            ],
+            "byPrefix": []
+        } ,
+        {
+            "bySecret": [],
+            "byPrefix": [
+                {"prefix": "prefixOne"},
+                {"prefix": "another/prefix"},
+            ]
+        },
+        {
+            "bySecret": [
+                {"key": "keyOne"},
+                {"key": "another/key"},
+            ],
+            "byPrefix": [
+                {"prefix": "prefixOne"},
+                {"prefix": "another/prefix"},
+            ]
+        }
+    ])
+    def test_task_secrets_access_rights_are_deserialized_correctly(self, json):
+        pool = Pool(self.conn, "pool-secrets-access-rights-serialization", "profile")
+
+        pool_json = copy.deepcopy(default_json_pool)
+        pool_json.update({
+            "secretsAccessRights": json
+        })
+        pool._update(pool_json)
+
+        by_secrets = [ SecretAccessRightBySecret(value["key"]) for value in json["bySecret"]]
+        by_prefix = [ SecretAccessRightByPrefix(value["prefix"]) for value in json["byPrefix"]]
+
+        assert pool.secrets_access_rights is not None
+        assert len(pool.secrets_access_rights._by_secret) == len(by_secrets)
+        assert len(pool.secrets_access_rights._by_prefix) == len(by_prefix)
+        assert all(access_by_secret in pool.secrets_access_rights._by_secret for access_by_secret in by_secrets)
+        assert all(access_by_prefix in pool.secrets_access_rights._by_prefix for access_by_prefix in by_prefix)
+
+        assert SecretAccessRightBySecret("junk key") not in pool.secrets_access_rights._by_secret
+        assert SecretAccessRightByPrefix("junk prefix") not in pool.secrets_access_rights._by_prefix
 
     def test_pool_retry_settings(self):
         pool = Pool(self.conn, "pool-name", "profile")

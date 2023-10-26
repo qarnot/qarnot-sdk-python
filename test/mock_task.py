@@ -121,6 +121,10 @@ default_json_task: dict = {
             "value":  "python3 launch.py"
         }
     ],
+    "secretsAccessRights": {
+        "bySecret": [],
+        "byPrefix": []
+    },
     "tags":  [
     ],
     "dependencies":  None,

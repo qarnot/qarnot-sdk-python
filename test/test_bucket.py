@@ -1,6 +1,5 @@
 import boto3
 import hashlib
-import moto
 import os.path
 import qarnot
 
@@ -8,6 +7,13 @@ from pathlib import Path
 from qarnot.bucket import Bucket
 from unittest import TestCase
 from unittest.mock import patch, Mock
+
+try:
+    from moto import mock_aws
+except ImportError:
+    from moto import mock_s3 as mock_aws
+
+from qarnot.exceptions import MissingBucketException
 
 
 
@@ -79,7 +85,7 @@ class BucketWithCopyCounter(Bucket):
 # ================================== Tests using Moto ==================================
 class TestBucketPublicMethodsMoto:
 
-    @moto.mock_s3
+    @mock_aws
     def test_sync_files_avoid_unnecessary_copies(self, tmp_path):
         # cf QNET-5274
         bucket_name = "dolly"
@@ -112,3 +118,171 @@ class TestBucketPublicMethodsMoto:
         # Check that there were no unnecessary copies performed
         assert bucket._nbr_of_copies == 2, "The copy method should have been called only twice\
                                             ({} calls here)".format(bucket._nbr_of_copies)
+
+class TestBucketExceptionHandling(TestCase):
+
+    @mock_aws
+    def test_missing_bucket_at_deletion(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure deletion of a missing bucket raises the appropriate exception
+        with self.assertRaises(MissingBucketException):
+            bucket.delete()
+
+    @mock_aws
+    def test_missing_bucket_when_adding_file(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure trying to add file of a missing bucket raises the appropriate exception
+        with self.assertRaises(MissingBucketException):
+            bucket.add_string("ost in the vacuum", "remote")
+        with open("fileToAdd", "w") as f:
+            with self.assertRaises(MissingBucketException):
+                bucket.add_file(f.name, "remote")
+        os.remove("fileToAdd")
+
+    @mock_aws
+    def test_missing_bucket_when_listing_or_downloading_files(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure trying to get files of a missing bucket raises the appropriate exception
+        with self.assertRaises(MissingBucketException):
+            bucket.get_all_files("")
+        with self.assertRaises(MissingBucketException):
+            bucket.list_files()
+
+    @mock_aws
+    def test_missing_bucket_when_downloading_file(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        bucket.add_string("Je vais perdre la bucktête", "remote")
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure trying to get file of a missing bucket raises the appropriate exception
+        with self.assertRaises(MissingBucketException):
+            bucket.get_file("remote")
+
+    @mock_aws
+    def test_missing_bucket_when_copying_file(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        bucket.add_string("Je vais perdre la bucktête", "remote")
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure trying to get file of a missing bucket raises the appropriate exception
+        with self.assertRaises(MissingBucketException):
+            bucket.copy_file("remote", "destination")
+
+    @mock_aws
+    def test_missing_bucket_when_syncing_files(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure syncing of files in a missing bucket raises the appropriate exception
+        with open("newFile", "w") as f:
+            files = {}
+            files[f.name] = f.name
+            with self.assertRaises(MissingBucketException):
+                bucket.sync_files(files)
+
+    @mock_aws
+    def test_missing_bucket_at_file_deletion(self):
+
+        # Mock S3 client and resource
+        q_conn = mock_connection_base()
+        q_conn.s3client = boto3.client("s3")
+        q_conn.s3resource = boto3.resource('s3')
+
+        # Create bucket object from qarnot api and ensure s3 bucket is created
+        bucket = Bucket(q_conn, "delete-bucket-test", True)
+        bucket.add_string("Je vais perdre la bucktête", "remote")
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is not None
+
+        # Delete bucket and ensure is removed from s3
+        bucket.delete()
+        s3bucket = q_conn.s3resource.Bucket(bucket._uuid)
+        assert s3bucket.creation_date is None
+
+        # Ensure deletion of a missing bucket raises the appropriate exception
+        with self.assertRaises(MissingBucketException):
+            bucket.delete_file("remote")

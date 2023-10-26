@@ -30,7 +30,9 @@ __all__ = ['QarnotException',
            'NotEnoughCreditsException',
            'MissingBucketException',
            'MaxJobException',
-           'MissingJobException']
+           'MissingJobException',
+           'SecretNotFoundException',
+           'SecretConflictException']
 
 
 class QarnotException(Exception):
@@ -93,3 +95,11 @@ class MissingJobException(Exception):
 
 class MaxJobException(Exception):
     """Max number of jobs reached."""
+
+
+class SecretNotFoundException(Exception):
+    """Requested secret was not found."""
+
+
+class SecretConflictException(Exception):
+    """Secret already exists."""

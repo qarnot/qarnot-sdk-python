@@ -8,6 +8,7 @@ from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.helper import Log
 from qarnot.retry_settings import RetrySettings
 from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
+from qarnot.secrets import SecretAccessRightBySecret, SecretAccessRightByPrefix, SecretsAccessRights
 
 from qarnot.task import Task
 from qarnot.privileges import Privileges
@@ -331,6 +332,75 @@ class TestTaskProperties:
         assert isinstance(task_from_json.scheduling_type, ReservedScheduling)
         assert task_from_json.scheduling_type.schedulingType == ReservedScheduling.schedulingType
         assert task.targeted_reserved_machine_key == "reservedMachine"
+
+    def test_task_secrets_access_rights_are_serialized_correctly(self, mock_conn):
+        task = Task(mock_conn, "task-secrets-access-rights-serialization")
+        secrets = SecretsAccessRights()
+        secrets.add_secret_by_key("some key")
+        secrets.add_secret_by_key("some/other/key")
+        secrets.add_secret_by_prefix("some/prefix")
+        secrets.add_secret_by_prefix("another/prefix")
+        task.secrets_access_rights = secrets
+
+        json_task = task._to_json()
+
+        assert "secretsAccessRights" in json_task
+        assert "bySecret" in json_task["secretsAccessRights"]
+        assert "byPrefix" in json_task["secretsAccessRights"]
+        assert len(json_task['secretsAccessRights']["bySecret"]) == 2
+        assert {"key": "some key"} in json_task['secretsAccessRights']["bySecret"]
+        assert {"key": "some/other/key"} in json_task['secretsAccessRights']["bySecret"]
+
+        assert len(json_task['secretsAccessRights']["byPrefix"]) == 2
+        assert {"prefix": "some/prefix"} in json_task['secretsAccessRights']["byPrefix"]
+        assert {"prefix": "another/prefix"} in json_task['secretsAccessRights']["byPrefix"]
+
+    @pytest.mark.parametrize("json", [
+        {
+            "bySecret": [
+                {"key": "keyOne"},
+                {"key": "another/key"},
+            ],
+            "byPrefix": []
+        } ,
+        {
+            "bySecret": [],
+            "byPrefix": [
+                {"prefix": "prefixOne"},
+                {"prefix": "another/prefix"},
+            ]
+        },
+        {
+            "bySecret": [
+                {"key": "keyOne"},
+                {"key": "another/key"},
+            ],
+            "byPrefix": [
+                {"prefix": "prefixOne"},
+                {"prefix": "another/prefix"},
+            ]
+        }
+    ])
+    def test_task_secrets_access_rights_are_deserialized_correctly(self, mock_conn, json):
+        task = Task(mock_conn, "task-secrets-access-rights-deserialization")
+
+        task_json = copy.deepcopy(default_json_task)
+        task_json.update({
+            "secretsAccessRights": json
+        })
+        task._update(task_json)
+
+        by_secrets = [ SecretAccessRightBySecret(value["key"]) for value in json["bySecret"]]
+        by_prefix = [ SecretAccessRightByPrefix(value["prefix"]) for value in json["byPrefix"]]
+
+        assert task.secrets_access_rights is not None
+        assert len(task.secrets_access_rights._by_secret) == len(by_secrets)
+        assert len(task.secrets_access_rights._by_prefix) == len(by_prefix)
+        assert all(access_by_secret in task.secrets_access_rights._by_secret for access_by_secret in by_secrets)
+        assert all(access_by_prefix in task.secrets_access_rights._by_prefix for access_by_prefix in by_prefix)
+
+        assert SecretAccessRightBySecret("junk key") not in task.secrets_access_rights._by_secret
+        assert SecretAccessRightByPrefix("junk prefix") not in task.secrets_access_rights._by_prefix
 
     def test_task_forced_network_rules_serialization(self, mock_conn):
         task = Task(mock_conn, "task-with-forced-network-rules")

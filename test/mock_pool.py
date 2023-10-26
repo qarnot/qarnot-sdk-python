@@ -16,6 +16,10 @@ default_json_pool = {
     "preparationTask":  None,
     "constants":  [
     ],
+    "secretsAccessRights": {
+        "bySecret": [],
+        "byPrefix": []
+    },
     "tags":  [
     ],
     "errors":  [
