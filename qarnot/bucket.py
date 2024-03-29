@@ -242,6 +242,64 @@ class Bucket(Storage):  # pylint: disable=W0223
         bucket = self._connection.s3resource.Bucket(self._uuid)
         return bucket.objects.filter(Prefix=directory)
 
+    def sync_remote_to_local(self, local_directoy, remote_directory=None):
+        """Synchronize a remote directory to a local directory.
+
+        :param str local_directoy: The local directory to use for synchronization
+        :param str remote_directory: path of the directory on remote node (defaults to whole bucket)
+
+        .. warning::
+           Distant changes are reflected on the local filesystem, a file not present on the
+           bucket but in the local directory might be deleted from the local filesystem.
+
+        .. note::
+           The following parameters are used to determine whether
+           synchronization is required :
+
+              * name
+              * size
+              * sha1sum
+        """
+
+        def get_key_for_local(remote_key: str) -> str:
+            if remote_directory:
+                return removeprefix(remote_key, remote_directory).lstrip('/')
+            return remote_key.lstrip('/')
+
+        def removeprefix(target_str: str, prefix: str) -> str:
+            if target_str.startswith(prefix):
+                return target_str[len(prefix):]
+            else:
+                return target_str[:]
+
+        try:
+            if remote_directory:
+                entries = self.directory(remote_directory)
+            else:
+                entries = self.list_files()
+
+            list_files_only = [x for x in entries if not x.key.endswith('/')]
+            list_directories_only = [x for x in entries if x.key.endswith('/')]
+        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
+            raise MissingBucketException("Cannot synchronize. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
+
+        for directory in list_directories_only:
+            if not os.path.isdir(os.path.join(local_directoy, get_key_for_local(directory.key))):
+                os.makedirs(os.path.join(local_directoy, get_key_for_local(directory.key)), exist_ok=True)
+
+        for _, dupes in groupby(sorted(list_files_only, key=attrgetter('e_tag')), attrgetter('e_tag')):
+            file_info = next(dupes)
+            first_file = os.path.join(local_directoy, get_key_for_local(file_info.key))
+            self.get_file(file_info.get()['Body'], local=first_file)  # avoids making a useless HEAD request
+
+            for dupe in dupes:
+                local = os.path.join(local_directoy, get_key_for_local(dupe.key))
+                directory = os.path.dirname(local)
+                if not os.path.exists(directory):
+                    os.makedirs(directory)
+                if (os.path.abspath(os.path.realpath(local)) is not os.path.abspath(os.path.realpath(first_file))):
+                    shutil.copy(first_file, local)
+
     def sync_directory(self, directory, verbose=False, remote=None):
         """Synchronize a local directory with the remote buckets.
 
@@ -433,28 +491,7 @@ class Bucket(Storage):  # pylint: disable=W0223
 
     @_util.copy_docs(Storage.get_all_files)
     def get_all_files(self, output_dir, progress=None):
-        try:
-            list_files_only = [x for x in self.list_files() if not x.key.endswith('/')]
-            list_directories_only = [x for x in self.list_files() if x.key.endswith('/')]
-        except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot get files. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
-
-        for directory in list_directories_only:
-            if not os.path.isdir(os.path.join(output_dir, directory.key.lstrip('/'))):
-                os.makedirs(os.path.join(output_dir, directory.key.lstrip('/')))
-
-        for _, dupes in groupby(sorted(list_files_only, key=attrgetter('e_tag')), attrgetter('e_tag')):
-            file_info = next(dupes)
-            first_file = os.path.join(output_dir, file_info.key.lstrip('/'))
-            self.get_file(file_info.get()['Body'], local=first_file)  # avoids making a useless HEAD request
-
-            for dupe in dupes:
-                local = os.path.join(output_dir, dupe.key.lstrip('/'))
-                directory = os.path.dirname(local)
-                if not os.path.exists(directory):
-                    os.makedirs(directory)
-                if (os.path.abspath(os.path.realpath(local)) is not os.path.abspath(os.path.realpath(first_file))):
-                    shutil.copy(first_file, local)
+        self.sync_remote_to_local(output_dir, None)
 
     @_util.copy_docs(Storage.get_file)
     def get_file(self, remote, local=None, progress=None):

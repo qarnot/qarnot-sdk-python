@@ -1,5 +1,6 @@
 stages:
   - lint
+  - build
   - test
   - trigger
   - package
@@ -8,6 +9,7 @@ variables:
   MAKEFILE_PATH: $CI_PROJECT_DIR/build/Makefile
   PYTHON_IMAGE_VERSION: "3.10"
   SAMPLES_BRANCH: "master"
+  DEPENDABOT_VERSION: latest
 
 # Other possible variables:
 # * for samples:
@@ -24,6 +26,8 @@ default:
 
 workflow:
   rules:
+    # Run scheduled pipelines
+    - if: $CI_PIPELINE_SOURCE == "schedule"
     # Run pipelines triggered from the web UI
     - if: $CI_PIPELINE_SOURCE == "web"
     # Run pipelines when triggered by webhooks or by API calls (for Draft: workaround)
@@ -43,6 +47,22 @@ cache:
   untracked: true
   paths:
     - venv
+
+.default_rules:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $PACKAGE_MANAGER_SET
+      when: never
+    - !reference [workflow, rules]
+
+.dependabot_rules: &dependabot_rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PACKAGE_MANAGER_SET
+
+.dependabot_pip_rules: &dependabot_pip_rules
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule" && $PACKAGE_MANAGER_SET == "pip"
 
 .samples_rules:
   rules:
@@ -76,9 +96,53 @@ cache:
 
 # There's no building for a python app
 
+prepare_dependabot_file:
+  stage: build
+  <<: *dependabot_rules
+  script:
+    - |
+      echo "
+      version: 2
+      updates:
+        open-pull-requests-limit: ${DEPENDABOT_MR_LIMIT:-5}
+        assignees:
+          - ${DEPENDABOT_MR_ASSIGNEE:-'chloe.gourrat'}"  > .gitlab/dependabot-base.yml
+  artifacts:
+    paths:
+      - .gitlab/dependabot-base.yml
+
+.dependabot:
+  image:
+    name: docker.io/andrcuns/dependabot-gitlab-${PACKAGE_MANAGER}:${DEPENDABOT_VERSION}
+    entrypoint: [""]
+  needs:
+    - job: prepare_dependabot_file
+      artifacts: true
+  variables:
+    GIT_STRATEGY: none
+    RAILS_ENV: production
+    SECRET_KEY_BASE: key
+    SETTINGS__GITLAB_URL: $CI_SERVER_URL
+    SETTINGS__STANDALONE: "true"
+    SETTINGS__LOG_COLOR: "true"
+    SETTINGS__LOG_LEVEL: debug
+    SETTINGS__CONFIG_BASE_FILENAME: $CI_PROJECT_DIR/.gitlab/dependabot-base.yml
+  before_script:
+    - cd /home/dependabot/app
+  script:
+    - bundle exec rake "dependabot:update[$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME,$PACKAGE_MANAGER,/]" --trace
+
+pip-dependabot:
+  extends: .dependabot
+  <<: *dependabot_pip_rules
+  variables:
+    PACKAGE_MANAGER: pip
+
 lint_python_sdk:
   <<: *multiple_python_version
   stage: lint
+  rules:
+    - !reference [.default_rules, rules]
   variables:
     EXTRA_REQUIREMENTS_FILE: requirements-lint.txt
   before_script:
@@ -93,6 +157,8 @@ lint_python_sdk:
 unit_tests_python_sdk:
   <<: *multiple_python_version
   stage: test
+  rules:
+    - !reference [.default_rules, rules]
   needs:
     - job: lint_python_sdk
   variables:
@@ -163,6 +229,8 @@ package-python-sdk:
 
 generate-doc-python-sdk:
   stage: package
+  rules:
+    - !reference [.default_rules, rules]
   needs:
     - job: lint_python_sdk
   variables:
@@ -175,3 +243,4 @@ generate-doc-python-sdk:
     paths:
       - doc/_build
     expire_in: 1hour
+

@@ -20,11 +20,6 @@ from http.client import responses
 
 import re
 
-_IS_PY2 = bytes is str
-
-if not _IS_PY2:
-    unicode = str
-
 
 def copy_docs(docs_source):
     def decorator(obj):
@@ -43,7 +38,7 @@ def decode(string, encoding='utf-8'):
 
 def is_string(x):
     """Check if x is a string (bytes or unicode)."""
-    return isinstance(x, (str, unicode))
+    return isinstance(x, (str, bytes))
 
 
 def parse_to_timespan_string(value):
