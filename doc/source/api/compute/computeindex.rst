@@ -12,4 +12,6 @@ Compute
    privileges
    hardware_constraint
    retry_settings
+   scheduling_type
+   secrets
 

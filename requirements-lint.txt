@@ -5,5 +5,5 @@ pylint
 # libraries stubs for lint
 types-requests
 types-simplejson
-boto3-stubs
+boto3-stubs[boto3]
 botocore-stubs

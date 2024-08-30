@@ -23,6 +23,7 @@ from qarnot.secrets import SecretsAccessRights
 
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
+from .forced_constant import ForcedConstant
 from .status import Status
 from .hardware_constraint import HardwareConstraint
 from .scheduling_type import SchedulingType
@@ -77,6 +78,7 @@ class Pool(object):
               with :meth:`qarnot.connection.Connection.retrieve_profile`.
         """
         self._constraints: Dict[str, str] = {}
+        self._forced_constants: Dict[str, ForcedConstant] = {}
         self._labels: Dict[str, str] = {}
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
@@ -252,6 +254,10 @@ class Pool(object):
             {'key': key, 'value': value}
             for key, value in self._constraints.items()
         ]
+        forced_const_list = [
+            value.to_json(key)
+            for key, value in self._forced_constants.items()
+        ]
 
         elastic_dict = {
             "isElastic": self._is_elastic,
@@ -267,6 +273,7 @@ class Pool(object):
             'name': self._name,
             'profile': self._profile,
             'constants': const_list,
+            'forcedConstants': forced_const_list,
             'constraints': constr_list,
             'instanceCount': self._instancecount,
             'tags': self._tags,
@@ -1100,6 +1107,31 @@ class Pool(object):
         self._secrets_access_rights = value
 
     @property
+    def forced_constants(self):
+        """:type: dictionary{:class:`str` : :class:`~qarnot.forced_constant.ForcedConstant`}
+        :getter: Returns this pool's forced constants dictionary.
+        :setter: set the pool's forced constants dictionary.
+
+        Update the forced constants if needed.
+        Forced constants are reserved for internal use.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        return self._forced_constants
+
+    @forced_constants.setter
+    def forced_constants(self, value: Dict[str, "ForcedConstant"]):
+        """Setter for forced_constants
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+
+        self._forced_constants = value
+
+    @property
     def forced_network_rules(self):
         """:type: list{:class:`~qarnot.forced_network_rule.ForcedNetworkRule`}
         :getter: Returns this pool's forced network rules list.
@@ -1116,7 +1148,7 @@ class Pool(object):
 
     @forced_network_rules.setter
     def forced_network_rules(self, value: List["ForcedNetworkRule"]):
-        """Setter for forced_constants
+        """Setter for forced_network_rules
         """
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched pool")

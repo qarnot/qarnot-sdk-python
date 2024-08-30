@@ -196,7 +196,7 @@ class Connection(object):
 
         user = self.user_info
         session = boto3.session.Session()
-        conf = botocore.config.Config(user_agent=self._version)
+        conf = botocore.config.Config(user_agent=self._version, request_checksum_calculation="when_required")
 
         should_verify_or_certificate_path = True
         if storage_unsafe:

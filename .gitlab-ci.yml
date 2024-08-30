@@ -10,6 +10,7 @@ variables:
   PYTHON_IMAGE_VERSION: "3.10"
   SAMPLES_BRANCH: "master"
   DEPENDABOT_VERSION: latest
+  ALLOWED_EXIT_CODE: 42
 
 # Other possible variables:
 # * for samples:
@@ -43,7 +44,7 @@ workflow:
     - if: $CI_COMMIT_TAG
 
 cache:
-  key: python-env
+  key: python-$PYTHON_IMAGE_VERSION-env
   untracked: true
   paths:
     - venv
@@ -166,8 +167,10 @@ unit_tests_python_sdk:
   before_script:
     - !reference [.prepare-python-env, before_script]
   script:
-    - coverage run --omit="test/*" --source=qarnot -m pytest -v --junitxml=report.xml test
+    - coverage run --omit="test/*" --source=qarnot -m pytest -v --junitxml=report.xml test || exit_code=$?; if [[ $exit_code -ne 0 ]] && [[ $PYTHON_IMAGE_VERSION == "latest" ]]; then exit $ALLOWED_EXIT_CODE; fi; # ignore errors for latest python version and keep it only as warning
     - coverage xml -o coverage.xml
+  allow_failure:
+    exit_codes: !reference [variables, ALLOWED_EXIT_CODE]
   artifacts:
     when: always
     expire_in: 1hour

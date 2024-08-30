@@ -81,7 +81,7 @@ class ForcedNetworkRule(object):
         """Create the forced network rule from json.
 
         :param dict json: Dictionary representing the forced network rule
-        :returns: The created :class:`~qarnot.retry_settings.ForcedNetworkRule`
+        :returns: The created :class:`~qarnot.forced_network_rule.ForcedNetworkRule`
         """
 
         inbound: bool = bool(json["inbound"])

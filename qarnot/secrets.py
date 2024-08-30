@@ -97,7 +97,7 @@ class SecretsAccessRights(object):
 
         :param by_secret: the list of secrets the task will have access to, described using an exact key match
         :type by_secret: `List[~qarnot.secrets.SecretAccessRightBySecret]`
-        :param by_prefix:the list of secrets the task will have access to, described using a prefix key match
+        :param by_prefix: the list of secrets the task will have access to, described using a prefix key match
         :type by_prefix: `List[~qarnot.secrets.SecretAccessRightByPrefix]`
         """
         self._by_secret: List[SecretAccessRightBySecret] = by_secret or []

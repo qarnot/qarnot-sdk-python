@@ -141,6 +141,40 @@ class TestTaskProperties:
         assert "prefix1" == json_bucket["filtering"]["prefixFiltering"]["prefix"]
         assert "prefix2" == json_bucket["resourcesTransformation"]["stripPrefix"]["prefix"]
 
+    @pytest.mark.parametrize("cache_ttl", [1000, None])
+    def test_result_bucket_with_ResultsCacheTTL_to_json(self, mock_conn, cache_ttl):
+        task = Task(mock_conn, "task-with-a-ResultsCacheTTLSec", "profile")
+        resultsCacheTTLSec = cache_ttl
+        bucket = Bucket(mock_conn, "name", False)
+        bucket_copy_with_TTL = bucket.with_cache_ttl(resultsCacheTTLSec)
+        bucket_created_with_TTL = Bucket(mock_conn, "name", False, cacheTTLSec=resultsCacheTTLSec)
+
+        task.results = bucket_created_with_TTL
+        json_task = task._to_json()
+        if cache_ttl is None:
+            assert "ResultsCacheTTLSec" not in json_task
+        else:
+            assert resultsCacheTTLSec == json_task["ResultsCacheTTLSec"]
+
+        task = Task(mock_conn, "task-with-a-ResultsCacheTTLSec", "profile")
+        task.results = bucket_copy_with_TTL
+        json_task = task._to_json()
+        if cache_ttl is None:
+            assert "ResultsCacheTTLSec" not in json_task
+        else:
+            assert resultsCacheTTLSec == json_task["ResultsCacheTTLSec"]
+
+    def test_update_task_with_ResultsCacheTTL_(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        resultsCacheTTLSec = 10000
+        bucket_created_with_TTL = Bucket(mock_conn, "name", False, cacheTTLSec=resultsCacheTTLSec)
+        task.results = bucket_created_with_TTL
+        json_task_with_ResultsCacheTTLSec = default_json_task.copy()
+        json_task_with_ResultsCacheTTLSec["ResultsCacheTTLSec"] = resultsCacheTTLSec
+        task._update(json_task_with_ResultsCacheTTLSec)
+        task_json = task._to_json()
+        assert task_json["ResultsCacheTTLSec"] == resultsCacheTTLSec
+
     def test_bucket_in_task_from_json(self, mock_conn):
         json_bucket = "bucket-name"
         json_task = {

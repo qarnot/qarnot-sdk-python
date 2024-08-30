@@ -19,7 +19,6 @@ from os import makedirs, path
 import time
 import warnings
 import sys
-from enum import Enum
 from typing import Dict, Optional, Union, List, Any, Callable
 
 from qarnot.retry_settings import RetrySettings
@@ -29,6 +28,7 @@ from qarnot.secrets import SecretsAccessRights
 from . import get_url, raise_on_error, _util
 from .status import Status
 from .hardware_constraint import HardwareConstraint
+from .forced_constant import ForcedConstant
 from .scheduling_type import SchedulingType
 from .privileges import Privileges
 from .bucket import Bucket
@@ -457,6 +457,9 @@ class Task(object):
 
         if 'resultBucket' in json_task and json_task['resultBucket']:
             self._result_object_id = json_task['resultBucket']
+
+        if 'ResultsCacheTTLSec' in json_task and self._result_object is not None:
+            self._result_object._cache_ttl_sec = json_task['ResultsCacheTTLSec']
 
         if 'status' in json_task:
             self._status = json_task['status']
@@ -1340,7 +1343,7 @@ class Task(object):
 
     @property
     def forced_constants(self):
-        """:type: dictionary{:class:`str` : :class:`~qarnot.task.ForcedConstant`}
+        """:type: dictionary{:class:`str` : :class:`~qarnot.forced_constant.ForcedConstant`}
         :getter: Returns this task's forced constants dictionary.
         :setter: set the task's forced constants dictionary.
 
@@ -1380,7 +1383,7 @@ class Task(object):
 
     @forced_network_rules.setter
     def forced_network_rules(self, value: List["ForcedNetworkRule"]):
-        """Setter for forced_constants
+        """Setter for forced_network_rules
         """
         if self.uuid is not None:
             raise AttributeError("can't set attribute on a launched task")
@@ -1815,6 +1818,8 @@ class Task(object):
 
         if self._result_object is not None:
             json_task['resultBucket'] = self._result_object.uuid
+            if self._result_object._cache_ttl_sec is not None:
+                json_task['ResultsCacheTTLSec'] = self._result_object._cache_ttl_sec
 
         if self._advanced_range is not None:
             json_task['advancedRanges'] = self._advanced_range
@@ -1975,45 +1980,3 @@ class BulkTaskResponse(object):
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.items())
         else:
             return ', '.join("{0}={1}".format(key, val) for (key, val) in self.__dict__.iteritems())  # pylint: disable=no-member
-
-
-class ForcedConstantAccess(Enum):
-    ReadWrite = "ReadWrite"
-    ReadOnly = "ReadOnly"
-
-
-class ForcedConstant(object):
-    """Forced Constant Information
-
-    .. note:: For internal usage only
-    """
-
-    def __init__(self, forced_value: str, force_export_in_environment: Optional[bool] = None, access: Optional[ForcedConstantAccess] = None):
-        self.forced_value = forced_value
-        """:type: :class:`str`
-
-        Forced value for the constant."""
-
-        self.force_export_in_environment = force_export_in_environment
-        """:type: :class:`bool`
-
-        Whether the constant should be forced in the execution environment or not."""
-
-        self.access = access
-        """:type: :class:`~qarnot.task.ForcedConstantAccess`
-
-        The access level of the constant: ReadOnly or ReadWrite."""
-
-    def to_json(self, name: str):
-        result: Dict[str, Union[str, bool]] = {
-            "constantName": name,
-            "forcedValue": self.forced_value,
-        }
-
-        if self.force_export_in_environment is not None:
-            result["forceExportInEnvironment"] = self.force_export_in_environment
-
-        if self.access is not None:
-            result["access"] = self.access.value
-
-        return result

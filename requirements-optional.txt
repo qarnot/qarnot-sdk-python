@@ -1,2 +1,2 @@
 requests-toolbelt==0.8.0
-progressbar2==4.0.0
+progressbar2==4.5.0
