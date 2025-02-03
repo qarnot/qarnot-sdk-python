@@ -180,7 +180,7 @@ class PrefixResourcesTransformation(AbstractResourcesTransformation):
         :return: The PrefixResourcesTransformation new object
         :rtype: :class:`PrefixResourcesTransformation`
         """
-        return PrefixResourcesTransformation(json["prefix"])
+        return PrefixResourcesTransformation(json.get("prefix"))
 
     def to_json(self) -> object:
         """Get a dict ready to be json packed.

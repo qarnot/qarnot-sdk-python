@@ -14,4 +14,5 @@ Compute
    retry_settings
    scheduling_type
    secrets
+   carbon_facts
 

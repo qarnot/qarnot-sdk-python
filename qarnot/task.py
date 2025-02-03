@@ -21,6 +21,7 @@ import warnings
 import sys
 from typing import Dict, Optional, Union, List, Any, Callable
 
+from qarnot.carbon_facts import CarbonClient, CarbonFacts
 from qarnot.retry_settings import RetrySettings
 from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.secrets import SecretsAccessRights
@@ -283,7 +284,7 @@ class Task(object):
                 raise QarnotGenericException(error_message)
             raise NotEnoughCreditsException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
-        self._uuid = resp.json()['uuid']
+        self._uuid = resp.json().get('uuid')
 
         self._post_submit()
 
@@ -435,74 +436,74 @@ class Task(object):
 
     def _update(self, json_task: Dict) -> None:
         """Update this task from retrieved info."""
-        self._name = json_task['name']
+        self._name = json_task.get('name')
         self._shortname = json_task.get('shortname')
-        self._profile = json_task['profile']
+        self._profile = json_task.get('profile')
         self._pool_uuid = json_task.get('poolUuid')
         self._job_uuid = json_task.get('jobUuid')
         self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
         self._wait_for_pool_resources_synchronization = json_task.get('waitForPoolResourcesSynchronization', None)
 
-        if json_task['runningCoreCount'] is not None:
-            self._running_core_count = json_task['runningCoreCount']
-        if json_task['runningInstanceCount'] is not None:
-            self._running_instance_count = json_task['runningInstanceCount']
+        if json_task.get('runningCoreCount') is not None:
+            self._running_core_count = json_task.get('runningCoreCount')
+        if json_task.get('runningInstanceCount') is not None:
+            self._running_instance_count = json_task.get('runningInstanceCount')
 
-        if 'resourceBuckets' in json_task and json_task['resourceBuckets']:
-            self._resource_object_ids = json_task['resourceBuckets']
+        if 'resourceBuckets' in json_task and json_task.get('resourceBuckets'):
+            self._resource_object_ids = json_task.get('resourceBuckets')
 
-        if 'advancedResourceBuckets' in json_task and json_task['advancedResourceBuckets']:
-            self._resource_object_advanced = json_task['advancedResourceBuckets']
+        if 'advancedResourceBuckets' in json_task and json_task.get('advancedResourceBuckets'):
+            self._resource_object_advanced = json_task.get('advancedResourceBuckets')
 
-        if 'resultBucket' in json_task and json_task['resultBucket']:
-            self._result_object_id = json_task['resultBucket']
+        if 'resultBucket' in json_task and json_task.get('resultBucket'):
+            self._result_object_id = json_task.get('resultBucket')
 
         if 'ResultsCacheTTLSec' in json_task and self._result_object is not None:
-            self._result_object._cache_ttl_sec = json_task['ResultsCacheTTLSec']
+            self._result_object._cache_ttl_sec = json_task.get('ResultsCacheTTLSec')
 
         if 'status' in json_task:
-            self._status = json_task['status']
-        self._creation_date = _util.parse_datetime(json_task['creationDate'])
+            self._status = json_task.get('status')
+        self._creation_date = _util.parse_datetime(json_task.get('creationDate'))
         if 'errors' in json_task:
-            self._errors = [Error(d) for d in json_task['errors']]
+            self._errors = [Error(d) for d in json_task.get('errors')]
         else:
             self._errors = []
 
         if 'constants' in json_task:
-            for constant in json_task['constants']:
+            for constant in json_task.get('constants'):
                 self._constants[constant.get('key')] = constant.get('value')
 
         if "secretsAccessRights" in json_task:
-            self._secrets_access_rights = SecretsAccessRights.from_json(json_task["secretsAccessRights"])
+            self._secrets_access_rights = SecretsAccessRights.from_json(json_task.get("secretsAccessRights"))
 
-        self._uuid = json_task['uuid']
-        self._state = json_task['state']
+        self._uuid = json_task.get('uuid')
+        self._state = json_task.get('state')
         self._tags = json_task.get('tags', None)
         self._upload_results_on_cancellation = json_task.get('uploadResultsOnCancellation', None)
         if 'resultsCount' in json_task:
-            if self._rescount < json_task['resultsCount']:
+            if self._rescount < json_task.get('resultsCount'):
                 self._dirty = True
-            self._rescount = json_task['resultsCount']
+            self._rescount = json_task.get('resultsCount')
 
         if 'resultsBlacklist' in json_task:
-            self._results_blacklist = json_task['resultsBlacklist']
+            self._results_blacklist = json_task.get('resultsBlacklist')
         if 'resultsWhitelist' in json_task:
-            self._results_whitelist = json_task['resultsWhitelist']
+            self._results_whitelist = json_task.get('resultsWhitelist')
         if 'snapshotWhitelist' in json_task:
-            self._snapshot_whitelist = json_task['snapshotWhitelist']
+            self._snapshot_whitelist = json_task.get('snapshotWhitelist')
         if 'snapshotBlacklist' in json_task:
-            self._snapshot_blacklist = json_task['snapshotBlacklist']
+            self._snapshot_blacklist = json_task.get('snapshotBlacklist')
 
         if 'completedInstances' in json_task:
-            self._completed_instances = [CompletedInstance(x) for x in json_task['completedInstances']]
+            self._completed_instances = [CompletedInstance(x) for x in json_task.get('completedInstances')]
         else:
             self._completed_instances = []
 
         if 'autoDeleteOnCompletion' in json_task:
-            self._auto_delete = json_task["autoDeleteOnCompletion"]
+            self._auto_delete = json_task.get("autoDeleteOnCompletion")
         if 'completionTimeToLive' in json_task:
-            self._completion_time_to_live = json_task["completionTimeToLive"]
+            self._completion_time_to_live = json_task.get("completionTimeToLive")
 
         self._previous_state = json_task.get("previousState", None)
         self._state_transition_time = json_task.get("stateTransitionTime", None)
@@ -518,11 +519,11 @@ class Task(object):
         self._default_resources_cache_ttl_sec = json_task.get("defaultResourcesCacheTTLSec", None)
         self._targeted_reserved_machine_key = json_task.get("targetedReservedMachineKey", None)
         if 'privileges' in json_task:
-            self._privileges = Privileges.from_json(json_task["privileges"])
+            self._privileges = Privileges.from_json(json_task.get("privileges"))
         if 'retrySettings' in json_task:
-            self._retry_settings = RetrySettings.from_json(json_task["retrySettings"])
+            self._retry_settings = RetrySettings.from_json(json_task.get("retrySettings"))
         if 'schedulingType' in json_task:
-            self._scheduling_type = SchedulingType.from_string(json_task["schedulingType"])
+            self._scheduling_type = SchedulingType.from_string(json_task.get("schedulingType"))
         self._forced_network_rules = [ForcedNetworkRule.from_json(forced_network_dict) for forced_network_dict in json_task.get("forcedNetworkRules", [])]
 
     @classmethod
@@ -534,11 +535,11 @@ class Task(object):
         :returns: The created :class:`~qarnot.task.Task`.
         """
         if 'instanceCount' in json_task:
-            instance_count_or_range = json_task['instanceCount']
+            instance_count_or_range = json_task.get('instanceCount')
         else:
-            instance_count_or_range = json_task['advancedRanges']
+            instance_count_or_range = json_task.get('advancedRanges')
         new_task = cls(connection,
-                       json_task['name'],
+                       json_task.get('name'),
                        json_task.get('profile') or json_task.get('poolUuid'),
                        instance_count_or_range)
         new_task._update(json_task)
@@ -936,6 +937,25 @@ class Task(object):
 
         raise_on_error(resp)
         return resp.text
+
+    def carbon_facts(self, datacenter_name: str = None) -> CarbonFacts:
+        """Get the carbon facts of the task
+
+        :param datacenter_name: the name of the datacenter used as reference to compare carbon facts.
+        :type datacenter_name: `str`
+
+        :rtype: :class:`~qarnot.carbon_facts.CarbonFacts`
+        :returns: The carbon facts of the task.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
+        """
+        if self._uuid is None:
+            return None
+
+        carbon_client = CarbonClient(self._connection, datacenter_name)
+        return carbon_client.get_task_carbon_facts(self.uuid)
 
     @property
     def uuid(self):
@@ -1893,42 +1913,42 @@ class CompletedInstance(object):
     .. note:: Read-only class
     """
     def __init__(self, json: Dict[str, Any]):
-        self.instance_id = json['instanceId']
+        self.instance_id = json.get('instanceId')
         """:type: :class:`int`
 
         Instance number."""
 
-        self.state = json['state']
+        self.state = json.get('state')
         """:type: :class:`str`
 
         Instance final state."""
 
-        self.wall_time_sec = json['wallTimeSec']
+        self.wall_time_sec = json.get('wallTimeSec')
         """:type: :class:`float`
 
         Instance wall time in seconds."""
 
-        self.exec_time_sec = json['execTimeSec']
+        self.exec_time_sec = json.get('execTimeSec')
         """:type: :class:`float`
 
         Execution time in seconds."""
 
-        self.exec_time_sec_ghz = json['execTimeSecGHz']
+        self.exec_time_sec_ghz = json.get('execTimeSecGHz')
         """:type: :class:`float`
 
         Execution time in seconds GHz."""
 
-        self.peak_memory_mb = json['peakMemoryMB']
+        self.peak_memory_mb = json.get('peakMemoryMB')
         """:type: :class:`int`
 
         Peak memory size in MB."""
 
-        self.average_ghz = json['averageGHz']
+        self.average_ghz = json.get('averageGHz')
         """:type: :class:`float`
 
         Instance execution time GHz"""
 
-        self.results = json['results']
+        self.results = json.get('results')
         """:type: :class:list(`str`)
 
           Instance produced results"""
@@ -1952,17 +1972,17 @@ class BulkTaskResponse(object):
     """
 
     def __init__(self, json: Dict[str, Any]):
-        self.status_code = json['statusCode']
+        self.status_code = json.get('statusCode')
         """:type: :class:`int`
 
         Status code."""
 
-        self.uuid = json['uuid']
+        self.uuid = json.get('uuid')
         """:type: :class:`str`
 
         Created Task Uuid."""
 
-        self.message = json['message']
+        self.message = json.get('message')
         """:type: :class:`str`
 
         User friendly error message."""

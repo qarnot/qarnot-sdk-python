@@ -17,6 +17,7 @@ import time
 import warnings
 from typing import Dict, List, Optional
 
+from qarnot.carbon_facts import CarbonClient, CarbonFacts
 from qarnot.retry_settings import RetrySettings
 from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.secrets import SecretsAccessRights
@@ -162,46 +163,46 @@ class Pool(object):
         :returns: The created :class:`~qarnot.pool.Pool`.
         """
         new_pool = cls(connection,
-                       json_pool['name'],
-                       json_pool['profile'],
-                       json_pool['instanceCount'])
+                       json_pool.get('name'),
+                       json_pool.get('profile'),
+                       json_pool.get('instanceCount'))
         new_pool._update(json_pool)
         new_pool._is_summary = is_summary
         return new_pool
 
     def _update(self, json_pool):
         """Update this pool from retrieved info."""
-        self._name = json_pool['name']
+        self._name = json_pool.get('name')
         self._shortname = json_pool.get('shortname')
-        self._profile = json_pool['profile']
-        self._instancecount = json_pool['instanceCount']
+        self._profile = json_pool.get('profile')
+        self._instancecount = json_pool.get('instanceCount')
 
         if json_pool.get('runningCoreCount') is not None:
-            self._running_core_count = json_pool['runningCoreCount']
+            self._running_core_count = json_pool.get('runningCoreCount')
         if json_pool.get('runningInstanceCount') is not None:
-            self._running_instance_count = json_pool['runningInstanceCount']
+            self._running_instance_count = json_pool.get('runningInstanceCount')
 
         if 'errors' in json_pool:
-            self._errors = [Error(d) for d in json_pool['errors']]
+            self._errors = [Error(d) for d in json_pool.get('errors')]
         else:
             self._errors = []
 
-        if 'resourceBuckets' in json_pool and json_pool['resourceBuckets'] is not None:
-            self._resource_object_ids = json_pool['resourceBuckets']
+        if 'resourceBuckets' in json_pool and json_pool.get('resourceBuckets') is not None:
+            self._resource_object_ids = json_pool.get('resourceBuckets')
 
-        if 'advancedResourceBuckets' in json_pool and json_pool['advancedResourceBuckets']:
-            self._resource_object_advanced = json_pool['advancedResourceBuckets']
+        if 'advancedResourceBuckets' in json_pool and json_pool.get('advancedResourceBuckets'):
+            self._resource_object_advanced = json_pool.get('advancedResourceBuckets')
 
         if 'status' in json_pool:
-            self._status = json_pool['status']
-        self._creation_date = _util.parse_datetime(json_pool['creationDate'])
+            self._status = json_pool.get('status')
+        self._creation_date = _util.parse_datetime(json_pool.get('creationDate'))
 
         if 'constants' in json_pool:
-            for constant in json_pool['constants']:
+            for constant in json_pool.get('constants'):
                 self._constants[constant.get('key')] = constant.get('value')
 
-        self._uuid = json_pool['uuid']
-        self._state = json_pool['state']
+        self._uuid = json_pool.get('uuid')
+        self._state = json_pool.get('state')
         self._preparation_task = json_pool.get('preparationTask')
         self._tags = json_pool.get('tags', None)
         self._tasks_wait_for_synchronization = json_pool.get('taskDefaultWaitForPoolResourcesSynchronization', False)
@@ -210,19 +211,19 @@ class Pool(object):
         self._queued_or_running_task_instances_count = json_pool.get("queuedOrRunningTaskInstancesCount", 0.0)
 
         if 'autoDeleteOnCompletion' in json_pool:
-            self._auto_delete = json_pool["autoDeleteOnCompletion"]
+            self._auto_delete = json_pool.get("autoDeleteOnCompletion")
         if 'completionTimeToLive' in json_pool:
-            self._completion_time_to_live = json_pool["completionTimeToLive"]
+            self._completion_time_to_live = json_pool.get("completionTimeToLive")
 
         if 'elasticProperty' in json_pool:
-            elasticProperty = json_pool["elasticProperty"]
-            self._is_elastic = elasticProperty["isElastic"]
-            self._elastic_maximum_slots = elasticProperty["maxTotalSlots"]
-            self._elastic_minimum_slots = elasticProperty["minTotalSlots"]
-            self._elastic_minimum_idle_slots = elasticProperty["minIdleSlots"]
-            self._elastic_minimum_idle_time = elasticProperty["minIdleTimeSeconds"]
-            self._elastic_resize_factor = elasticProperty["rampResizeFactor"]
-            self._elastic_resize_period = elasticProperty["resizePeriod"]
+            elasticProperty = json_pool.get("elasticProperty")
+            self._is_elastic = elasticProperty.get("isElastic")
+            self._elastic_maximum_slots = elasticProperty.get("maxTotalSlots")
+            self._elastic_minimum_slots = elasticProperty.get("minTotalSlots")
+            self._elastic_minimum_idle_slots = elasticProperty.get("minIdleSlots")
+            self._elastic_minimum_idle_time = elasticProperty.get("minIdleTimeSeconds")
+            self._elastic_resize_factor = elasticProperty.get("rampResizeFactor")
+            self._elastic_resize_period = elasticProperty.get("resizePeriod")
 
         self._previous_state = json_pool.get('previousState', None)
         self._state_transition_time = json_pool.get('stateTransitionTime', None)
@@ -235,14 +236,14 @@ class Pool(object):
         self._default_resources_cache_ttl_sec = json_pool.get("defaultResourcesCacheTTLSec", None)
         self._targeted_reserved_machine_key = json_pool.get("targetedReservedMachineKey", None)
         if 'privileges' in json_pool:
-            self._privileges = Privileges.from_json(json_pool["privileges"])
+            self._privileges = Privileges.from_json(json_pool.get("privileges"))
         if 'defaultRetrySettings' in json_pool:
-            self._default_retry_settings = RetrySettings.from_json(json_pool["defaultRetrySettings"])
+            self._default_retry_settings = RetrySettings.from_json(json_pool.get("defaultRetrySettings"))
         if 'schedulingType' in json_pool:
-            self._scheduling_type = SchedulingType.from_string(json_pool["schedulingType"])
+            self._scheduling_type = SchedulingType.from_string(json_pool.get("schedulingType"))
         self._forced_network_rules = [ForcedNetworkRule.from_json(forced_network_dict) for forced_network_dict in json_pool.get("forcedNetworkRules", [])]
         if 'secretsAccessRights' in json_pool:
-            self._secrets_access_rights = SecretsAccessRights.from_json(json_pool["secretsAccessRights"])
+            self._secrets_access_rights = SecretsAccessRights.from_json(json_pool.get("secretsAccessRights"))
 
     def _to_json(self):
         """Get a dict ready to be json packed from this pool."""
@@ -339,7 +340,7 @@ class Pool(object):
         elif resp.status_code == 402:
             raise NotEnoughCreditsException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
-        self._uuid = resp.json()['uuid']
+        self._uuid = resp.json().get('uuid')
         self.update(True)
 
     def update(self, flushcache=False):
@@ -615,6 +616,25 @@ class Pool(object):
 
         raise_on_error(resp)
         return resp.text
+
+    def carbon_facts(self, datacenter_name: str = None) -> CarbonFacts:
+        """Get the carbon facts of the pool
+
+        :param datacenter_name: the name of the datacenter used as reference to compare carbon facts.
+        :type datacenter_name: `str`
+
+        :rtype: :class:`~qarnot.carbon_facts.CarbonFacts`
+        :returns: The carbon facts of the pool.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
+        """
+        if self._uuid is None:
+            return None
+
+        carbon_client = CarbonClient(self._connection, datacenter_name)
+        return carbon_client.get_pool_carbon_facts(self.uuid)
 
     @property
     def uuid(self):
@@ -1013,7 +1033,7 @@ class Pool(object):
             self.update()
 
         if self._preparation_task:
-            return self._preparation_task["commandLine"]
+            return self._preparation_task.get("commandLine")
         return None
 
     @preparation_command_line.setter

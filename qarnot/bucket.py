@@ -107,14 +107,14 @@ class Bucket(Storage):  # pylint: disable=W0223
         :returns: The created :class:`~qarnot.bucket.Bucket`.
         """
         filtering = None
-        if "filtering" in json_bucket and json_bucket['filtering']:
-            filtering = Filtering.from_json(json_bucket['filtering'])
+        if "filtering" in json_bucket and json_bucket.get('filtering'):
+            filtering = Filtering.from_json(json_bucket.get('filtering'))
 
         resource_transformation = None
-        if "resourcesTransformation" in json_bucket and json_bucket['resourcesTransformation']:
-            resource_transformation = ResourcesTransformation.from_json(json_bucket['resourcesTransformation'])
+        if "resourcesTransformation" in json_bucket and json_bucket.get('resourcesTransformation'):
+            resource_transformation = ResourcesTransformation.from_json(json_bucket.get('resourcesTransformation'))
 
-        bucket = Bucket(connection, json_bucket['bucketName'], create=False, filtering=filtering, resources_transformation=resource_transformation, cacheTTLSec=json_bucket['cacheTTLSec'])
+        bucket = Bucket(connection, json_bucket.get('bucketName'), create=False, filtering=filtering, resources_transformation=resource_transformation, cacheTTLSec=json_bucket.get('cacheTTLSec'))
         return bucket
 
     def with_filtering(self, filtering):
@@ -218,7 +218,7 @@ class Bucket(Storage):  # pylint: disable=W0223
                 )
             self._connection.s3client.delete_bucket(Bucket=self._uuid)
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot delete {}. Bucket not found.".format(err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot delete {}. Bucket not found.".format(err.response.get('Error').get('BucketName'))) from err
 
     def list_files(self):
         """List files in the bucket
@@ -231,7 +231,7 @@ class Bucket(Storage):  # pylint: disable=W0223
             bucket = self._connection.s3resource.Bucket(self._uuid)
             return [b for b in bucket.objects.all() if b.key is not None]
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot list files. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot list files. Bucket {} not found.".format(err.response.get('Error').get('BucketName'))) from err
 
     def directory(self, directory=''):
         """List files in a directory of the bucket according to prefix.
@@ -281,7 +281,7 @@ class Bucket(Storage):  # pylint: disable=W0223
             list_files_only = [x for x in entries if not x.key.endswith('/')]
             list_directories_only = [x for x in entries if x.key.endswith('/')]
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot synchronize. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot synchronize. Bucket {} not found.".format(err.response.get('Error').get('BucketName'))) from err
 
         for directory in list_directories_only:
             if not os.path.isdir(os.path.join(local_directoy, get_key_for_local(directory.key))):
@@ -459,7 +459,7 @@ class Bucket(Storage):  # pylint: disable=W0223
                         self._connection.logger.info("Copy %s to %s" % (entry[0].name, link.name))
                     self.copy_file(entry[0].name, link.name)
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot sync files. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot sync files. Bucket {} not found.".format(err.response.get('Error').get('BucketName'))) from err
 
     def add_string(self, string, remote):
         """Add a string on the storage.
@@ -484,7 +484,7 @@ class Bucket(Storage):  # pylint: disable=W0223
         try:
             self._connection.s3client.upload_fileobj(file_, self._uuid, dest, Config=s3_multipart_config)
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot add string. Bucket {} not found.".format(err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot add string. Bucket {} not found.".format(err.response.get('Error').get('BucketName'))) from err
         finally:
             if tobeclosed:
                 file_.close()
@@ -523,7 +523,7 @@ class Bucket(Storage):  # pylint: disable=W0223
             }
             return self._connection.s3client.copy_object(CopySource=copy_source, Bucket=self._uuid, Key=dest)
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot copy file {} to {} from bucket {}. Bucket not found.".format(source, dest, err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot copy file {} to {} from bucket {}. Bucket not found.".format(source, dest, err.response.get('Error').get('BucketName'))) from err
 
     @deprecation.deprecated(deprecated_in="2.6.0", removed_in="3.0",
                             current_version=__version__,  # type: ignore
@@ -547,7 +547,7 @@ class Bucket(Storage):  # pylint: disable=W0223
                 try:
                     self._connection.s3client.download_fileobj(self._uuid, remote, data)
                 except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-                    raise MissingBucketException("Cannot download file {} from bucket {}. Bucket not found.".format(remote, err.response['Error']['BucketName'])) from err
+                    raise MissingBucketException("Cannot download file {} from bucket {}. Bucket not found.".format(remote, err.response.get('Error').get('BucketName'))) from err
         return local
 
     @_util.copy_docs(Storage.delete_file)
@@ -557,7 +557,7 @@ class Bucket(Storage):  # pylint: disable=W0223
                 remote = _util.get_sanitized_bucket_path(remote, self._connection._show_bucket_warnings)
             self._connection.s3client.delete_object(Bucket=self._uuid, Key=remote)
         except self._connection.s3resource.meta.client.exceptions.NoSuchBucket as err:
-            raise MissingBucketException("Cannot delete file {} from bucket {}. Bucket not found.".format(remote, err.response['Error']['BucketName'])) from err
+            raise MissingBucketException("Cannot delete file {} from bucket {}. Bucket not found.".format(remote, err.response.get('Error').get('BucketName'))) from err
 
     @property
     def uuid(self):

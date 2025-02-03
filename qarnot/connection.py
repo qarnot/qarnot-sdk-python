@@ -589,8 +589,8 @@ class Connection(object):
         filters = create_pool_filter(tags=tags, tags_intersect=tags_intersect)
         url = get_url('paginate pools summaries') if summary and filters is None else get_url('paginate pools')
         result = self._page_call(url, self._paginate_request(filters, token, maximum))
-        data = [Pool.from_json(self, pool, summary) for pool in result["data"]]
-        return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
+        data = [Pool.from_json(self, pool, summary) for pool in result.get("data")]
+        return PaginateResponse(token=result.get("token", token), next_token=result.get("nextToken"), is_truncated=result.get("isTruncated"), page_data=data)
 
     def tasks_page(self, token: Optional[str] = None, maximum: Optional[int] = None, summary: bool = True, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
         """Return a paginate task object.
@@ -610,8 +610,8 @@ class Connection(object):
         filters = create_task_filter(tags=tags, tags_intersect=tags_intersect)
         url = get_url('paginate tasks summaries') if summary and filters is None else get_url('paginate tasks')
         result = self._page_call(url, self._paginate_request(filters, token, maximum))
-        data = [Task.from_json(self, task, summary) for task in result["data"]]
-        return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
+        data = [Task.from_json(self, task, summary) for task in result.get("data")]
+        return PaginateResponse(token=result.get("token", token), next_token=result.get("nextToken"), is_truncated=result.get("isTruncated"), page_data=data)
 
     def jobs_page(self, token: Optional[str] = None, maximum: Optional[int] = None, tags: List = None, tags_intersect: List = None) -> PaginateResponse:
         """Return a paginate job object.
@@ -628,8 +628,8 @@ class Connection(object):
 
         filters = create_job_filter(tags=tags, tags_intersect=tags_intersect)
         result = self._page_call(get_url('paginate jobs'), self._paginate_request(filters, token, maximum))
-        data = [Job.from_json(self, job) for job in result["data"]]
-        return PaginateResponse(token=result.get("token", token), next_token=result["nextToken"], is_truncated=result["isTruncated"], page_data=data)
+        data = [Job.from_json(self, job) for job in result.get("data")]
+        return PaginateResponse(token=result.get("token", token), next_token=result.get("nextToken"), is_truncated=result.get("isTruncated"), page_data=data)
 
     def hardware_constraints_page(self, limit: Optional[int] = 50, offset: Optional[int] = 0) -> OffsetResponse:
         """Return a list of hardware constraints limited with offset.
@@ -643,8 +643,8 @@ class Connection(object):
         """
 
         result = self._offset_call(get_url('hardware constraints'), self._offset_request(limit, offset))
-        data = [HardwareConstraint.from_json(hw_constraint) for hw_constraint in result["data"]]
-        return OffsetResponse(total=result["total"], limit=result["limit"], offset=result["offset"], page_data=data)
+        data = [HardwareConstraint.from_json(hw_constraint) for hw_constraint in result.get("data")]
+        return OffsetResponse(total=result.get("total"), limit=result.get("limit"), offset=result.get("offset"), page_data=data)
 
     def search_cpu_model_constraints(self, cpu_model: str) -> List[CpuModelHardware]:
         """Return a list of CPU model hardware constraints matching the search term.
@@ -933,7 +933,7 @@ class UserInfo(object):
         """:type: :class:`str`
 
         User email address."""
-        self.max_bucket = info['maxBucket']
+        self.max_bucket = info.get('maxBucket')
         """:type: :class:`int`
 
         Maximum number of buckets allowed (resource and result buckets)."""
@@ -941,51 +941,51 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Number of buckets owned by the user."""
-        self.quota_bytes_bucket = info['quotaBytesBucket']
+        self.quota_bytes_bucket = info.get('quotaBytesBucket')
         """:type: :class:`int`
 
         Total storage space allowed for the user's buckets (in Bytes)."""
-        self.used_quota_bytes_bucket = info['usedQuotaBytesBucket']
+        self.used_quota_bytes_bucket = info.get('usedQuotaBytesBucket')
         """:type: :class:`int`
 
         Total storage space used by the user's buckets (in Bytes)."""
-        self.task_count = info['taskCount']
+        self.task_count = info.get('taskCount')
         """:type: :class:`int`
 
         Total number of tasks belonging to the user."""
-        self.max_task = info['maxTask']
+        self.max_task = info.get('maxTask')
         """:type: :class:`int`
 
         Maximum number of tasks the user is allowed to create."""
-        self.running_task_count = info['runningTaskCount']
+        self.running_task_count = info.get('runningTaskCount')
         """:type: :class:`int`
 
         Number of tasks currently in 'Submitted' state."""
-        self.max_running_task = info['maxRunningTask']
+        self.max_running_task = info.get('maxRunningTask')
         """:type: :class:`int`
 
         Maximum number of running tasks."""
-        self.max_instances = info['maxInstances']
+        self.max_instances = info.get('maxInstances')
         """:type: :class:`int`
 
         Maximum number of instances."""
-        self.max_cores = info['maxFlexCores']
+        self.max_cores = info.get('maxFlexCores')
         """:type: :class:`int`
 
         Maximum number of cores."""
-        self.max_pool = info['maxPool']
+        self.max_pool = info.get('maxPool')
         """:type: :class:`int`
 
         Maximum number of pool the user is allowed to create."""
-        self.pool_count = info['poolCount']
+        self.pool_count = info.get('poolCount')
         """:type: :class:`int`
 
         Total number of pools belonging to the user."""
-        self.max_running_pool = info['maxRunningPool']
+        self.max_running_pool = info.get('maxRunningPool')
         """:type: :class:`int`
 
         Maximum number of running pools the user is allowed to create."""
-        self.running_pool_count = info['runningPoolCount']
+        self.running_pool_count = info.get('runningPoolCount')
         """:type: :class:`int`
 
         Number of pools currently submitted or running."""
@@ -997,19 +997,19 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Number of cores currently submitted or running."""
-        self.max_flex_instances = info.get('maxFlexInstances', -1)
+        self.max_flex_instances = info.get('maxFlexInstances')
         """:type: :class:`int`
 
         Maximum number of instances simultaneously used with Flex scheduling plan."""
-        self.max_flex_cores = info.get('maxFlexCores', -1)
+        self.max_flex_cores = info.get('maxFlexCores')
         """:type: :class:`int`
 
         Maximum number of cores simultaneously used with Flex scheduling plan."""
-        self.max_on_demand_instances = info.get('maxOnDemandInstances', -1)
+        self.max_on_demand_instances = info.get('maxOnDemandInstances')
         """:type: :class:`int`
 
         Maximum number of instances simultaneously used with OnDemand scheduling plan."""
-        self.max_on_demand_cores = info.get('maxOnDemandCores', -1)
+        self.max_on_demand_cores = info.get('maxOnDemandCores')
         """:type: :class:`int`
 
         Maximum number of cores simultaneously used with OnDemand scheduling plan."""
@@ -1018,12 +1018,12 @@ class UserInfo(object):
 class Profile(object):
     """Information about a profile."""
     def __init__(self, info):
-        self.name = info['name']
+        self.name = info.get('name', '')
         """:type: :class:`str`
 
         Name of the profile."""
-        self.constants = tuple((cst['name'], cst['value'])
-                               for cst in info['constants'])
+        self.constants = tuple((cst.get('name'), cst.get('value'))
+                               for cst in info.get('constants', []))
         """:type: List of (:class:`str`, :class:`str`)
 
         List of couples (name, value) representing constants for this profile

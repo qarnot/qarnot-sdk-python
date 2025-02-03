@@ -7,17 +7,17 @@ class Error(object):
     .. note:: Read-only class
     """
     def __init__(self, json):
-        self.code = json['code']
+        self.code = json.get('code')
         """:type: :class:`str`
 
         Error code."""
 
-        self.message = json['message']
+        self.message = json.get('message')
         """:type: :class:`str`
 
         Error message."""
 
-        self.debug = json['debug']
+        self.debug = json.get('debug')
         """:type: :class:`str`
 
         Optional extra debug information"""

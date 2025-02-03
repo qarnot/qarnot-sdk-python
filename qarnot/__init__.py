@@ -16,6 +16,7 @@
 # limitations under the License.
 
 
+from typing import Dict
 from .exceptions import QarnotGenericException, SecretConflictException, SecretNotFoundException, UnauthorizedException
 from ._util import get_error_message_from_http_response
 
@@ -65,7 +66,8 @@ def get_url(key, **kwargs):
         'task stderr': '/tasks/{uuid}/stderr',  # GET -> task stderr
         'task instance stdout': '/tasks/{uuid}/stdout/{instanceId}',  # GET -> task instance stdout
         'task instance stderr': '/tasks/{uuid}/stderr/{instanceId}',  # GET -> task instance stderr
-        'task abort': '/tasks/{uuid}/abort',  # GET -> task
+        'task abort': '/tasks/{uuid}/abort',  # POST -> abort task
+        'task carbon facts': '/carbon/v1/tasks/{uuid}/carbon-facts',  # GET -> task carbon facts
         'pools': '/pools',  # POST -> submit pool
         'paginate pools': '/pools/paginate',  # GET -> paginate pools
         'paginate pools summaries': '/pools/summaries/paginate',  # GET -> paginate pools summaries
@@ -76,6 +78,7 @@ def get_url(key, **kwargs):
         'pool stderr': '/pools/{uuid}/stderr',  # GET -> pool stderr
         'pool instance stdout': '/pools/{uuid}/stdout/{instanceId}',  # GET -> pool instance stdout
         'pool instance stderr': '/pools/{uuid}/stderr/{instanceId}',  # GET -> pool instance stderr
+        'pool carbon facts': '/carbon/v1/pools/{uuid}/carbon-facts',  # GET -> pool carbon facts
         'secrets data': '/secrets-manager/data/{secret_key}',  # GET -> get secret , PUT -> create secret, PATCH -> update secret, DELETE -> delete secret
         'secrets search': '/secrets-manager/search/{secret_prefix}',  # GET -> lists secrets starting with prefix
         'user': '/info',  # GET -> user info
@@ -86,6 +89,13 @@ def get_url(key, **kwargs):
         'settings': '/settings',  # GET -> instance settings
     }
     return urls[key].format(**kwargs)
+
+
+def get_url_with_param(key, params: Dict[str, str], **kwargs):
+    if (params is None or len(params) == 0):
+        return get_url(key, **kwargs)
+    param_string = "&".join(f'{key}={value}' for key, value in params.items())
+    return "{url}?{param}".format(url=get_url(key, **kwargs), param=param_string)
 
 
 from ._version import get_versions  # noqa

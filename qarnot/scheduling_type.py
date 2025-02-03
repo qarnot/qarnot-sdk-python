@@ -29,11 +29,11 @@ class SchedulingType():
         if schedulingType is None:
             return FlexScheduling()
 
-        if schedulingType == FlexScheduling.schedulingType:
+        if schedulingType.lower() == FlexScheduling.schedulingType.lower():
             return FlexScheduling()
-        elif schedulingType == OnDemandScheduling.schedulingType:
+        elif schedulingType.lower() == OnDemandScheduling.schedulingType.lower():
             return OnDemandScheduling()
-        elif schedulingType == ReservedScheduling.schedulingType:
+        elif schedulingType.lower() == ReservedScheduling.schedulingType.lower():
             return ReservedScheduling()
         else:
             return FlexScheduling()

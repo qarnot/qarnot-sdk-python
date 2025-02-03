@@ -31,27 +31,27 @@ class HardwareConstraint():
         :returns: The created :class:`~qarnot.hardware_constraint.HardwareConstraint`.
         """
 
-        discriminator: str = json["discriminator"]
+        discriminator: str = json.get("discriminator")
         if discriminator == MinimumCoreHardware._discriminator:
-            minCoreCount: int = json["coreCount"]
+            minCoreCount: int = json.get("coreCount")
             return MinimumCoreHardware(minCoreCount)
         elif discriminator == MaximumCoreHardware._discriminator:
-            maxCoreCount: int = json["coreCount"]
+            maxCoreCount: int = json.get("coreCount")
             return MaximumCoreHardware(maxCoreCount)
         elif discriminator == MinimumRamCoreRatioHardware._discriminator:
-            minimumMemoryGBCoreRatio: float = json["minimumMemoryGBCoreRatio"]
+            minimumMemoryGBCoreRatio: float = json.get("minimumMemoryGBCoreRatio")
             return MinimumRamCoreRatioHardware(minimumMemoryGBCoreRatio)
         elif discriminator == MaximumRamCoreRatioHardware._discriminator:
-            maximumMemoryGBCoreRatio: float = json["maximumMemoryGBCoreRatio"]
+            maximumMemoryGBCoreRatio: float = json.get("maximumMemoryGBCoreRatio")
             return MaximumRamCoreRatioHardware(maximumMemoryGBCoreRatio)
         elif discriminator == MinimumRamHardware._discriminator:
-            minimumMemoryMB: float = json["minimumMemoryMB"]
+            minimumMemoryMB: float = json.get("minimumMemoryMB")
             return MinimumRamHardware(minimumMemoryMB)
         elif discriminator == MaximumRamHardware._discriminator:
-            maximumMemoryMB: float = json["maximumMemoryMB"]
+            maximumMemoryMB: float = json.get("maximumMemoryMB")
             return MaximumRamHardware(maximumMemoryMB)
         elif discriminator == SpecificHardware._discriminator:
-            specificationKey: str = json["specificationKey"]
+            specificationKey: str = json.get("specificationKey")
             return SpecificHardware(specificationKey)
         elif discriminator == GpuHardware._discriminator:
             return GpuHardware()
@@ -62,7 +62,7 @@ class HardwareConstraint():
         elif discriminator == SSDHardware._discriminator:
             return SSDHardware()
         elif discriminator == CpuModelHardware._discriminator:
-            cpu_model: str = json["cpuModel"]
+            cpu_model: str = json.get("cpuModel")
             return CpuModelHardware(cpu_model)
         else:
             return None

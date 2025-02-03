@@ -307,19 +307,19 @@ class Job(object):
         :returns: The created :class:`~qarnot.job.Job`.
         """
         job = cls(connection,
-                  payload["name"],
-                  payload["poolUuid"],
-                  payload["shortname"],
-                  payload["useDependencies"])
+                  payload.get("name"),
+                  payload.get("poolUuid"),
+                  payload.get("shortname"),
+                  payload.get("useDependencies"))
 
-        job._uuid = payload["uuid"]
-        job._state = payload["state"]
-        job._creation_date = payload["creationDate"]
-        job._last_modified = payload["lastModified"]
-        job._max_wall_time = _util.parse_timedelta(payload["maxWallTime"])
+        job._uuid = payload.get("uuid")
+        job._state = payload.get("state")
+        job._creation_date = payload.get("creationDate")
+        job._last_modified = payload.get("lastModified")
+        job._max_wall_time = _util.parse_timedelta(payload.get("maxWallTime"))
 
-        job._auto_delete = payload["autoDeleteOnCompletion"]
-        job._completion_time_to_live = payload["completionTimeToLive"]
+        job._auto_delete = payload.get("autoDeleteOnCompletion")
+        job._completion_time_to_live = payload.get("completionTimeToLive")
         return job
 
     def _to_json(self):
@@ -340,13 +340,13 @@ class Job(object):
 
     def _update(self, json_job):
         """Update this job from retrieved info."""
-        self._uuid = json_job['uuid']
-        self._name = json_job['name']
+        self._uuid = json_job.get('uuid')
+        self._name = json_job.get('name')
         self._shortname = json_job.get('shortname')
         self._pool_uuid = json_job.get('poolUuid')
         self._use_dependencies = json_job.get('useDependencies')
-        self._state = json_job['state']
-        self._creation_date = _util.parse_datetime(json_job['creationDate'])
+        self._state = json_job.get('state')
+        self._creation_date = _util.parse_datetime(json_job.get('creationDate'))
         self._last_modified = json_job.get('lastModified')
         self._max_wall_time = json_job.get('maxWallTime')
         self._tags = json_job.get('tags', None)
@@ -377,7 +377,7 @@ class Job(object):
         elif resp.status_code == 402:
             raise NotEnoughCreditsException(_util.get_error_message_from_http_response(resp))
         raise_on_error(resp)
-        self._uuid = resp.json()['uuid']
+        self._uuid = resp.json().get('uuid')
         self.update(True)
 
     def update(self, flushcache=False):

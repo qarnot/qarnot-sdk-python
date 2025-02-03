@@ -126,9 +126,9 @@ class SecretsAccessRights(object):
         """
         by_secret, by_prefix = None, None
         if "bySecret" in json:
-            by_secret = [SecretAccessRightBySecret(secret["key"]) for secret in json["bySecret"]]
+            by_secret = [SecretAccessRightBySecret(secret.get("key")) for secret in json.get("bySecret")]
         if "byPrefix" in json:
-            by_prefix = [SecretAccessRightByPrefix(secret["prefix"]) for secret in json["byPrefix"]]
+            by_prefix = [SecretAccessRightByPrefix(secret.get("prefix")) for secret in json.get("byPrefix")]
 
         return SecretsAccessRights(by_secret=by_secret, by_prefix=by_prefix)
 
@@ -212,7 +212,7 @@ class Secrets(object):
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         """
         raw_secret = self._get_secret_raw(key)
-        return raw_secret.json()["value"]
+        return raw_secret.json().get("value")
 
     def _create_secret_raw(self, key: str, value: str):
         """Creates a secret with key `key` and value `value`.
@@ -314,4 +314,4 @@ class Secrets(object):
         response = self._connection._get(get_url('secrets search', secret_prefix=prefix))
         raise_on_secrets_specific_error(response)
         raise_on_error(response)
-        return ["{}/{}".format(prefix, key) if prefix else key for key in response.json()["keys"]]
+        return ["{}/{}".format(prefix, key) if prefix else key for key in response.json().get("keys")]

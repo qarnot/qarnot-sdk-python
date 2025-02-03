@@ -492,6 +492,36 @@ class TestConnectionPaginateMethods():
             assert user.max_on_demand_instances == user_json['maxOnDemandInstances']
             assert user.max_on_demand_cores == user_json['maxOnDemandCores']
 
+    def test_user_with_missing_information(self): # To ensure it doesn't throw when modifying a field in rest-computing side
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as get_user:
+            user_json = {
+            }
+            get_user.return_value.status_code = 200
+            get_user.return_value.json.return_value = user_json
+            user = connec.user_info
+            assert user.email == ''
+            assert user.max_bucket == None
+            assert user.bucket_count == -1
+            assert user.quota_bytes_bucket == None
+            assert user.used_quota_bytes_bucket == None
+            assert user.task_count == None
+            assert user.max_task == None
+            assert user.running_task_count == None
+            assert user.max_running_task == None
+            assert user.max_instances == None
+            assert user.max_cores == None
+            assert user.max_pool == None
+            assert user.pool_count == None
+            assert user.max_running_pool == None
+            assert user.running_pool_count == None
+            assert user.running_instance_count == -1
+            assert user.running_core_count == -1
+            assert user.max_flex_instances == None
+            assert user.max_flex_cores == None
+            assert user.max_on_demand_instances == None
+            assert user.max_on_demand_cores == None
+
     def test_user_hardware_constraints(self):
         connect = self.get_connection()
         with patch("qarnot.connection.Connection._get") as get_hw_constraints:

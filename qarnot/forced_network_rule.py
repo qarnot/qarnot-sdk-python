@@ -84,44 +84,44 @@ class ForcedNetworkRule(object):
         :returns: The created :class:`~qarnot.forced_network_rule.ForcedNetworkRule`
         """
 
-        inbound: bool = bool(json["inbound"])
-        proto: str = str(json["proto"])
+        inbound: bool = bool(json.get("inbound"))
+        proto: str = str(json.get("proto"))
 
         port: str = None
         if 'port' in json:
-            port = str(json["port"])
+            port = str(json.get("port"))
 
         to: str = None
         if 'to' in json:
-            to = str(json["to"])
+            to = str(json.get("to"))
 
         public_host: str = None
         if 'public_host' in json:
-            public_host = str(json["public_host"])
+            public_host = str(json.get("public_host"))
 
         public_port: str = None
         if 'public_port' in json:
-            public_port = str(json["public_port"])
+            public_port = str(json.get("public_port"))
 
         forwarder: str = None
         if 'forwarder' in json:
-            forwarder = str(json["forwarder"])
+            forwarder = str(json.get("forwarder"))
 
         priority: str = None
         if 'priority' in json:
-            priority = str(json["priority"])
+            priority = str(json.get("priority"))
 
         description: str = None
         if 'description' in json:
-            description = str(json["description"])
+            description = str(json.get("description"))
 
         to_qbox: Optional[bool] = None
         if 'to_qbox' in json:
-            to_qbox = bool(json["to_qbox"])
+            to_qbox = bool(json.get("to_qbox"))
 
         to_payload: Optional[bool] = None
         if 'to_payload' in json:
-            to_payload = bool(json["to_payload"])
+            to_payload = bool(json.get("to_payload"))
 
         return ForcedNetworkRule(
             inbound,

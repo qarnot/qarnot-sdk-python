@@ -21,7 +21,7 @@ class Privileges(object):
         :param dict json: Dictionary representing the privileges
         :returns: The created :class:`~qarnot.privileges.Privileges`
         """
-        shouldExportCredentialsInEnvironment: bool = json["exportApiAndStorageCredentialsInEnvironment"]
+        shouldExportCredentialsInEnvironment: bool = json.get("exportApiAndStorageCredentialsInEnvironment")
         return Privileges(shouldExportCredentialsInEnvironment)
 
     def to_json(self) -> Dict[str, bool]:
