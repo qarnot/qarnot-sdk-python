@@ -351,10 +351,10 @@ class Task(object):
     def delete(self, purge_resources: bool = False, purge_results: bool = False) -> None:
         """Delete this task on the server.
 
-        :param bool purge_resources: parameter value is used to determine if the bucket is also deleted.
+        :param bool purge_resources: parameter value is used to determine if the resources bucket is also deleted.
                 Defaults to False.
 
-        :param bool purge_results: parameter value is used to determine if the bucket is also deleted.
+        :param bool purge_results: parameter value is used to determine if the results (output) bucket is also deleted.
                 Defaults to False.
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
