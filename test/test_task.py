@@ -50,14 +50,31 @@ class TestTaskProperties:
         task.completion_ttl = "4.11:08:06"
         assert "4.11:08:06" == task.completion_ttl
 
-    def test_task_are_in_task_to_json(self, mock_conn):
+    def test_fields_are_in_json_from_task(self, mock_conn):
         task = Task(mock_conn, "task-name")
         task.completion_ttl = "4.11:08:06"
         task.auto_delete = True
+        task.max_time_queue_seconds = 10
         json_task = task._to_json()  # pylint: disable=protected-access
 
         assert json_task['completionTimeToLive'] == '4.11:08:06'
         assert json_task['autoDeleteOnCompletion'] is True
+        assert json_task['maxTimeQueueSeconds'] == 10
+
+    def test_fields_are_in_task_from_json(self, mock_conn):
+        json_task = {}
+        json_task['maxTimeQueueSeconds'] = 10
+
+        # fields that need to be non null for the deserialization to not fail
+        json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_task['uuid'] = str(uuid.uuid4())
+        json_task['state'] = 'Submitted'
+        json_task['runningCoreCount'] = 0
+        json_task['runningInstanceCount'] = 0
+
+        task = Task.from_json(mock_conn, json_task)
+        assert task.max_time_queue_seconds == 10
+
 
     @pytest.mark.parametrize("property_name, expected_value", [
         ("previous_state", None),
@@ -69,6 +86,7 @@ class TestTaskProperties:
         ("execution_time", None),
         ("wall_time", None),
         ("end_date", None),
+        ("max_time_queue_seconds", None),
         ("privileges", Privileges()),
     ])
     def test_task_property_default_value(self, mock_conn, property_name,  expected_value):
@@ -102,6 +120,14 @@ class TestTaskProperties:
         task._update(default_json_task)
         task_json = task._to_json()
         assert task_json[property_name] == expected_value
+
+    @pytest.mark.parametrize("property_name", [
+        ("max_time_queue_seconds"),
+    ])
+    def test_task_property_default_not_send_in_json(self, mock_conn, property_name):
+        task = Task(mock_conn, "task-name")
+        task_json = task._to_json()
+        assert property_name not in task_json
 
     @pytest.mark.parametrize("property_name, set_value, expected_value", [
         ("name", "name", "name")
@@ -499,8 +525,8 @@ class TestTaskProperties:
         capturedStderr = StringIO()
         sys.stderr = capturedStderr
 
-        mock_conn.logger = Log.get_logger_for_stream(sys.stdout)
-        mock_conn.logger_stderr = Log.get_logger_for_stream(sys.stderr)
+        mock_conn.logger = Log.get_logger_for_stream(sys.stdout, "stdout")
+        mock_conn.logger_stderr = Log.get_logger_for_stream(sys.stderr, "stderr")
         # Mock the responses for task update
         task = Task(mock_conn, "task-name")
         task_json = copy.deepcopy(default_json_task)
@@ -563,6 +589,10 @@ class TestTaskProperties:
         assert warn_logs is not None, "the stderr should contain task update stderr"
         for state in states:
             assert state in info_logs, "All state updates should be printed on stdout"
+            assert info_logs.count(state) == 1, "All state logs should be printed only once"
         for i in range(0,len(states)):
             assert "stdout %s" % i in info_logs, "All task stdout should be printed to user logs stream with info level"
+            assert info_logs.count("stdout %s" % i) == 2, "All stdout logs should be printed only once" # each stdout logs are here sent twice in the test (before and after state change)
             assert "stderr %s" % i in warn_logs, "All task stderr should be printed to user logs stream with warning level"
+            assert warn_logs.count("stderr %s" % i) == 2, "All stderr logs should be printed only once" # each stderr logs are here sent twice in the test (before and after state change)
+            assert "stderr %s" % i not in info_logs, "All task stderr should not be printed to user logs stream with info level"

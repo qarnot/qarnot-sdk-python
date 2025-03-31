@@ -19,7 +19,7 @@ from os import makedirs, path
 import time
 import warnings
 import sys
-from typing import Dict, Optional, Union, List, Any, Callable
+from typing import Dict, Optional, Union, List, Any, Callable, Sequence
 
 from qarnot.carbon_facts import CarbonClient, CarbonFacts
 from qarnot.retry_settings import RetrySettings
@@ -40,6 +40,7 @@ from .exceptions import MissingTaskException, MaxTaskException, NotEnoughCredits
 
 try:
     from progressbar import AnimatedMarker, Bar, Percentage, AdaptiveETA, ProgressBar
+    from progressbar.widgets import WidgetBase
 except ImportError:
     pass
 
@@ -172,6 +173,7 @@ class Task(object):
         self._progress = None
         self._execution_time = None
         self._wall_time = None
+        self._max_time_queue_seconds: int = None
         self._end_date = None
         self._upload_results_on_cancellation: Optional[bool] = None
         self._hardware_constraints: List[HardwareConstraint] = []
@@ -513,6 +515,7 @@ class Task(object):
         self._progress = json_task.get("progress", None)
         self._execution_time = json_task.get("executionTime", None)
         self._wall_time = json_task.get("wallTime", None)
+        self._max_time_queue_seconds = json_task.get("maxTimeQueueSeconds", None)
         self._end_date = json_task.get("endDate", None)
         self._labels = json_task.get("labels", {})
         self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_task.get("hardwareConstraints", [])]
@@ -589,7 +592,7 @@ class Task(object):
 
         if live_progress:
             try:
-                widgets = [
+                widgets: Sequence[WidgetBase | str] = [
                     Percentage(),
                     ' ', AnimatedMarker(),
                     ' ', Bar(),
@@ -1779,6 +1782,22 @@ class Task(object):
         return self._wall_time
 
     @property
+    def max_time_queue_seconds(self):
+        """
+        :type: :class:`uint`
+        :getter: Max time to wait before time out when there is not any place to execute the task.
+
+        task's max time queue seconds
+        """
+        self._update_if_summary()
+        return self._max_time_queue_seconds
+
+    @max_time_queue_seconds.setter
+    def max_time_queue_seconds(self, value: int):
+        """Setter for max_time_queue_seconds."""
+        self._max_time_queue_seconds = value
+
+    @property
     def snapshot_interval(self):
         """
         :type: :class:`int`
@@ -1835,6 +1854,9 @@ class Task(object):
 
         self._resource_object_advanced = [x.to_json() for x in self._resource_objects]
         json_task['advancedResourceBuckets'] = self._resource_object_advanced
+
+        if self._max_time_queue_seconds is not None:
+            json_task['maxTimeQueueSeconds'] = self._max_time_queue_seconds
 
         if self._result_object is not None:
             json_task['resultBucket'] = self._result_object.uuid

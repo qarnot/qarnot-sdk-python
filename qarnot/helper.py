@@ -14,7 +14,7 @@ class Log():
     """
 
     @staticmethod
-    def get_logger_for_stream(stream: TextIO = None, log_format: str = DEFAULT_LOG_FORMAT):
+    def get_logger_for_stream(stream: TextIO = None, name: str = None, log_format: str = DEFAULT_LOG_FORMAT):
         """Create a logger whose output is a stream.
 
         :param TextIO stream:
@@ -31,12 +31,13 @@ class Log():
         :rtype: logging.Logger
         :returns: The created logger.
         """
-
+        if name is None:
+            name = __name__
         formatter = logging.Formatter(log_format)
         handler = logging.StreamHandler(stream if stream is not None else sys.stdout)
         handler.setFormatter(formatter)
 
-        logger = logging.getLogger(__name__)
+        logger = logging.getLogger(name)
         logger.addHandler(handler)
         logger.setLevel(logging.INFO)
         return logger

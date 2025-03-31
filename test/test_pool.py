@@ -44,14 +44,31 @@ class TestPoolProperties:
         pool.completion_ttl = "4.11:08:06"
         assert "4.11:08:06" == pool.completion_ttl
 
-    def test_pool_are_in_pool_to_json(self):
+    def test_fields_are_in_json_from_task(self):
         pool = Pool(self.conn, "pool-name", "profile")
         pool.completion_ttl = "4.11:08:06"
         pool.auto_delete = True
+        pool.max_time_queue_seconds = 10
         json_pool = pool._to_json()
 
         assert json_pool['completionTimeToLive'] == '4.11:08:06'
         assert json_pool['autoDeleteOnCompletion'] == True
+        assert json_pool['maxTimeQueueSeconds'] == 10
+
+    def test_fields_are_in_task_from_json(self):
+        json_pool = {}
+        json_pool['maxTimeQueueSeconds'] = 10
+
+        # fields that need to be non null for the deserialization to not fail
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-name", "profile")
+        pool_from_json._update(json_pool)
+        assert pool_from_json.max_time_queue_seconds == 10
 
     def test_update_resources_send_the_good_url(self):
         update_connection = MockConnection()
@@ -70,6 +87,7 @@ class TestPoolProperties:
         ("execution_time", None),
         ("end_date", None),
         ("tasks_default_wait_for_pool_resources_synchronization", False),
+        ("max_time_queue_seconds", None),
         ("privileges", Privileges()),
     ])
     def test_pool_property_default_value(self, property_name,  expected_value):
@@ -96,11 +114,20 @@ class TestPoolProperties:
         ("privileges", default_json_pool["privileges"]),
         ("defaultRetrySettings", default_json_pool["defaultRetrySettings"]),
     ])
-    def test_pool_property_send_to_json_representation(self, property_name, expected_value):
+    def test_pool_property_with_default_send_to_json_representation(self, property_name, expected_value):
         pool = Pool(self.conn, "pool-name", "profile")
         pool._update(default_json_pool)
         pool_json = pool._to_json()
         assert pool_json[property_name] == expected_value
+
+    @pytest.mark.parametrize("property_name", [
+        ("max_time_queue_seconds"),
+    ])
+    def test_task_property_default_not_send_in_json(self, property_name):
+        pool = Pool(self.conn, "pool-name", "profile")
+        pool._update(default_json_pool)
+        pool_json = pool._to_json()
+        assert property_name not in pool_json
 
     @pytest.mark.parametrize("property_name, set_value, expected_value", [
         ("name", "name", "name")

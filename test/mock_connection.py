@@ -56,8 +56,8 @@ class FakeS3:
 
 class MockConnection:
     def __init__(self):
-        self.logger = Log.get_logger_for_stream(sys.stdout)
-        self.logger_stderr = Log.get_logger_for_stream(sys.stderr)
+        self.logger = Log.get_logger_for_stream(sys.stdout, "stdout")
+        self.logger_stderr = Log.get_logger_for_stream(sys.stderr, "stderr")
         self._sanitize_bucket_paths = True
         self._show_bucket_warnings = True
         self.requests = []

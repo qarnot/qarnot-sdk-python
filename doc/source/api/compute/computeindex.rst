@@ -15,4 +15,5 @@ Compute
    scheduling_type
    secrets
    carbon_facts
+   computing_quotas
 

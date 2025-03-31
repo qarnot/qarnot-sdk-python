@@ -114,6 +114,7 @@ class Pool(object):
         self._queued_or_running_task_instances_count = 0.0
 
         self._completion_time_to_live = "00:00:00"
+        self._max_time_queue_seconds: int = None
         self._auto_delete = False
         self._tasks_wait_for_synchronization = False
 
@@ -215,6 +216,8 @@ class Pool(object):
         if 'completionTimeToLive' in json_pool:
             self._completion_time_to_live = json_pool.get("completionTimeToLive")
 
+        self._max_time_queue_seconds = json_pool.get("maxTimeQueueSeconds", None)
+
         if 'elasticProperty' in json_pool:
             elasticProperty = json_pool.get("elasticProperty")
             self._is_elastic = elasticProperty.get("isElastic")
@@ -296,6 +299,9 @@ class Pool(object):
         json_pool['defaultResourcesCacheTTLSec'] = self._default_resources_cache_ttl_sec
         json_pool['privileges'] = self._privileges.to_json()
         json_pool['defaultRetrySettings'] = self._default_retry_settings.to_json()
+
+        if self._max_time_queue_seconds is not None:
+            json_pool['maxTimeQueueSeconds'] = self._max_time_queue_seconds
 
         if self._scheduling_type is not None:
             json_pool['schedulingType'] = self._scheduling_type.schedulingType
@@ -1430,6 +1436,22 @@ class Pool(object):
             self._privileges = Privileges()
 
         self._privileges._exportApiAndStorageCredentialsInEnvironment = True
+
+    @property
+    def max_time_queue_seconds(self):
+        """
+        :type: :class:`uint`
+        :getter: Max time to wait before time out when there is not any place to execute the pool.
+
+        pool's max time queue seconds
+        """
+        self._update_if_summary()
+        return self._max_time_queue_seconds
+
+    @max_time_queue_seconds.setter
+    def max_time_queue_seconds(self, value: int):
+        """Setter for max_time_queue_seconds."""
+        self._max_time_queue_seconds = value
 
     @property
     def default_retry_settings(self) -> RetrySettings:

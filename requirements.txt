@@ -1,6 +1,6 @@
 requests==2.32.3
-boto3==1.36.6
+boto3==1.38.18
 wheel==0.45.1
 deprecation==2.1.0
-simplejson==3.19.3
-setuptools==75.7.0
+simplejson==3.20.1
+setuptools==80.7.1

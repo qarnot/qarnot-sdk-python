@@ -28,6 +28,7 @@ from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .paginate import PaginateResponse, OffsetResponse
 from .bucket import Bucket
+from .computing_quotas import ComputingQuotas
 from .job import Job
 from ._filter import create_pool_filter, create_task_filter, create_job_filter
 from ._retry import with_retry
@@ -95,8 +96,8 @@ class Connection(object):
            unsafe=False
 
         """
-        self.logger = logger if logger is not None else Log.get_logger_for_stream(sys.stdout)
-        self.logger_stderr = logger if logger is not None else Log.get_logger_for_stream(sys.stderr)  # to avoid breaking change of task stderr logs
+        self.logger = logger if logger is not None else Log.get_logger_for_stream(sys.stdout, "stdout")
+        self.logger_stderr = logger if logger is not None else Log.get_logger_for_stream(sys.stderr, "stderr")  # to avoid breaking change of task stderr logs
         self._version = "qarnot-sdk-python/" + __version__
         self._http = requests.session()
         self._retry_count = retry_count
@@ -997,20 +998,36 @@ class UserInfo(object):
         """:type: :class:`int`
 
         Number of cores currently submitted or running."""
-        self.max_flex_instances = info.get('maxFlexInstances')
+        self.computing_quotas = ComputingQuotas.from_json(info.get('computingQuotas')) or ComputingQuotas.from_json_legacy(info)
+        """:type: :class:`~qarnot.computing_quotas.ComputingQuotas`
+
+        Computing quotas information of the user and his organization."""
+        self.max_flex_instances = self.computing_quotas.user.flex.max_instances if self.computing_quotas is not None else info.get('maxFlexInstances')
         """:type: :class:`int`
+
+        .. deprecated:: v2.18.0
+           Use `self.computing_quotas` instead.
 
         Maximum number of instances simultaneously used with Flex scheduling plan."""
-        self.max_flex_cores = info.get('maxFlexCores')
+        self.max_flex_cores = self.computing_quotas.user.flex.max_cores if self.computing_quotas is not None else info.get('maxFlexCores')
         """:type: :class:`int`
+
+        .. deprecated:: v2.18.0
+           Use `self.computing_quotas` instead.
 
         Maximum number of cores simultaneously used with Flex scheduling plan."""
-        self.max_on_demand_instances = info.get('maxOnDemandInstances')
+        self.max_on_demand_instances = self.computing_quotas.user.on_demand.max_instances if self.computing_quotas is not None else info.get('maxOnDemandInstances')
         """:type: :class:`int`
 
+        .. deprecated:: v2.18.0
+           Use `self.computing_quotas` instead.
+
         Maximum number of instances simultaneously used with OnDemand scheduling plan."""
-        self.max_on_demand_cores = info.get('maxOnDemandCores')
+        self.max_on_demand_cores = self.computing_quotas.user.on_demand.max_cores if self.computing_quotas is not None else info.get('maxOnDemandCores')
         """:type: :class:`int`
+
+        .. deprecated:: v2.18.0
+           Use `self.computing_quotas` instead.
 
         Maximum number of cores simultaneously used with OnDemand scheduling plan."""
 

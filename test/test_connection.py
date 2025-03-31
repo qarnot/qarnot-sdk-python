@@ -442,7 +442,7 @@ class TestConnectionPaginateMethods():
                 next(iterator)
             assert mock_page_call.call_count == 2
 
-    def test_user_information(self):
+    def test_user_information_legacy_computing_quotas(self):
         connec = self.get_connection()
         with patch("qarnot.connection.Connection._get") as get_user:
             user_json = {
@@ -464,8 +464,12 @@ class TestConnectionPaginateMethods():
                 "runningCoreCount":19,
                 "maxFlexInstances":20,
                 "maxFlexCores":21,
-                "maxOnDemandInstances":22,
-                "maxOnDemandCores":23,
+                "runningFlexCoreCount":22,
+                "runningFlexInstanceCount":23,
+                "maxOnDemandInstances":24,
+                "maxOnDemandCores":25,
+                "runningOnDemandCoreCount":26,
+                "runningOnDemandInstanceCount":27,
             }
             get_user.return_value.status_code = 200
             get_user.return_value.json.return_value = user_json
@@ -491,6 +495,117 @@ class TestConnectionPaginateMethods():
             assert user.max_flex_cores == user_json['maxFlexCores']
             assert user.max_on_demand_instances == user_json['maxOnDemandInstances']
             assert user.max_on_demand_cores == user_json['maxOnDemandCores']
+
+            assert user.computing_quotas.user.flex.max_instances == user_json['maxFlexInstances']
+            assert user.computing_quotas.user.flex.max_cores == user_json['maxFlexCores']
+            assert user.computing_quotas.user.flex.running_cores_count == user_json['runningFlexCoreCount']
+            assert user.computing_quotas.user.flex.running_instances_count == user_json['runningFlexInstanceCount']
+            assert user.computing_quotas.user.on_demand.max_instances == user_json['maxOnDemandInstances']
+            assert user.computing_quotas.user.on_demand.max_cores == user_json['maxOnDemandCores']
+            assert user.computing_quotas.user.on_demand.running_cores_count == user_json['runningOnDemandCoreCount']
+            assert user.computing_quotas.user.on_demand.running_instances_count == user_json['runningOnDemandInstanceCount']
+            assert user.computing_quotas.user.reserved == []
+
+    def test_user_information_new_format_computing_quotas(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as get_user:
+            user_json = {
+                "email":"",
+                "maxBucket":5,
+                "bucketCount":6,
+                "quotaBytesBucket":7,
+                "usedQuotaBytesBucket":8,
+                "taskCount":9,
+                "maxTask":10,
+                "runningTaskCount":11,
+                "maxRunningTask":12,
+                "maxInstances":13,
+                "maxPool":14,
+                "poolCount":15,
+                "maxRunningPool":16,
+                "runningPoolCount":17,
+                "runningInstanceCount":18,
+                "runningCoreCount":19,
+                "computingQuotas": {
+                    "user": {
+                        "flex": {
+                            "maxInstances": 64,
+                            "maxCores": 512,
+                            "runningInstancesCount": 1,
+                            "runningCoresCount": 2
+                        },
+                        "onDemand": {
+                            "maxInstances": 642,
+                            "maxCores": 5122,
+                            "runningInstancesCount": 3,
+                            "runningCoresCount": 4
+                        },
+                        "reserved": [
+                            {
+                                "machineKey": "string",
+                                "maxInstances": 643,
+                                "maxCores": 5123,
+                                "runningInstancesCount": 5,
+                                "runningCoresCount": 6
+                            }
+                        ]
+                    },
+                    "organization": {
+                        "name": "string",
+                        "flex": {
+                            "maxInstances": 644,
+                            "maxCores": 5124,
+                            "runningInstancesCount": 7,
+                            "runningCoresCount": 8
+                        },
+                        "onDemand": {
+                            "maxInstances": 645,
+                            "maxCores": 5125,
+                            "runningInstancesCount": 9,
+                            "runningCoresCount": 10
+                        },
+                        "reserved": [
+                            {
+                                "machineKey": "string",
+                                "maxInstances": 646,
+                                "maxCores": 5126,
+                                "runningInstancesCount": 11,
+                                "runningCoresCount": 12
+                            }
+                        ]
+                    }
+                },
+            }
+            get_user.return_value.status_code = 200
+            get_user.return_value.json.return_value = user_json
+            user = connec.user_info
+            assert user.email == user_json.get('email', '')
+            assert user.max_bucket == user_json['maxBucket']
+            assert user.bucket_count == user_json.get('bucketCount', -1)
+            assert user.quota_bytes_bucket == user_json['quotaBytesBucket']
+            assert user.used_quota_bytes_bucket == user_json['usedQuotaBytesBucket']
+            assert user.task_count == user_json['taskCount']
+            assert user.max_task == user_json['maxTask']
+            assert user.running_task_count == user_json['runningTaskCount']
+            assert user.max_running_task == user_json['maxRunningTask']
+            assert user.max_instances == user_json['maxInstances']
+            assert user.max_pool == user_json['maxPool']
+            assert user.pool_count == user_json['poolCount']
+            assert user.max_running_pool == user_json['maxRunningPool']
+            assert user.running_pool_count == user_json['runningPoolCount']
+            assert user.running_instance_count == user_json['runningInstanceCount']
+            assert user.running_core_count == user_json['runningCoreCount']
+
+
+            assert user.computing_quotas.user.flex.max_instances == user_json['computingQuotas']['user']['flex']['maxInstances']
+            assert user.computing_quotas.user.flex.max_cores == user_json['computingQuotas']['user']['flex']['maxCores']
+            assert user.computing_quotas.user.flex.running_cores_count == user_json['computingQuotas']['user']['flex']['runningCoresCount']
+            assert user.computing_quotas.user.flex.running_instances_count == user_json['computingQuotas']['user']['flex']['runningInstancesCount']
+
+            assert user.computing_quotas.organization.on_demand.max_instances == user_json['computingQuotas']['organization']['onDemand']['maxInstances']
+            assert user.computing_quotas.organization.on_demand.max_cores == user_json['computingQuotas']['organization']['onDemand']['maxCores']
+            assert user.computing_quotas.organization.on_demand.running_cores_count == user_json['computingQuotas']['organization']['onDemand']['runningCoresCount']
+            assert user.computing_quotas.organization.on_demand.running_instances_count == user_json['computingQuotas']['organization']['onDemand']['runningInstancesCount']
 
     def test_user_with_missing_information(self): # To ensure it doesn't throw when modifying a field in rest-computing side
         connec = self.get_connection()
