@@ -20,7 +20,18 @@ class ForcedNetworkRule(object):
             priority: str = None,
             description: str = None,
             to_qbox: Optional[bool] = None,
-            to_payload: Optional[bool] = None):
+            to_payload: Optional[bool] = None,
+            name: str = None,
+            application_type: str = None):
+
+        self.name = name
+        """:type: :class:`str`
+
+        Name of the associated rule."""
+        self.application_type = application_type
+        """:type: :class:`str`
+
+        Application layer protocol used / hint about it (e.g. ssh, http, https...)."""
         self.inbound = inbound
         """:type: :class:`bool`
 
@@ -84,6 +95,14 @@ class ForcedNetworkRule(object):
         :returns: The created :class:`~qarnot.forced_network_rule.ForcedNetworkRule`
         """
 
+        name: str = None
+        if 'name' in json:
+            name = str(json.get("name"))
+
+        application_type: str = None
+        if 'applicationType' in json:
+            application_type = str(json.get("applicationType"))
+
         inbound: bool = bool(json.get("inbound"))
         proto: str = str(json.get("proto"))
 
@@ -96,12 +115,12 @@ class ForcedNetworkRule(object):
             to = str(json.get("to"))
 
         public_host: str = None
-        if 'public_host' in json:
-            public_host = str(json.get("public_host"))
+        if 'publicHost' in json:
+            public_host = str(json.get("publicHost"))
 
         public_port: str = None
-        if 'public_port' in json:
-            public_port = str(json.get("public_port"))
+        if 'publicPort' in json:
+            public_port = str(json.get("publicPort"))
 
         forwarder: str = None
         if 'forwarder' in json:
@@ -116,12 +135,12 @@ class ForcedNetworkRule(object):
             description = str(json.get("description"))
 
         to_qbox: Optional[bool] = None
-        if 'to_qbox' in json:
-            to_qbox = bool(json.get("to_qbox"))
+        if 'toQBox' in json:
+            to_qbox = bool(json.get("toQBox"))
 
         to_payload: Optional[bool] = None
-        if 'to_payload' in json:
-            to_payload = bool(json.get("to_payload"))
+        if 'toPayload' in json:
+            to_payload = bool(json.get("toPayload"))
 
         return ForcedNetworkRule(
             inbound,
@@ -134,13 +153,21 @@ class ForcedNetworkRule(object):
             priority,
             description,
             to_qbox,
-            to_payload)
+            to_payload,
+            name,
+            application_type)
 
     def to_json(self):
         result: Dict[str, Union[str, bool]] = {
             "inbound": self.inbound,
             "proto": self.proto,
         }
+
+        if self.name is not None:
+            result["name"] = self.name
+
+        if self.application_type is not None:
+            result["applicationType"] = self.application_type
 
         if self.port is not None:
             result["port"] = self.port
@@ -149,10 +176,10 @@ class ForcedNetworkRule(object):
             result["to"] = self.to
 
         if self.public_host is not None:
-            result["public_host"] = self.public_host
+            result["publicHost"] = self.public_host
 
         if self.public_port is not None:
-            result["public_port"] = self.public_port
+            result["publicPort"] = self.public_port
 
         if self.forwarder is not None:
             result["forwarder"] = self.forwarder
@@ -164,9 +191,9 @@ class ForcedNetworkRule(object):
             result["description"] = self.description
 
         if self.to_qbox is not None:
-            result["to_qbox"] = self.to_qbox
+            result["toQBox"] = self.to_qbox
 
         if self.to_payload is not None:
-            result["to_payload"] = self.to_payload
+            result["toPayload"] = self.to_payload
 
         return result

@@ -368,6 +368,7 @@ class TestTaskProperties:
     def test_task_reserved_scheduling_serialization(self, mock_conn):
         task = Task(mock_conn, "task-with-reserved-scheduling", scheduling_type=ReservedScheduling())
         task.targeted_reserved_machine_key = "reservedMachine"
+        task.targeted_reservation_name = "my-reservation"
         assert task.scheduling_type is not None
         print(task.scheduling_type)
         assert isinstance(task.scheduling_type, ReservedScheduling)
@@ -392,6 +393,7 @@ class TestTaskProperties:
         assert isinstance(task_from_json.scheduling_type, ReservedScheduling)
         assert task_from_json.scheduling_type.schedulingType == ReservedScheduling.schedulingType
         assert task.targeted_reserved_machine_key == "reservedMachine"
+        assert task.targeted_reservation_name == "my-reservation"
 
     def test_task_secrets_access_rights_are_serialized_correctly(self, mock_conn):
         task = Task(mock_conn, "task-secrets-access-rights-serialization")
@@ -464,7 +466,7 @@ class TestTaskProperties:
 
     def test_task_forced_network_rules_serialization(self, mock_conn):
         task = Task(mock_conn, "task-with-forced-network-rules")
-        inbound_rule = ForcedNetworkRule(True, "tcp", "1234", "bound-to-be-alive", priority="1000", description="Inbound test")
+        inbound_rule = ForcedNetworkRule(True, "tcp", "1234", "bound-to-be-alive", priority="1000", description="Inbound test", name="my-living-network", application_type="https")
         outbound_rule = ForcedNetworkRule(False, "tcp", public_port="666", public_host="bound-to-the-devil", priority="1000", description="Outbound test")
         rules = [
             inbound_rule,
@@ -484,11 +486,17 @@ class TestTaskProperties:
         assert json_inbound_rule["to"] == inbound_rule.to
         assert json_inbound_rule["priority"] == inbound_rule.priority
         assert json_inbound_rule["description"] == inbound_rule.description
+        assert json_inbound_rule["name"] == inbound_rule.name
+        assert json_inbound_rule["applicationType"] == inbound_rule.application_type
         json_outbound_rule = json_task['forcedNetworkRules'][1]
         assert json_outbound_rule["inbound"] == outbound_rule.inbound
         assert json_outbound_rule["proto"] == outbound_rule.proto
         assert json_outbound_rule["priority"] == outbound_rule.priority
         assert json_outbound_rule["description"] == outbound_rule.description
+        assert json_outbound_rule["publicHost"] == outbound_rule.public_host
+        assert json_outbound_rule["publicPort"] == outbound_rule.public_port
+        assert json_outbound_rule.get("name") is None
+        assert json_outbound_rule.get("applicationType") is None
 
         # fields that need to be non null for the deserialization to not fail
         json_task['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -508,11 +516,15 @@ class TestTaskProperties:
         assert inbound_from_json.to == inbound_rule.to
         assert inbound_from_json.priority == inbound_rule.priority
         assert inbound_from_json.description == inbound_rule.description
+        assert inbound_from_json.name == inbound_rule.name
+        assert inbound_from_json.application_type == inbound_rule.application_type
         outbound_from_json = task_from_json.forced_network_rules[1]
         assert outbound_from_json.inbound == outbound_rule.inbound
         assert outbound_from_json.proto == outbound_rule.proto
         assert outbound_from_json.priority == outbound_rule.priority
         assert outbound_from_json.description == outbound_rule.description
+        assert outbound_from_json.public_host == outbound_rule.public_host
+        assert outbound_from_json.public_port == outbound_rule.public_port
 
     # WARNING: this test last at least 80s because task.wait() wait for 10s between each update calls and the task go through 8 different states
     # To make the test faster some states can be removed (the 7 first states are all the states that correspond to a non complete task and keep

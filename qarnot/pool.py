@@ -19,6 +19,7 @@ from typing import Dict, List, Optional
 
 from qarnot.carbon_facts import CarbonClient, CarbonFacts
 from qarnot.retry_settings import RetrySettings
+from qarnot.multi_slots_settings import MultiSlotsSettings
 from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.secrets import SecretsAccessRights
 
@@ -86,6 +87,7 @@ class Pool(object):
         self._update_cache_time = 5
         self._scheduling_type = scheduling_type
         self._targeted_reserved_machine_key: str = None
+        self._targeted_reservation_name: str = None
 
         self._last_cache = time.time()
         self._instancecount = instancecount
@@ -128,6 +130,7 @@ class Pool(object):
         self._default_resources_cache_ttl_sec: Optional[int] = None
         self._privileges: Privileges = Privileges()
         self._default_retry_settings: RetrySettings = RetrySettings()
+        self._multi_slots_settings: Optional[MultiSlotsSettings] = None
         self._forced_network_rules: List[ForcedNetworkRule] = []
         self._secrets_access_rights: SecretsAccessRights = SecretsAccessRights()
 
@@ -238,10 +241,13 @@ class Pool(object):
         self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_pool.get("hardwareConstraints", [])]
         self._default_resources_cache_ttl_sec = json_pool.get("defaultResourcesCacheTTLSec", None)
         self._targeted_reserved_machine_key = json_pool.get("targetedReservedMachineKey", None)
+        self._targeted_reservation_name = json_pool.get("targetedReservationName", None)
         if 'privileges' in json_pool:
             self._privileges = Privileges.from_json(json_pool.get("privileges"))
         if 'defaultRetrySettings' in json_pool:
             self._default_retry_settings = RetrySettings.from_json(json_pool.get("defaultRetrySettings"))
+        if 'multiSlotsSettings' in json_pool:
+            self._multi_slots_settings = MultiSlotsSettings.from_json(json_pool.get("multiSlotsSettings"))
         if 'schedulingType' in json_pool:
             self._scheduling_type = SchedulingType.from_string(json_pool.get("schedulingType"))
         self._forced_network_rules = [ForcedNetworkRule.from_json(forced_network_dict) for forced_network_dict in json_pool.get("forcedNetworkRules", [])]
@@ -309,11 +315,17 @@ class Pool(object):
         if self._targeted_reserved_machine_key is not None:
             json_pool['targetedReservedMachineKey'] = self._targeted_reserved_machine_key
 
+        if self._targeted_reservation_name is not None:
+            json_pool['targetedReservationName'] = self._targeted_reservation_name
+
         if self._forced_network_rules is not None:
             json_pool['forcedNetworkRules'] = [x.to_json() for x in self._forced_network_rules]
 
         if self._secrets_access_rights:
             json_pool['secretsAccessRights'] = self._secrets_access_rights.to_json()
+
+        if self._multi_slots_settings:
+            json_pool['multiSlotsSettings'] = self._multi_slots_settings.to_json()
 
         return json_pool
 
@@ -1280,6 +1292,24 @@ class Pool(object):
         self._completion_time_to_live = _util.parse_to_timespan_string(value)
 
     @property
+    def multi_slots_settings(self):
+        """
+        :getter:  Returns this pool's multi slots settings.
+        :type: :class:`~qarnot.multi_slots_settings.MultiSlotsSettings`
+        :default_value: None
+        """
+        self._update_if_summary()
+        return self._multi_slots_settings
+
+    @multi_slots_settings.setter
+    def multi_slots_settings(self, value):
+        """Setter for multi_slots_settings, this can only be set before pool's submission"""
+        self._update_if_summary()
+        if self._multi_slots_settings is not None:
+            raise AttributeError("can't set attribute on a submitted pool")
+        self._multi_slots_settings = value
+
+    @property
     def previous_state(self):
         """
         :type: :class:`str`
@@ -1497,6 +1527,9 @@ class Pool(object):
 
         :getter: The reserved machine key when using the "reserved" scheduling type
 
+        .. deprecated:: v2.19.0
+           Use `self.targeted_reservation_name` instead.
+
         :raises AttributeError: trying to set this after the pool is submitted
         """
         return self._targeted_reserved_machine_key
@@ -1509,6 +1542,25 @@ class Pool(object):
             raise AttributeError("can't set attribute on a launched pool")
 
         self._targeted_reserved_machine_key = value
+
+    @property
+    def targeted_reservation_name(self) -> str:
+        """:type: :class:`str`
+
+        :getter: The name of the reservation that describes the targeted machines when using the "reserved" scheduling type
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._targeted_reservation_name
+
+    @targeted_reservation_name.setter
+    def targeted_reservation_name(self, value: str):
+        """Setted for targeted_reservation_name
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._targeted_reservation_name = value
 
     def __repr__(self):
         return '{0} - {1} - {2} - {3} - {5} - InstanceCount : {4} - Resources : {6} '\

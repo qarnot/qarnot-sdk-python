@@ -3,6 +3,7 @@ import uuid
 import pytest
 import qarnot
 from qarnot.forced_network_rule import ForcedNetworkRule
+from qarnot.multi_slots_settings import MultiSlotsSettings
 from qarnot.pool import Pool
 from qarnot.privileges import Privileges
 from qarnot.bucket import Bucket
@@ -263,6 +264,19 @@ class TestPoolProperties:
         assert {"prefix": "another/prefix"} in json_pool['secretsAccessRights']["byPrefix"]
 
 
+    def test_pool_multi_slots_settings_deserialization(self):
+        pool = Pool(self.conn, "pool-multi-slots-deserialization", "profile")
+        pool._update(default_json_pool)
+        assert MultiSlotsSettings(4) == pool.multi_slots_settings
+
+    def test_pool_multi_slots_settings_deserialization_none(self):
+        pool = Pool(self.conn, "pool-multi-slots-deserialization-none", "profile")
+
+        pool_json = copy.deepcopy(default_json_pool)
+        del pool_json["multiSlotsSettings"]
+        pool._update(pool_json)
+        assert None == pool.multi_slots_settings
+
     @pytest.mark.parametrize("json", [
         {
             "bySecret": [
@@ -388,6 +402,7 @@ class TestPoolProperties:
     def test_pool_reserved_scheduling_serialization(self):
         pool = Pool(self.conn, "pool-with-reserved-scheduling", "profile", scheduling_type=ReservedScheduling())
         pool.targeted_reserved_machine_key = "reservedMachine"
+        pool.targeted_reservation_name = "my-reservation"
         assert pool.scheduling_type is not None
         print(pool.scheduling_type)
         assert isinstance(pool.scheduling_type, ReservedScheduling)
@@ -412,10 +427,24 @@ class TestPoolProperties:
         assert isinstance(pool_from_json.scheduling_type, ReservedScheduling)
         assert pool_from_json.scheduling_type.schedulingType == ReservedScheduling.schedulingType
         assert pool.targeted_reserved_machine_key == "reservedMachine"
+        assert pool.targeted_reservation_name == "my-reservation"
+
+    def test_pool_multi_slots_settings_serialization(self):
+        pool = Pool(self.conn, "pool-test-multi-slots-settings-serialization", "profile")
+        pool.multi_slots_settings = MultiSlotsSettings(4)
+
+        json_pool = pool._to_json()
+        assert json_pool["multiSlotsSettings"]["slotsPerNode"] == 4
+
+    def test_pool_no_multi_slots_settings_serialization(self):
+        pool = Pool(self.conn, "pool-test-no-multi-slots-settings-serialization", "profile")
+
+        json_pool = pool._to_json()
+        assert "multiSlotsSettings" not in json_pool
 
     def test_pool_forced_network_rules_serialization(self):
         pool = Pool(self.conn, "pool-with-forced-network-rules", "profile")
-        inbound_rule = ForcedNetworkRule(True, "tcp", "1234", "bound-to-be-alive", priority="1000", description="Inbound test")
+        inbound_rule = ForcedNetworkRule(True, "tcp", "1234", "bound-to-be-alive", priority="1000", description="Inbound test", name="my-living-network", application_type="https")
         outbound_rule = ForcedNetworkRule(False, "tcp", public_port="666", public_host="bound-to-the-devil", priority="1000", description="Outbound test")
         rules = [
             inbound_rule,
@@ -435,11 +464,17 @@ class TestPoolProperties:
         assert json_inbound_rule["to"] == inbound_rule.to
         assert json_inbound_rule["priority"] == inbound_rule.priority
         assert json_inbound_rule["description"] == inbound_rule.description
+        assert json_inbound_rule["name"] == inbound_rule.name
+        assert json_inbound_rule["applicationType"] == inbound_rule.application_type
         json_outbound_rule = json_pool['forcedNetworkRules'][1]
         assert json_outbound_rule["inbound"] == outbound_rule.inbound
         assert json_outbound_rule["proto"] == outbound_rule.proto
         assert json_outbound_rule["priority"] == outbound_rule.priority
         assert json_outbound_rule["description"] == outbound_rule.description
+        assert json_outbound_rule["publicHost"] == outbound_rule.public_host
+        assert json_outbound_rule["publicPort"] == outbound_rule.public_port
+        assert json_outbound_rule.get("name") is None
+        assert json_outbound_rule.get("applicationType") is None
 
         # fields that need to be non null for the deserialization to not fail
         json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -459,8 +494,12 @@ class TestPoolProperties:
         assert inbound_from_json.to == inbound_rule.to
         assert inbound_from_json.priority == inbound_rule.priority
         assert inbound_from_json.description == inbound_rule.description
+        assert inbound_from_json.name == inbound_rule.name
+        assert inbound_from_json.application_type == inbound_rule.application_type
         outbound_from_json = pool_from_json.forced_network_rules[1]
         assert outbound_from_json.inbound == outbound_rule.inbound
         assert outbound_from_json.proto == outbound_rule.proto
         assert outbound_from_json.priority == outbound_rule.priority
         assert outbound_from_json.description == outbound_rule.description
+        assert outbound_from_json.public_host == outbound_rule.public_host
+        assert outbound_from_json.public_port == outbound_rule.public_port

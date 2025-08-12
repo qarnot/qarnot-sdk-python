@@ -70,7 +70,7 @@ class UserReservedSchedulingQuota(UserSchedulingQuota):
     """Describes a reserved scheduling quota for the user.
     """
 
-    def __init__(self, machine_key: str, max_cores: int, running_cores_count: int, max_instances: int, running_instances_count: int):
+    def __init__(self, reservation_name: str, machine_key: str, max_cores: int, running_cores_count: int, max_instances: int, running_instances_count: int):
         """Create a new UserReservedSchedulingQuota object describing a reserved scheduling quota for the user.
 
         :param str machine_key: Machine key of the reservation.
@@ -86,6 +86,11 @@ class UserReservedSchedulingQuota(UserSchedulingQuota):
 
         Machine key of the reservation.
         """
+        self.reservation_name = reservation_name
+        """:type: :class:`str`
+
+        Name of the reservation.
+        """
 
     @classmethod
     def from_json(cls, json: Dict[str, Any]):
@@ -97,6 +102,7 @@ class UserReservedSchedulingQuota(UserSchedulingQuota):
         if json is None:
             return None
         return cls(
+            json.get('reservationName'),
             json.get('machineKey'),
             json.get('maxCores'),
             json.get('runningCoresCount'),
@@ -142,7 +148,7 @@ class UserComputingQuotas(object):
         return cls(
             UserSchedulingQuota.from_json(json.get('flex')),
             UserSchedulingQuota.from_json(json.get('onDemand')),
-            [UserReservedSchedulingQuota.from_json(v) for v in json.get('reserved', []) if v is not None]
+            [UserReservedSchedulingQuota.from_json(v) for v in (json.get('reserved') if json.get('reserved') is not None else []) if v is not None]
         )
 
 
@@ -201,7 +207,7 @@ class OrganizationReservedSchedulingQuota(OrganizationSchedulingQuota):
     """Describes a reserved scheduling quota for the organization.
     """
 
-    def __init__(self, machine_key: str, max_cores: int, running_cores_count: int, max_instances: int, running_instances_count: int):
+    def __init__(self, reservation_name: str, machine_key: str, max_cores: int, running_cores_count: int, max_instances: int, running_instances_count: int):
         """Create a new OrganizationReservedSchedulingQuota object describing a reserved scheduling quota for the organization.
 
         :param str machine_key: Machine key of the reservation.
@@ -217,6 +223,11 @@ class OrganizationReservedSchedulingQuota(OrganizationSchedulingQuota):
 
         Machine key of the reservation.
         """
+        self.reservation_name = reservation_name
+        """:type: :class:`str`
+
+        Name of the reservation.
+        """
 
     @classmethod
     def from_json(cls, json: Dict[str, Any]):
@@ -228,6 +239,7 @@ class OrganizationReservedSchedulingQuota(OrganizationSchedulingQuota):
         if json is None:
             return None
         return cls(
+            json.get('reservationName'),
             json.get('machineKey'),
             json.get('maxCores'),
             json.get('runningCoresCount'),
@@ -279,7 +291,7 @@ class OrganizationComputingQuotas(object):
             json.get('name'),
             OrganizationSchedulingQuota.from_json(json.get('flex')),
             OrganizationSchedulingQuota.from_json(json.get('onDemand')),
-            [OrganizationReservedSchedulingQuota.from_json(v) for v in json.get('reserved', []) if v is not None]
+            [OrganizationReservedSchedulingQuota.from_json(v) for v in (json.get('reserved') if json.get('reserved') is not None else []) if v is not None]
         )
 
 

@@ -132,6 +132,7 @@ class Task(object):
         self._secrets_access_rights: SecretsAccessRights = SecretsAccessRights()
         self._scheduling_type = scheduling_type
         self._targeted_reserved_machine_key: str = None
+        self._targeted_reservation_name: str = None
         self._dependentOn: List[Uuid] = []
 
         self._auto_update = True
@@ -521,6 +522,7 @@ class Task(object):
         self._hardware_constraints = [HardwareConstraint.from_json(hw_constraint_dict) for hw_constraint_dict in json_task.get("hardwareConstraints", [])]
         self._default_resources_cache_ttl_sec = json_task.get("defaultResourcesCacheTTLSec", None)
         self._targeted_reserved_machine_key = json_task.get("targetedReservedMachineKey", None)
+        self._targeted_reservation_name = json_task.get("targetedReservationName", None)
         if 'privileges' in json_task:
             self._privileges = Privileges.from_json(json_task.get("privileges"))
         if 'retrySettings' in json_task:
@@ -1641,6 +1643,9 @@ class Task(object):
 
         :getter: The reserved machine key when using the "reserved" scheduling type
 
+        .. deprecated:: v2.19.0
+           Use `self.targeted_reservation_name` instead.
+
         :raises AttributeError: trying to set this after the task is submitted
         """
         return self._targeted_reserved_machine_key
@@ -1653,6 +1658,25 @@ class Task(object):
             raise AttributeError("can't set attribute on a launched task")
 
         self._targeted_reserved_machine_key = value
+
+    @property
+    def targeted_reservation_name(self) -> str:
+        """:type: :class:`str`
+
+        :getter: The name of the reservation that describes the targeted machines when using the "reserved" scheduling type
+
+        :raises AttributeError: trying to set this after the task is submitted
+        """
+        return self._targeted_reservation_name
+
+    @targeted_reservation_name.setter
+    def targeted_reservation_name(self, value: str):
+        """Setted for targeted_reservation_name
+        """
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+
+        self._targeted_reservation_name = value
 
     @property
     def auto_delete(self):
@@ -1891,6 +1915,9 @@ class Task(object):
 
         if self._targeted_reserved_machine_key is not None:
             json_task["targetedReservedMachineKey"] = self._targeted_reserved_machine_key
+
+        if self._targeted_reservation_name is not None:
+            json_task["targetedReservationName"] = self._targeted_reservation_name
 
         if self._forced_network_rules is not None:
             json_task['forcedNetworkRules'] = [x.to_json() for x in self._forced_network_rules]

@@ -91,6 +91,9 @@ default_json_pool = {
     "runningInstanceCount":  0,
     "runningCoreCount":  0,
     "executionTime":  "00:00:00",
+    "multiSlotsSettings" : {
+        "slotsPerNode" : 4
+    },
     "wallTime":  "00:00:15",
     "taskDefaultWaitForPoolResourcesSynchronization":  None,
     "credits":  0.01,
