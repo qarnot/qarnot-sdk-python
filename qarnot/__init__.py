@@ -62,6 +62,7 @@ def get_url(key, **kwargs):
         'task update': '/tasks/{uuid}',  # GET->result; DELETE -> abort, PATCH -> update resources
         'task snapshot': '/tasks/{uuid}/snapshot/periodic',  # POST -> snapshots
         'task instant': '/tasks/{uuid}/snapshot',  # POST -> get a snapshot
+        'task instant status': '/tasks/{uuid}/snapshot/{snapshotId}',  # GET -> get a snapshot status
         'task stdout': '/tasks/{uuid}/stdout',  # GET -> task stdout
         'task stderr': '/tasks/{uuid}/stderr',  # GET -> task stderr
         'task instance stdout': '/tasks/{uuid}/stdout/{instanceId}',  # GET -> task instance stdout

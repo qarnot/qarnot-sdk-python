@@ -31,6 +31,7 @@ from .status import Status
 from .hardware_constraint import HardwareConstraint
 from .forced_constant import ForcedConstant
 from .scheduling_type import SchedulingType
+from .snapshot import SnapshotConfiguration, PeriodicSnapshotConfiguration, Snapshot
 from .privileges import Privileges
 from .bucket import Bucket
 from .pool import Pool
@@ -663,7 +664,7 @@ class Task(object):
 
         return self.state
 
-    def snapshot(self, interval: int) -> None:
+    def snapshot(self, interval: int, whitelist: Optional[str] = None, blacklist: Optional[str] = None, bucket: BucketType = None, bucket_prefix: Optional[str] = None) -> None:
         """Start snapshooting results.
         If called, this task's results will be periodically
         updated, instead of only being available at the end.
@@ -672,6 +673,10 @@ class Task(object):
         the task is submitted.
 
         :param int interval: the interval in seconds at which to take snapshots
+        :param str whitelist: whitelist filter for the snapshot.
+        :param str blacklist: blacklist filter for the snapshot.
+        :param ~qarnot.bucket.Bucket bucket: bucket to upload the snapshot.
+        :param str bucket_prefix: prefix added to the files uploaded for the snapshot.
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
@@ -685,8 +690,10 @@ class Task(object):
         if self._uuid is None:
             self._snapshots = interval
             return
+
+        snapshot_config = PeriodicSnapshotConfiguration(interval, whitelist, blacklist, bucket, bucket_prefix)
         resp = self._connection._post(get_url('task snapshot', uuid=self._uuid),
-                                      json={"interval": interval})
+                                      json=snapshot_config.to_json())
 
         if resp.status_code == 400:
             raise ValueError(interval)
@@ -699,8 +706,13 @@ class Task(object):
 
         self._snapshots = True
 
-    def instant(self) -> None:
-        """Make a snapshot of the current task.
+    def instant(self, whitelist: Optional[str] = None, blacklist: Optional[str] = None, bucket: BucketType = None, bucket_prefix: Optional[str] = None) -> str:
+        """Make an instant snapshot of the current task.
+
+        :param str whitelist: Whitelist filter for the snapshot.
+        :param str blacklist: Blacklist filter for the snapshot.
+        :param ~qarnot.bucket.Bucket bucket: bucket where to upload the snapshot.
+        :param str bucket_prefix: Prefix added to the files uploaded for the snapshot.
 
         :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
         :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
@@ -710,10 +722,13 @@ class Task(object):
         .. note:: To get the temporary results, call :meth:`download_results`.
         """
         if self._uuid is None:
-            return
+            return None
+
+        bucket_name = (bucket.uuid if bucket is not None else None)
+        snapshot_config = SnapshotConfiguration(whitelist, blacklist, bucket_name, bucket_prefix)
 
         resp = self._connection._post(get_url('task instant', uuid=self._uuid),
-                                      json=None)
+                                      json=snapshot_config.to_json())
 
         if resp.status_code == 404:
             raise MissingTaskException(_util.get_error_message_from_http_response(resp))
@@ -722,6 +737,80 @@ class Task(object):
         raise_on_error(resp)
 
         self.update(True)
+        return resp.json().get("id")
+
+    def snapshot_status(self, snapshot_id: str) -> Snapshot:
+        """Get the status of a specific instant snapshot.
+
+        :param str snapshot_id: id of the instant snapshot we want the status.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid operation on non running task
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
+
+        .. note:: To get the temporary results, call :meth:`download_results`.
+        """
+        if self._uuid is None:
+            return None
+
+        resp = self._connection._get(get_url('task instant status', uuid=self._uuid, snapshotId=snapshot_id),
+                                     json=None)
+
+        if resp.status_code == 404:
+            raise MissingTaskException(_util.get_error_message_from_http_response(resp))
+        elif resp.status_code == 403:
+            raise UnauthorizedException(_util.get_error_message_from_http_response(resp))
+        raise_on_error(resp)
+
+        return Snapshot.from_json(resp.json())
+
+    def wait_snapshot(self, snapshot_id: str, timeout: float = None, follow_status: bool = False) -> bool:
+        """Wait for the task snapshot to complete.
+
+        :param float timeout: maximum time (in seconds) to wait before returning
+           (None => no timeout)
+
+        :rtype: :class:`bool`
+        :returns: Is the snapshot finished
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not represent a valid
+          one
+        """
+
+        start = time.time()
+        if self._uuid is None:
+            self.update(True)
+            return False
+
+        if snapshot_id is None or snapshot_id == "":
+            return False
+
+        nap = min(10, timeout) if timeout is not None else 10
+
+        last_status = None
+        snapshot_status = self.snapshot_status(snapshot_id=snapshot_id)
+        if snapshot_status is None:
+            return False
+
+        while snapshot_status is None or not snapshot_status._status.is_completed:
+            time.sleep(nap)
+            snapshot_status = self.snapshot_status(snapshot_id)
+            if follow_status:
+                if snapshot_status._status.status != last_status:
+                    last_status = snapshot_status._status.status
+                    self._connection.logger.info("** Snapshot %s Status| %s" % (snapshot_id, last_status))
+
+            if timeout is not None:
+                elapsed = time.time() - start
+                if timeout <= elapsed:
+                    self.update()
+                    return False
+                else:
+                    nap = min(10, timeout - elapsed)
+        return True
 
     @property
     def state(self):
