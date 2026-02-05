@@ -15,7 +15,7 @@
 # limitations under the License.
 
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, Union
 
 
 class SnapshotConfiguration():
@@ -44,7 +44,7 @@ class SnapshotConfiguration():
         self._bucket_name = bucket_name
         self._bucket_prefix = bucket_prefix
 
-    def to_json(self) -> Dict[str, Optional[str | int]]:
+    def to_json(self) -> Dict[str, Optional[Union[str, int]]]:
         """Get a SnapshotConfiguration ready to be json packed.
 
         :return: the json representation of a snapshot configuration.
@@ -98,13 +98,13 @@ class PeriodicSnapshotConfiguration(SnapshotConfiguration):
         super().__init__(whitelist, blacklist, bucket_name, bucket_prefix)
         self._interval = interval
 
-    def to_json(self) -> Dict[str, Optional[str | int]]:
+    def to_json(self) -> Dict[str, Optional[Union[str, int]]]:
         """Get a PeriodicSnapshotConfiguration ready to be json packed.
 
         :return: the json representation of a periodic snapshot configuration.
         :rtype: Dict[str, Optional[str|int]]
         """
-        json: Dict[str, Optional[str | int]] = super().to_json()
+        json: Dict[str, Optional[Union[str, int]]] = super().to_json()
         json["interval"] = int(self._interval)
         return json
 
