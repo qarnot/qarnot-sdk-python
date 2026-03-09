@@ -7,6 +7,8 @@ from unittest.mock import patch, Mock, PropertyMock
 import requests
 import simplejson
 
+from qarnot.project import Project
+
 expected_or_tags_filter = {"operator": "Or", "filters":[{"operator": "Equal", "field": "Tags", "value": "tag1"}, {"operator": "Equal", "field": "Tags", "value": "tag2"}]}
 expected_and_tags_filter = {"operator": "And", "filters":[{"operator": "Equal", "field": "Tags", "value": "tag_inter1"}, {"operator": "Equal", "field": "Tags", "value": "tag_inter2"}]}
 expected_and_or_tags_filter = {"operator": "And", "filters": [
@@ -636,6 +638,7 @@ class TestConnectionPaginateMethods():
             assert user.max_flex_cores == None
             assert user.max_on_demand_instances == None
             assert user.max_on_demand_cores == None
+            assert user.projects == []
 
     def test_user_hardware_constraints(self):
         connect = self.get_connection()
@@ -689,3 +692,64 @@ class TestConnectionPaginateMethods():
             assert ret.total == hw_constraints_page_json['total']
             assert ret.page_data != None
             assert len(ret.page_data) == 10
+            
+            
+    def test_user_information_projects(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as get_user:
+            user_json = {
+                "projects":
+                [
+                    {
+                        "uuid": "12345678-1234-1234-1234-123456789012",
+                        "slug": "default",
+                        "name": "Default Project",
+                        "organizationUuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "description": "Organization default project"
+                    },
+                    {
+                        "uuid": "3fa85f64-5717-4562-b3fc-000000000001",
+                        "slug": "super-project",
+                        "name": "Super Project",
+                        "organizationUuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                        "description": "Organization super project"
+                    }
+                ],
+                "computingQuotas": {
+                    "user": {
+                        "flex": {
+                            "maxInstances": 64,
+                            "maxCores": 512,
+                        },
+                        "onDemand": {
+                            "maxInstances": 642,
+                            "maxCores": 5122,
+                        },},
+                    "organization": {
+                        "name": "my-test-organization"
+                    }
+                }
+            }
+            get_user.return_value.status_code = 200
+            get_user.return_value.json.return_value = user_json
+            user = connec.user_info
+            assert user.email == user_json.get('email', '')
+
+            assert user.computing_quotas.organization.name == user_json['computingQuotas']['organization']['name']
+            assert user.projects is not None
+            assert len(user.projects) == 2
+            default_project = Project.retrieve_by_slug(connec, "default")
+            assert default_project is not None
+            assert default_project.uuid == user_json['projects'][0]['uuid']
+            assert default_project.slug == user_json['projects'][0]['slug']
+            assert default_project.name == user_json['projects'][0]['name']
+            assert default_project.organization_uuid == user_json['projects'][0]['organizationUuid']
+            assert default_project.description == user_json['projects'][0]['description']
+
+            second_project = Project.retrieve_by_uuid(connec, "3fa85f64-5717-4562-b3fc-000000000001")
+            assert second_project is not None
+            assert second_project.uuid == user_json['projects'][1]['uuid']
+            assert second_project.slug == user_json['projects'][1]['slug']
+            assert second_project.name == user_json['projects'][1]['name']
+            assert second_project.organization_uuid == user_json['projects'][1]['organizationUuid']
+            assert second_project.description == user_json['projects'][1]['description']

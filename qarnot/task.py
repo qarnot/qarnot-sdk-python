@@ -22,9 +22,11 @@ import sys
 from typing import Dict, Optional, Union, List, Any, Callable, Sequence
 
 from qarnot.carbon_facts import CarbonClient, CarbonFacts
+from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.secrets import SecretsAccessRights
+from qarnot.dependency import AdvancedDependency, TaskDependencies
 
 from . import get_url, raise_on_error, _util
 from .status import Status
@@ -69,7 +71,7 @@ class Task(object):
     def __init__(
             self, connection: ConnectionType, name: str, profile_or_pool: Union[str, PoolType] = None,
             instancecount_or_range: Union[int, str] = 1, shortname: str = None, job: JobType = None,
-            scheduling_type: SchedulingType = None):
+            scheduling_type: SchedulingType = None, project: Project = None):
         """Create a new :class:`Task`.
 
         :param connection: the cluster on which to send the task
@@ -105,6 +107,8 @@ class Task(object):
                 raise ValueError("Cannot attach a same task to pool and a job simultaneously")
             self._job_uuid = job.uuid
 
+        self._project_uuid = project.uuid if project is not None else None
+
         if isinstance(instancecount_or_range, int):
             self._instancecount: int = instancecount_or_range
             self._advanced_range = None
@@ -135,6 +139,8 @@ class Task(object):
         self._targeted_reserved_machine_key: str = None
         self._targeted_reservation_name: str = None
         self._dependentOn: List[Uuid] = []
+        self._advanced_depends_on: List[AdvancedDependency] = []
+        self._dependencies_output: Optional[TaskDependencies] = None
 
         self._auto_update = True
         self._last_auto_update_state = self._auto_update
@@ -445,6 +451,8 @@ class Task(object):
         self._profile = json_task.get('profile')
         self._pool_uuid = json_task.get('poolUuid')
         self._job_uuid = json_task.get('jobUuid')
+        if json_task.get('projectUuid') is not None:
+            self._project_uuid = json_task.get('projectUuid')
         self._instancecount = json_task.get('instanceCount')
         self._advanced_range = json_task.get('advancedRanges')
         self._wait_for_pool_resources_synchronization = json_task.get('waitForPoolResourcesSynchronization', None)
@@ -531,6 +539,10 @@ class Task(object):
         if 'schedulingType' in json_task:
             self._scheduling_type = SchedulingType.from_string(json_task.get("schedulingType"))
         self._forced_network_rules = [ForcedNetworkRule.from_json(forced_network_dict) for forced_network_dict in json_task.get("forcedNetworkRules", [])]
+        if 'dependencies' in json_task:
+            self._dependencies_output = TaskDependencies.from_json(json_task.get('dependencies'))
+        else:
+            self._dependencies_output = None
 
     @classmethod
     def from_json(cls, connection: ConnectionType, json_task: Dict, is_summary: bool = False) -> TaskType:
@@ -1171,6 +1183,30 @@ class Task(object):
             self._profile = value
 
     @property
+    def project(self):
+        """:type: :class:`~qarnot.project.Project`
+        :getter: Returns this task's project
+        :setter: Sets this task's project
+
+        The project to run the task in.
+
+        Can be set until :meth:`run` or :meth:`submit` is called.
+        """
+        if self._project_uuid is None:
+            return None
+        return Project.retrieve_by_uuid(self._connection, self._project_uuid)
+
+    @project.setter
+    def project(self, value: Project):
+        """setter for project"""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        if self._pool_uuid is not None:
+            raise AttributeError("Can't set project for task in pool")
+        else:
+            self._project_uuid = value.uuid
+
+    @property
     def instancecount(self):
         """:type: :class:`int`
         :getter: Returns this task's instance count
@@ -1610,15 +1646,121 @@ class Task(object):
 
         self._upload_results_on_cancellation = value
 
-    def set_task_dependencies_from_uuids(self, uuids: Uuid):
+    def _check_dependency_exclusivity(self, want_advanced: bool) -> None:
+        """Raise ValueError if the requested dependency mode conflicts with existing deps.
+
+        :param want_advanced: True if the caller wants to add advanced dependencies,
+            False if simple dependencies.
+        :raises ValueError: if there is a mode conflict.
+        """
+        if want_advanced and self._dependentOn:
+            raise ValueError(
+                "Cannot use advanced dependencies: simple dependencies are already set. "
+                "Use clear_task_dependencies() first, or use "
+                "set_task_dependencies_from_uuids/tasks instead.")
+        if not want_advanced and self._advanced_depends_on:
+            raise ValueError(
+                "Cannot use simple dependencies: advanced dependencies are already set. "
+                "Use clear_task_dependencies() first, or use "
+                "set_task_advanced_dependencies instead.")
+
+    def set_task_dependencies_from_uuids(self, uuids: List[Uuid]) -> None:
         """Setter for the task dependencies using uuid
         """
-        self._dependentOn += uuids
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._check_dependency_exclusivity(want_advanced=False)
+        for uuid in uuids:
+            if uuid not in self._dependentOn:
+                self._dependentOn.append(uuid)
 
-    def set_task_dependencies_from_tasks(self, tasks: List[TaskType]):
+    def set_task_dependencies_from_tasks(self, tasks: List[TaskType]) -> None:
         """Setter for the task dependencies using tasks
         """
-        self._dependentOn += [task._uuid for task in tasks]
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._check_dependency_exclusivity(want_advanced=False)
+        for task in tasks:
+            if task._uuid not in self._dependentOn:
+                self._dependentOn.append(task._uuid)
+
+    def set_task_advanced_dependencies(self, dependencies: List[AdvancedDependency]) -> None:
+        """Add advanced dependencies with conditional final-state matching.
+
+        Accumulative: each call appends new entries.
+
+        - If an identical dependency (same uuid AND same conditions) already exists,
+          it is silently skipped.
+        - If a dependency for the same task uuid but with different conditions already
+          exists, a :class:`ValueError` is raised.
+
+        Mutually exclusive with simple dependencies
+        (:meth:`set_task_dependencies_from_uuids` / :meth:`set_task_dependencies_from_tasks`).
+
+        :param dependencies: list of advanced dependencies to add.
+        :type dependencies: list of :class:`~qarnot.dependency.AdvancedDependency`
+        :raises AttributeError: if the task is already submitted.
+        :raises ValueError: on mode conflict with existing simple dependencies, or on
+            conflicting conditions for the same dependency task UUID.
+        """
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._check_dependency_exclusivity(want_advanced=True)
+        for dep in dependencies:
+            existing = next(
+                (d for d in self._advanced_depends_on if d.task_uuid == dep.task_uuid),
+                None)
+            if existing is not None:
+                if existing == dep:
+                    continue  # exact duplicate — skip silently
+                raise ValueError(
+                    "Conflicting advanced dependency for task '{}': "
+                    "conditions {} vs existing {}.".format(
+                        dep.task_uuid,
+                        dep.task_final_state_condition,
+                        existing.task_final_state_condition))
+            self._advanced_depends_on.append(dep)
+
+    def remove_task_dependency(self, uuid: Uuid) -> None:
+        """Remove a dependency by task UUID.
+
+        Works on both simple and advanced dependencies.
+        Does nothing if no dependency with that UUID exists.
+
+        :param uuid: the UUID of the dependency task to remove.
+        :type uuid: :class:`str`
+        :raises AttributeError: if the task is already submitted.
+        """
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        if uuid in self._dependentOn:
+            self._dependentOn.remove(uuid)
+        self._advanced_depends_on = [
+            d for d in self._advanced_depends_on if d.task_uuid != uuid
+        ]
+
+    def clear_task_dependencies(self) -> None:
+        """Clear all task dependencies (both simple and advanced).
+        """
+        if self._uuid is not None:
+            raise AttributeError("can't set attribute on a launched task")
+        self._dependentOn = []
+        self._advanced_depends_on = []
+
+    @property
+    def dependencies(self) -> Optional[TaskDependencies]:
+        """:type: :class:`~qarnot.dependency.TaskDependencies` or None
+        :getter: Returns the current state of this task's dependencies.
+
+        Read-only view combining both simple and advanced dependencies,
+        including their resolution state as reported by the API.
+        Returns None for tasks that have not been submitted, or whose
+        API response contained no dependency block.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+        return self._dependencies_output
 
     @property
     def hardware_constraints(self):
@@ -1955,12 +2097,19 @@ class Task(object):
             'constants': const_list,
             'constraints': constr_list,
             'forcedConstants': forced_const_list,
-            'dependencies': {},
             'waitForPoolResourcesSynchronization': self._wait_for_pool_resources_synchronization,
             'uploadResultsOnCancellation': self._upload_results_on_cancellation,
             'labels': self._labels,
         }
-        json_task['dependencies']["dependsOn"] = self._dependentOn
+
+        if self._advanced_depends_on:
+            json_task['dependencies'] = {
+                'advancedDependsOn': [d.to_json() for d in self._advanced_depends_on],
+            }
+        else:
+            json_task['dependencies'] = {
+                'dependsOn': self._dependentOn,
+            }
 
         if self._shortname is not None:
             json_task['shortname'] = self._shortname
@@ -2013,6 +2162,9 @@ class Task(object):
 
         if self._secrets_access_rights:
             json_task["secretsAccessRights"] = self._secrets_access_rights.to_json()
+
+        if self._project_uuid is not None:
+            json_task["projectUuid"] = self._project_uuid
 
         return json_task
 

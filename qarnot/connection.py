@@ -21,6 +21,7 @@ import sys
 from typing import Dict, Iterable, Iterator, List, Optional
 
 from qarnot.helper import Log
+from qarnot.project import Project
 
 from . import get_url, raise_on_error, __version__  # type: ignore
 from .hardware_constraint import HardwareConstraint, CpuModelHardware
@@ -1030,6 +1031,10 @@ class UserInfo(object):
            Use `self.computing_quotas` instead.
 
         Maximum number of cores simultaneously used with OnDemand scheduling plan."""
+        self.projects = [Project.from_json(p) for p in info.get('projects', [])]
+        """:type: list{:class:`~qarnot.project.Project`}
+
+        List of available projects for user."""
 
 
 class Profile(object):

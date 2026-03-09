@@ -18,6 +18,7 @@ import warnings
 from typing import Dict, List, Optional
 
 from qarnot.carbon_facts import CarbonClient, CarbonFacts
+from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.multi_slots_settings import MultiSlotsSettings
 from qarnot.forced_network_rule import ForcedNetworkRule
@@ -44,7 +45,9 @@ class Pool(object):
        or retrieved with :meth:`qarnot.connection.Connection.pools` or :meth:`qarnot.connection.Connection.retrieve_pool`.
     """
 
-    def __init__(self, connection, name, profile, instancecount=1, shortname=None, scheduling_type: SchedulingType = None):
+    def __init__(
+            self, connection, name, profile, instancecount=1, shortname=None,
+            scheduling_type: SchedulingType = None, project: Project = None):
         """Create a new :class:`Pool`.
 
         :param connection: the cluster on which to send the pool
@@ -68,6 +71,9 @@ class Pool(object):
         self._state = 'UnSubmitted'  # RO property same for below
         self._profile = profile
         self._connection = connection
+
+        self._project_uuid = project.uuid if project is not None else None
+
         self._constants: Dict[str, str] = {}
         self._status = None
         """
@@ -179,6 +185,8 @@ class Pool(object):
         self._name = json_pool.get('name')
         self._shortname = json_pool.get('shortname')
         self._profile = json_pool.get('profile')
+        if json_pool.get('projectUuid') is not None:
+            self._project_uuid = json_pool.get('projectUuid')
         self._instancecount = json_pool.get('instanceCount')
 
         if json_pool.get('runningCoreCount') is not None:
@@ -326,6 +334,9 @@ class Pool(object):
 
         if self._multi_slots_settings:
             json_pool['multiSlotsSettings'] = self._multi_slots_settings.to_json()
+
+        if self._project_uuid is not None:
+            json_pool["projectUuid"] = self._project_uuid
 
         return json_pool
 
@@ -797,6 +808,28 @@ class Pool(object):
             raise AttributeError("can't set attribute on a launched pool")
         else:
             self._profile = value
+
+    @property
+    def project(self):
+        """:type: :class:`~qarnot.project.Project`
+        :getter: Returns this pool's project
+        :setter: Sets this pool's project
+
+        The project to run the pool in.
+
+        Can be set until :meth:`run` or :meth:`submit` is called.
+        """
+        if self._project_uuid is None:
+            return None
+        return Project.retrieve_by_uuid(self._connection, self._project_uuid)
+
+    @project.setter
+    def project(self, value: Project):
+        """setter for project"""
+        if self.uuid is not None:
+            raise AttributeError("can't set attribute on a launched pool")
+        else:
+            self._project_uuid = value.uuid
 
     @property
     def instancecount(self):

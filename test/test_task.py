@@ -6,15 +6,18 @@ import uuid
 import pytest
 from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.helper import Log
+from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
 from qarnot.secrets import SecretAccessRightBySecret, SecretAccessRightByPrefix, SecretsAccessRights
 
 from qarnot.task import Task
+from qarnot.dependency import (AdvancedDependency, DependencyStateWaiting,
+                               DependencyStateConditionsFulfilled,
+                               TaskFinalStateFailure, TaskFinalStateSuccess)
 from qarnot.privileges import Privileges
 from qarnot.bucket import Bucket
 from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransformation
-import datetime
 
 from .mock_connection import MockConnection, MockResponse
 from .mock_task import default_json_task, task_with_running_instances
@@ -88,6 +91,7 @@ class TestTaskProperties:
         ("end_date", None),
         ("max_time_queue_seconds", None),
         ("privileges", Privileges()),
+        ("project", None),
     ])
     def test_task_property_default_value(self, mock_conn, property_name,  expected_value):
         task = Task(mock_conn, "task-name")
@@ -608,3 +612,284 @@ class TestTaskProperties:
             assert "stderr %s" % i in warn_logs, "All task stderr should be printed to user logs stream with warning level"
             assert warn_logs.count("stderr %s" % i) == 2, "All stderr logs should be printed only once" # each stderr logs are here sent twice in the test (before and after state change)
             assert "stderr %s" % i not in info_logs, "All task stderr should not be printed to user logs stream with info level"
+
+    def test_project_in_task_to_json(self, mock_conn):
+        project = Project("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        task = Task(mock_conn, "task-with-project", "profile", project=project)
+
+        task_json = task._to_json()
+
+        assert task_json["projectUuid"] is not None
+        assert task_json["projectUuid"] == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+        # fields that need to be non null for the deserialization to not fail
+        task_json['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        task_json['uuid'] = str(uuid.uuid4())
+        task_json['state'] = 'Submitted'
+        task_json['runningCoreCount'] = 0
+        task_json['runningInstanceCount'] = 0
+
+        task_from_json = Task(mock_conn, "task-with-project-from-json")
+        task_from_json._update(task_json)
+
+        assert task_from_json._project_uuid is not None
+        assert task_from_json._project_uuid == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+class TestTaskDependencies:
+    def submit_task(self, task):
+        task._uuid = "set"
+
+    def test_default_dependencies_empty(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == []
+
+    def test_set_dependencies_from_uuids(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1", "uuid-2"])
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-1", "uuid-2"]
+
+    def test_set_dependencies_from_uuids_appends(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1"])
+        task.set_task_dependencies_from_uuids(["uuid-2"])
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-1", "uuid-2"]
+
+    def test_set_dependencies_from_uuids_deduplicates(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1", "uuid-2"])
+        task.set_task_dependencies_from_uuids(["uuid-2", "uuid-3"])
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-1", "uuid-2", "uuid-3"]
+
+    def test_set_dependencies_from_uuids_raises_after_submit(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        with pytest.raises(AttributeError):
+            task.set_task_dependencies_from_uuids(["uuid-1"])
+
+    def test_set_dependencies_from_tasks(self, mock_conn):
+        dep1 = Task(mock_conn, "dep-1")
+        dep1._uuid = "uuid-1"
+        dep2 = Task(mock_conn, "dep-2")
+        dep2._uuid = "uuid-2"
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_tasks([dep1, dep2])
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-1", "uuid-2"]
+
+    def test_set_dependencies_from_tasks_deduplicates(self, mock_conn):
+        dep1 = Task(mock_conn, "dep-1")
+        dep1._uuid = "uuid-1"
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_tasks([dep1])
+        task.set_task_dependencies_from_tasks([dep1])
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-1"]
+
+    def test_set_dependencies_from_tasks_raises_after_submit(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        dep = Task(mock_conn, "dep")
+        dep._uuid = "uuid-1"
+        with pytest.raises(AttributeError):
+            task.set_task_dependencies_from_tasks([dep])
+
+    def test_clear_dependencies(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1", "uuid-2"])
+        task.clear_task_dependencies()
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == []
+
+    def test_clear_dependencies_raises_after_submit(self, mock_conn):
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        with pytest.raises(AttributeError):
+            task.clear_task_dependencies()
+
+    # --- set_task_advanced_dependencies ---
+
+    def test_advanced_deps_basic_serialization(self, mock_conn):
+        """Basic: advanced dep appears in advancedDependsOn with sorted conditions."""
+        task = Task(mock_conn, "task-name")
+        dep = AdvancedDependency("uuid-1", [TaskFinalStateFailure(), TaskFinalStateSuccess()])
+        task.set_task_advanced_dependencies([dep])
+        json_task = task._to_json()
+        adv = json_task["dependencies"]["advancedDependsOn"]
+        assert len(adv) == 1
+        assert adv[0]["taskUuid"] == "uuid-1"
+        assert adv[0]["taskFinalStateCondition"] == ["failure", "success"]
+
+    def test_advanced_deps_null_conditions(self, mock_conn):
+        """None conditions serialize to null (any final state accepted)."""
+        task = Task(mock_conn, "task-name")
+        dep = AdvancedDependency("uuid-1")
+        task.set_task_advanced_dependencies([dep])
+        json_task = task._to_json()
+        adv = json_task["dependencies"]["advancedDependsOn"]
+        assert adv[0]["taskFinalStateCondition"] is None
+
+    def test_advanced_deps_accumulate(self, mock_conn):
+        """Calling set_task_advanced_dependencies twice accumulates entries."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-1", [TaskFinalStateSuccess()])])
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-2")])
+        json_task = task._to_json()
+        uuids = [d["taskUuid"] for d in json_task["dependencies"]["advancedDependsOn"]]
+        assert uuids == ["uuid-1", "uuid-2"]
+
+    def test_advanced_deps_exact_duplicate_skipped(self, mock_conn):
+        """Adding the exact same advanced dependency twice is silently ignored."""
+        task = Task(mock_conn, "task-name")
+        dep = AdvancedDependency("uuid-1", [TaskFinalStateSuccess(), TaskFinalStateFailure()])
+        dep2 = AdvancedDependency("uuid-1", [TaskFinalStateSuccess(), TaskFinalStateFailure()])
+        task.set_task_advanced_dependencies([dep, dep2])
+        json_task = task._to_json()
+        assert len(json_task["dependencies"]["advancedDependsOn"]) == 1
+
+    def test_advanced_deps_conflicting_conditions_raises(self, mock_conn):
+        """Same task UUID with different conditions raises ValueError."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-1", [TaskFinalStateSuccess()])])
+        with pytest.raises(ValueError):
+            task.set_task_advanced_dependencies([AdvancedDependency("uuid-1", [TaskFinalStateFailure()])])
+
+    def test_advanced_deps_raises_after_submit(self, mock_conn):
+        """Cannot set advanced dependencies after task is submitted."""
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        with pytest.raises(AttributeError):
+            task.set_task_advanced_dependencies([AdvancedDependency("uuid-1")])
+
+    # --- mutual exclusivity ---
+
+    def test_simple_then_advanced_raises(self, mock_conn):
+        """Adding advanced deps when simple deps are set raises ValueError."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1"])
+        with pytest.raises(ValueError):
+            task.set_task_advanced_dependencies([AdvancedDependency("uuid-2")])
+
+    def test_advanced_then_simple_uuids_raises(self, mock_conn):
+        """Adding simple UUID deps when advanced deps are set raises ValueError."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-1")])
+        with pytest.raises(ValueError):
+            task.set_task_dependencies_from_uuids(["uuid-2"])
+
+    def test_advanced_then_simple_tasks_raises(self, mock_conn):
+        """Adding simple task deps when advanced deps are set raises ValueError."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-1")])
+        dep = Task(mock_conn, "dep")
+        dep._uuid = "uuid-2"
+        with pytest.raises(ValueError):
+            task.set_task_dependencies_from_tasks([dep])
+
+    def test_clear_then_switch_mode(self, mock_conn):
+        """After clear_task_dependencies, both modes are available again."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1"])
+        task.clear_task_dependencies()
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-2", [TaskFinalStateSuccess()])])
+        json_task = task._to_json()
+        assert "advancedDependsOn" in json_task["dependencies"]
+        assert json_task["dependencies"].get("dependsOn") is None
+
+    # --- remove_task_dependency ---
+
+    def test_remove_simple_dependency(self, mock_conn):
+        """remove_task_dependency removes a UUID from simple deps."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1", "uuid-2"])
+        task.remove_task_dependency("uuid-1")
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-2"]
+
+    def test_remove_advanced_dependency(self, mock_conn):
+        """remove_task_dependency removes an entry from advanced deps."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_advanced_dependencies([
+            AdvancedDependency("uuid-1", [TaskFinalStateSuccess()]),
+            AdvancedDependency("uuid-2"),
+        ])
+        task.remove_task_dependency("uuid-1")
+        json_task = task._to_json()
+        adv = json_task["dependencies"]["advancedDependsOn"]
+        assert len(adv) == 1
+        assert adv[0]["taskUuid"] == "uuid-2"
+
+    def test_remove_nonexistent_dependency_does_nothing(self, mock_conn):
+        """remove_task_dependency on unknown UUID does not raise."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1"])
+        task.remove_task_dependency("uuid-999")
+        json_task = task._to_json()
+        assert json_task["dependencies"]["dependsOn"] == ["uuid-1"]
+
+    def test_remove_dependency_raises_after_submit(self, mock_conn):
+        """Cannot remove a dependency after the task is submitted."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_dependencies_from_uuids(["uuid-1"])
+        self.submit_task(task)
+        with pytest.raises(AttributeError):
+            task.remove_task_dependency("uuid-1")
+
+    def test_clear_also_clears_advanced(self, mock_conn):
+        """clear_task_dependencies resets advanced deps to empty."""
+        task = Task(mock_conn, "task-name")
+        task.set_task_advanced_dependencies([AdvancedDependency("uuid-1", [TaskFinalStateSuccess()])])
+        task.clear_task_dependencies()
+        json_task = task._to_json()
+        assert json_task["dependencies"].get("advancedDependsOn") is None
+        assert json_task["dependencies"]["dependsOn"] == []
+
+    # --- deserialization (_update) ---
+
+    def test_deserialize_simple_deps(self, mock_conn):
+        """_update populates task.dependencies from a simple-deps API response."""
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        json_response = copy.deepcopy(default_json_task)
+        json_response["dependencies"] = {
+            "dependsOn": ["uuid-1", "uuid-2"],
+            "state": "waiting",
+        }
+        task._update(json_response)
+        deps = task.dependencies
+        assert deps is not None
+        assert deps.depends_on == ["uuid-1", "uuid-2"]
+        assert deps.state == DependencyStateWaiting()
+        assert deps.advanced_depends_on == []
+
+    def test_deserialize_advanced_deps(self, mock_conn):
+        """_update populates task.dependencies from an advanced-deps API response."""
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        json_response = copy.deepcopy(default_json_task)
+        json_response["dependencies"] = {
+            "advancedDependsOn": [
+                {"taskUuid": "uuid-1", "taskFinalStateCondition": ["success"], "state": "dependencyConditionsFulfilled", "actualFinalState": "success"},
+            ],
+            "state": "dependencyConditionsFulfilled",
+        }
+        task._update(json_response)
+        deps = task.dependencies
+        assert deps is not None
+        assert len(deps.advanced_depends_on) == 1
+        assert deps.advanced_depends_on[0].task_uuid == "uuid-1"
+        assert deps.advanced_depends_on[0].task_final_state_condition == [TaskFinalStateSuccess()]
+        assert deps.advanced_depends_on[0].actual_final_state == TaskFinalStateSuccess()
+        assert deps.state == DependencyStateConditionsFulfilled()
+
+    def test_deserialize_null_dependencies(self, mock_conn):
+        """_update sets task.dependencies to None when key is absent."""
+        task = Task(mock_conn, "task-name")
+        self.submit_task(task)
+        json_response = copy.deepcopy(default_json_task)
+        json_response.pop("dependencies", None)
+        task._update(json_response)
+        assert task.dependencies is None

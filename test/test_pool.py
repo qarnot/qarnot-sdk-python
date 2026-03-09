@@ -11,6 +11,7 @@ from qarnot.advanced_bucket import BucketPrefixFiltering, PrefixResourcesTransfo
 import datetime
 
 from qarnot.privileges import Privileges
+from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
 from qarnot.secrets import SecretAccessRightByPrefix, SecretAccessRightBySecret, SecretsAccessRights
@@ -90,6 +91,7 @@ class TestPoolProperties:
         ("tasks_default_wait_for_pool_resources_synchronization", False),
         ("max_time_queue_seconds", None),
         ("privileges", Privileges()),
+        ("project", None),
     ])
     def test_pool_property_default_value(self, property_name,  expected_value):
         pool = Pool(self.conn, "pool-name", "profile")
@@ -503,3 +505,25 @@ class TestPoolProperties:
         assert outbound_from_json.description == outbound_rule.description
         assert outbound_from_json.public_host == outbound_rule.public_host
         assert outbound_from_json.public_port == outbound_rule.public_port
+
+    def test_project_in_pool_to_json(self):
+        project = Project("3fa85f64-5717-4562-b3fc-2c963f66afa6")
+        pool = Pool(self.conn, "pool-with-project", "profile", project=project)
+
+        pool_json = pool._to_json()
+
+        assert pool_json["projectUuid"] is not None
+        assert pool_json["projectUuid"] == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+        # fields that need to be non null for the deserialization to not fail
+        pool_json['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        pool_json['uuid'] = str(uuid.uuid4())
+        pool_json['state'] = 'Submitted'
+        pool_json['runningCoreCount'] = 0
+        pool_json['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-with-project-from-json", "profile")
+        pool_from_json._update(pool_json)
+
+        assert pool_from_json._project_uuid is not None
+        assert pool_from_json._project_uuid == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
