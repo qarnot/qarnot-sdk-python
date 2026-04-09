@@ -18,11 +18,13 @@ import warnings
 from typing import Dict, List, Optional
 
 from qarnot.carbon_facts import CarbonClient, CarbonFacts
+from qarnot.credits_client import Credits, CreditsClient
 from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.multi_slots_settings import MultiSlotsSettings
 from qarnot.forced_network_rule import ForcedNetworkRule
 from qarnot.secrets import SecretsAccessRights
+from qarnot.scaling import Scaling
 
 from . import raise_on_error, get_url, _util
 from .bucket import Bucket
@@ -115,6 +117,7 @@ class Pool(object):
         self._elastic_resize_period = 90
         self._elastic_resize_factor = 1
         self._elastic_minimum_idle_time = 0
+        self._scaling: Optional[Scaling] = None
         self._running_core_count = 0
         self._running_instance_count = 0
         self._pool_usage = 0.0
@@ -239,6 +242,9 @@ class Pool(object):
             self._elastic_resize_factor = elasticProperty.get("rampResizeFactor")
             self._elastic_resize_period = elasticProperty.get("resizePeriod")
 
+        if 'scaling' in json_pool:
+            self._scaling = Scaling.from_json(json_pool.get("scaling"))
+
         self._previous_state = json_pool.get('previousState', None)
         self._state_transition_time = json_pool.get('stateTransitionTime', None)
         self._previous_state_transition_time = json_pool.get('previousStateTransitionTime', None)
@@ -337,6 +343,9 @@ class Pool(object):
 
         if self._project_uuid is not None:
             json_pool["projectUuid"] = self._project_uuid
+
+        if self._scaling is not None:
+            json_pool['scaling'] = self._scaling.to_json()
 
         return json_pool
 
@@ -664,6 +673,22 @@ class Pool(object):
 
         carbon_client = CarbonClient(self._connection, datacenter_name)
         return carbon_client.get_pool_carbon_facts(self.uuid)
+
+    def credits(self) -> Credits:
+        """Get the credits consumed by the pool
+
+        :rtype: :class:`~qarnot.credits_client.Credits`
+        :returns: The credits consumed the pool.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingPoolException: pool does not exist
+        """
+        if self._uuid is None:
+            return None
+
+        credits_client = CreditsClient(self._connection)
+        return credits_client.get_pool_credits(self.uuid)
 
     @property
     def uuid(self):
@@ -1069,6 +1094,24 @@ class Pool(object):
     def elastic_resize_period(self, value):
         """Setter for elastic_resize_period"""
         self._elastic_resize_period = value
+
+    @property
+    def scaling(self) -> Optional[Scaling]:
+        """:type: :class:`~qarnot.scaling.Scaling`
+        :getter: Returns this pool's scaling configuration
+        :setter: Sets this pool's scaling configuration
+
+        The scaling configuration for the pool, replacing elastic properties.
+        """
+        self._update_if_summary()
+        if self._auto_update:
+            self.update()
+        return self._scaling
+
+    @scaling.setter
+    def scaling(self, value: Optional[Scaling]):
+        """Setter for scaling"""
+        self._scaling = value
 
     @property
     def preparation_command_line(self):

@@ -20,6 +20,7 @@ from logging import Logger
 import sys
 from typing import Dict, Iterable, Iterator, List, Optional
 
+from qarnot.credits_client import Credits, CreditsClient
 from qarnot.helper import Log
 from qarnot.project import Project
 
@@ -338,6 +339,18 @@ class Connection(object):
         raise_on_error(resp)
         ret = resp.json()
         return UserInfo(ret)
+
+    def credits(self) -> Credits:
+        """Get the credits left to be consumed by the user
+
+        :rtype: :class:`~qarnot.credits_client.Credits`
+        :returns: The credits left in the account.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        """
+        credits_client = CreditsClient(self)
+        return credits_client.get_account_credits()
 
     def buckets(self):
         """Get the list of buckets.

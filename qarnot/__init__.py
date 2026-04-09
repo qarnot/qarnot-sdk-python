@@ -20,7 +20,7 @@ from typing import Dict
 from .exceptions import QarnotGenericException, SecretConflictException, SecretNotFoundException, UnauthorizedException
 from ._util import get_error_message_from_http_response
 
-__all__ = ["task", "connection", "bucket", "pool",
+__all__ = ["task", "connection", "bucket", "pool", "scaling",
            "storage", "status", "job", "advanced_bucket", "hardware_constraint", "scheduling_type"]
 
 
@@ -69,6 +69,7 @@ def get_url(key, **kwargs):
         'task instance stderr': '/tasks/{uuid}/stderr/{instanceId}',  # GET -> task instance stderr
         'task abort': '/tasks/{uuid}/abort',  # POST -> abort task
         'task carbon facts': '/carbon/v1/tasks/{uuid}/carbon-facts',  # GET -> task carbon facts
+        'task credits': '/credits/v1/tasks/{uuid}/credits',  # GET -> task consumed credits
         'pools': '/pools',  # POST -> submit pool
         'paginate pools': '/pools/paginate',  # GET -> paginate pools
         'paginate pools summaries': '/pools/summaries/paginate',  # GET -> paginate pools summaries
@@ -80,9 +81,12 @@ def get_url(key, **kwargs):
         'pool instance stdout': '/pools/{uuid}/stdout/{instanceId}',  # GET -> pool instance stdout
         'pool instance stderr': '/pools/{uuid}/stderr/{instanceId}',  # GET -> pool instance stderr
         'pool carbon facts': '/carbon/v1/pools/{uuid}/carbon-facts',  # GET -> pool carbon facts
+        'pool credits': '/credits/v1/pools/{uuid}/credits',  # GET -> pool consumed credits
         'secrets data': '/secrets-manager/data/{secret_key}',  # GET -> get secret , PUT -> create secret, PATCH -> update secret, DELETE -> delete secret
         'secrets search': '/secrets-manager/search/{secret_prefix}',  # GET -> lists secrets starting with prefix
         'user': '/info',  # GET -> user info
+        'account credits': '/credits/v1/accounts/credits',  # GET -> account credits
+        'project budgets': '/credits/v1/projects/{uuid}/budgets',  # GET -> project budgets
         'profiles': '/profiles',  # GET -> profiles list
         'profile details': '/profiles/{profile}',  # GET -> profile details
         'hardware constraints': '/hardware-constraints',  # GET -> user hardware constraints list

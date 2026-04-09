@@ -77,6 +77,10 @@ class MissingPoolException(QarnotException):
     """Non existent pool."""
 
 
+class MissingProjectException(QarnotException):
+    """Non existent project."""
+
+
 class MaxTaskException(QarnotException):
     """Max number of tasks reached."""
 

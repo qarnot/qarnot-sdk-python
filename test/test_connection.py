@@ -8,6 +8,7 @@ import requests
 import simplejson
 
 from qarnot.project import Project
+from test.mock_project import default_project_json, non_default_project_json
 
 expected_or_tags_filter = {"operator": "Or", "filters":[{"operator": "Equal", "field": "Tags", "value": "tag1"}, {"operator": "Equal", "field": "Tags", "value": "tag2"}]}
 expected_and_tags_filter = {"operator": "And", "filters":[{"operator": "Equal", "field": "Tags", "value": "tag_inter1"}, {"operator": "Equal", "field": "Tags", "value": "tag_inter2"}]}
@@ -700,20 +701,8 @@ class TestConnectionPaginateMethods():
             user_json = {
                 "projects":
                 [
-                    {
-                        "uuid": "12345678-1234-1234-1234-123456789012",
-                        "slug": "default",
-                        "name": "Default Project",
-                        "organizationUuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "description": "Organization default project"
-                    },
-                    {
-                        "uuid": "3fa85f64-5717-4562-b3fc-000000000001",
-                        "slug": "super-project",
-                        "name": "Super Project",
-                        "organizationUuid": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-                        "description": "Organization super project"
-                    }
+                    default_project_json,
+                    non_default_project_json
                 ],
                 "computingQuotas": {
                     "user": {
@@ -738,18 +727,26 @@ class TestConnectionPaginateMethods():
             assert user.computing_quotas.organization.name == user_json['computingQuotas']['organization']['name']
             assert user.projects is not None
             assert len(user.projects) == 2
-            default_project = Project.retrieve_by_slug(connec, "default")
+
+            default_project = Project.retrieve_default(connec)
             assert default_project is not None
             assert default_project.uuid == user_json['projects'][0]['uuid']
             assert default_project.slug == user_json['projects'][0]['slug']
-            assert default_project.name == user_json['projects'][0]['name']
-            assert default_project.organization_uuid == user_json['projects'][0]['organizationUuid']
-            assert default_project.description == user_json['projects'][0]['description']
+            assert default_project.is_default == user_json['projects'][0]['isDefault']
 
-            second_project = Project.retrieve_by_uuid(connec, "3fa85f64-5717-4562-b3fc-000000000001")
-            assert second_project is not None
-            assert second_project.uuid == user_json['projects'][1]['uuid']
-            assert second_project.slug == user_json['projects'][1]['slug']
-            assert second_project.name == user_json['projects'][1]['name']
-            assert second_project.organization_uuid == user_json['projects'][1]['organizationUuid']
-            assert second_project.description == user_json['projects'][1]['description']
+            default_project_by_slug = Project.retrieve_by_slug(connec, "default")
+            assert default_project_by_slug is not None
+            assert default_project_by_slug.uuid == user_json['projects'][0]['uuid']
+            assert default_project_by_slug.slug == user_json['projects'][0]['slug']
+            assert default_project_by_slug.name == user_json['projects'][0]['name']
+            assert default_project_by_slug.organization_uuid == user_json['projects'][0]['organizationUuid']
+            assert default_project_by_slug.description == user_json['projects'][0]['description']
+
+            second_project_by_uuid = Project.retrieve_by_uuid(connec, "3fa85f64-5717-4562-b3fc-000000000001")
+            assert second_project_by_uuid is not None
+            assert second_project_by_uuid.uuid == user_json['projects'][1]['uuid']
+            assert second_project_by_uuid.slug == user_json['projects'][1]['slug']
+            assert second_project_by_uuid.name == user_json['projects'][1]['name']
+            assert second_project_by_uuid.organization_uuid == user_json['projects'][1]['organizationUuid']
+            assert second_project_by_uuid.description == user_json['projects'][1]['description']
+            assert second_project_by_uuid.is_default == False

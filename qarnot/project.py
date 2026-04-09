@@ -14,12 +14,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import List
+
+from qarnot.budget import Budget
+from qarnot.credits_client import CreditsClient
+
 
 class Project(object):
     """Represents an organization project.
 
     .. note::
-       A :class:`Project` must be retrieved with :attr:`qarnot.connection.Connection.user_info.projects`.
+       A :class:`Project` must be retrieved with :attr:`qarnot.connection.Connection.user_info.projects`
+       or with helpers :meth:`qarnot.project.Project.retrieve_by_uuid`, :meth:`qarnot.project.Project.retrieve_by_name`
+       or :meth:`qarnot.project.Project.retrieve_by_slug`
     """
     def __init__(self, uuid: str):
         """Create a new :class:`Project`.
@@ -87,10 +94,24 @@ class Project(object):
     def is_default(self):
         """:type: :class:`bool`
         :getter: Returns true if this project is the default one of the organization
-
-        The project's description.
         """
         return self._is_default
+
+    @staticmethod
+    def retrieve_default(connection):
+        """Retrieve default project of the organization if any.
+
+        :param qarnot.connection.Connection connection:
+          the cluster to retrieve the project from
+
+        :rtype: Project
+        :returns: The retrieved project.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingProjectException: no such project
+        """
+        return next((proj for proj in connection.user_info.projects if proj.is_default), None)
 
     @staticmethod
     def retrieve_by_uuid(connection, uuid):
@@ -143,13 +164,46 @@ class Project(object):
         """
         return next((proj for proj in connection.user_info.projects if proj.name == name), None)
 
+    def get_active_budgets(self, connection) -> List[Budget]:
+        """Retrieve project currently active budgets.
+
+        :param qarnot.connection.Connection connection:
+          the cluster to retrieve the project from
+        :param str name: the name of the project to retrieve
+
+        :rtype: list(:class:`~qarnot.budget.Budget`)
+        :returns: The retrieved active budgets of the project.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingProjectException: no such project
+        """
+        budget_client = CreditsClient(connection)
+        return budget_client.get_project_budgets(self.uuid, True)
+
+    def get_all_budgets(self, connection) -> List[Budget]:
+        """Retrieve all project budgets.
+
+        :param qarnot.connection.Connection connection:
+          the cluster to retrieve the project from
+        :param str name: the name of the project to retrieve
+
+        :rtype: list(:class:`~qarnot.budget.Budget`)
+        :returns: The retrieved budgets of the project.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingProjectException: no such project
+        """
+        budget_client = CreditsClient(connection)
+        return budget_client.get_project_budgets(self.uuid, False)
+
     @classmethod
     def from_json(cls, payload):
         """Create a Project object from a json project.
 
-        :param qarnot.connection.Connection connection: the cluster connection
-        :param dict json_project: Dictionary representing the project
-        :returns: The created :class:`~qarnot.project.project`.
+        :param dict payload: Dictionary representing the project
+        :returns: The created :class:`~qarnot.project.Project`.
         """
         project = cls(payload.get("uuid"))
 
@@ -158,8 +212,8 @@ class Project(object):
         project._slug = payload.get("slug")
         project._description = payload.get("description")
         project._organization_uuid = payload.get("organizationUuid")
-        project._is_default = payload.get("isDefault")
-        if project._is_default is None and project._slug is not None:
+        project._is_default = payload.get("isDefault", False)
+        if payload.get("isDefault") is None and project._slug is not None:
             project._is_default = project._slug == "default"
 
         return project

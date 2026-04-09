@@ -16,4 +16,5 @@ Compute
    secrets
    carbon_facts
    computing_quotas
+   project
 

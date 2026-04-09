@@ -15,6 +15,7 @@ from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.scheduling_type import FlexScheduling, OnDemandScheduling, ReservedScheduling
 from qarnot.secrets import SecretAccessRightByPrefix, SecretAccessRightBySecret, SecretsAccessRights
+from qarnot.scaling import Scaling, FixedScalingPolicy, ManagedTasksQueueScalingPolicy, TimePeriodAlways
 from .mock_connection import MockConnection, PatchRequest, none_function
 from .mock_pool import default_json_pool
 
@@ -527,3 +528,190 @@ class TestPoolProperties:
 
         assert pool_from_json._project_uuid is not None
         assert pool_from_json._project_uuid == "3fa85f64-5717-4562-b3fc-2c963f66afa6"
+
+    def test_pool_scaling_default_value(self):
+        pool = Pool(self.conn, "pool-name", "profile")
+        assert pool.scaling is None
+
+    def test_pool_scaling_set_get(self):
+        pool = Pool(self.conn, "pool-name", "profile")
+        scaling = Scaling(policies=[FixedScalingPolicy(slots_count=4)])
+        pool.scaling = scaling
+        assert pool.scaling is not None
+        assert len(pool.scaling.policies) == 1
+        assert pool.scaling.policies[0].slots_count == 4
+
+    def test_pool_scaling_serialization_with_fixed_policy(self):
+        pool = Pool(self.conn, "pool-scaling-serialization", "profile")
+        pool.scaling = Scaling(policies=[
+            FixedScalingPolicy(
+                slots_count=8,
+                name="fixed-policy",
+                enabled_periods=[TimePeriodAlways(name="always")]
+            )
+        ])
+
+        json_pool = pool._to_json()
+        assert "scaling" in json_pool
+        assert "policies" in json_pool["scaling"]
+        assert len(json_pool["scaling"]["policies"]) == 1
+        assert json_pool["scaling"]["policies"][0]["type"] == "Fixed"
+        assert json_pool["scaling"]["policies"][0]["slotsCount"] == 8
+        assert json_pool["scaling"]["policies"][0]["name"] == "fixed-policy"
+        assert len(json_pool["scaling"]["policies"][0]["enabledPeriods"]) == 1
+        assert json_pool["scaling"]["policies"][0]["enabledPeriods"][0]["type"] == "Always"
+
+    def test_pool_scaling_serialization_with_managed_policy(self):
+        pool = Pool(self.conn, "pool-scaling-managed", "profile")
+        pool.scaling = Scaling(policies=[
+            ManagedTasksQueueScalingPolicy(
+                min_total_slots=2,
+                max_total_slots=20,
+                min_idle_slots=1,
+                min_idle_time_seconds=300,
+                scaling_factor=0.5,
+                name="autoscale-policy"
+            )
+        ])
+
+        json_pool = pool._to_json()
+        assert "scaling" in json_pool
+        policy_json = json_pool["scaling"]["policies"][0]
+        assert policy_json["type"] == "ManagedTasksQueue"
+        assert policy_json["name"] == "autoscale-policy"
+        assert policy_json["minTotalSlots"] == 2
+        assert policy_json["maxTotalSlots"] == 20
+        assert policy_json["minIdleSlots"] == 1
+        assert policy_json["minIdleTimeSeconds"] == 300
+        assert policy_json["scalingFactor"] == 0.5
+
+    def test_pool_scaling_not_in_json_when_none(self):
+        pool = Pool(self.conn, "pool-no-scaling", "profile")
+        json_pool = pool._to_json()
+        assert "scaling" not in json_pool
+
+    def test_pool_scaling_deserialization_with_fixed_policy(self):
+        pool = Pool(self.conn, "pool-scaling-deserialization", "profile")
+
+        pool_json = copy.deepcopy(default_json_pool)
+        pool_json["scaling"] = {
+            "policies": [
+                {
+                    "type": "Fixed",
+                    "name": "fixed-policy",
+                    "slotsCount": 10,
+                    "enabledPeriods": [
+                        {"type": "Always", "name": "always-period"}
+                    ]
+                }
+            ],
+            "activePolicyName": "fixed-policy"
+        }
+        pool._update(pool_json)
+
+        assert pool.scaling is not None
+        assert len(pool.scaling.policies) == 1
+        assert isinstance(pool.scaling.policies[0], FixedScalingPolicy)
+        assert pool.scaling.policies[0].slots_count == 10
+        assert pool.scaling.policies[0].name == "fixed-policy"
+        assert len(pool.scaling.policies[0].enabled_periods) == 1
+        assert isinstance(pool.scaling.policies[0].enabled_periods[0], TimePeriodAlways)
+        assert pool.scaling.active_policy_name == "fixed-policy"
+
+    def test_pool_scaling_deserialization_with_managed_policy(self):
+        pool = Pool(self.conn, "pool-scaling-managed-deserialization", "profile")
+
+        pool_json = copy.deepcopy(default_json_pool)
+        pool_json["scaling"] = {
+            "policies": [
+                {
+                    "type": "ManagedTasksQueue",
+                    "name": "autoscale",
+                    "minTotalSlots": 1,
+                    "maxTotalSlots": 50,
+                    "minIdleSlots": 2,
+                    "minIdleTimeSeconds": 120,
+                    "scalingFactor": 0.8
+                }
+            ],
+            "activePolicyName": "autoscale"
+        }
+        pool._update(pool_json)
+
+        assert pool.scaling is not None
+        assert len(pool.scaling.policies) == 1
+        assert isinstance(pool.scaling.policies[0], ManagedTasksQueueScalingPolicy)
+        assert pool.scaling.policies[0].name == "autoscale"
+        assert pool.scaling.policies[0].min_total_slots == 1
+        assert pool.scaling.policies[0].max_total_slots == 50
+        assert pool.scaling.policies[0].min_idle_slots == 2
+        assert pool.scaling.policies[0].min_idle_time_seconds == 120
+        assert pool.scaling.policies[0].scaling_factor == 0.8
+        assert pool.scaling.active_policy_name == "autoscale"
+
+    def test_pool_scaling_deserialization_with_multiple_policies(self):
+        pool = Pool(self.conn, "pool-scaling-multiple", "profile")
+
+        pool_json = copy.deepcopy(default_json_pool)
+        pool_json["scaling"] = {
+            "policies": [
+                {
+                    "type": "Fixed",
+                    "name": "off-hours",
+                    "slotsCount": 0
+                },
+                {
+                    "type": "ManagedTasksQueue",
+                    "name": "business-hours",
+                    "minTotalSlots": 5,
+                    "maxTotalSlots": 100
+                }
+            ],
+            "activePolicyName": "business-hours"
+        }
+        pool._update(pool_json)
+
+        assert pool.scaling is not None
+        assert len(pool.scaling.policies) == 2
+        assert isinstance(pool.scaling.policies[0], FixedScalingPolicy)
+        assert isinstance(pool.scaling.policies[1], ManagedTasksQueueScalingPolicy)
+        assert pool.scaling.policies[0].name == "off-hours"
+        assert pool.scaling.policies[1].name == "business-hours"
+        assert pool.scaling.active_policy_name == "business-hours"
+
+    def test_pool_scaling_roundtrip(self):
+        pool = Pool(self.conn, "pool-scaling-roundtrip", "profile")
+
+        original_scaling = Scaling(policies=[
+            FixedScalingPolicy(
+                slots_count=4,
+                name="minimal",
+                enabled_periods=[TimePeriodAlways()]
+            ),
+            ManagedTasksQueueScalingPolicy(
+                min_total_slots=2,
+                max_total_slots=32,
+                name="autoscale"
+            )
+        ])
+        pool.scaling = original_scaling
+
+        json_pool = pool._to_json()
+        json_pool['creationDate'] = datetime.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+        json_pool['uuid'] = str(uuid.uuid4())
+        json_pool['state'] = 'Submitted'
+        json_pool['runningCoreCount'] = 0
+        json_pool['runningInstanceCount'] = 0
+
+        pool_from_json = Pool(self.conn, "pool-scaling-roundtrip-restored", "profile")
+        pool_from_json._update(json_pool)
+
+        assert pool_from_json.scaling is not None
+        assert len(pool_from_json.scaling.policies) == 2
+        assert isinstance(pool_from_json.scaling.policies[0], FixedScalingPolicy)
+        assert isinstance(pool_from_json.scaling.policies[1], ManagedTasksQueueScalingPolicy)
+        assert pool_from_json.scaling.policies[0].slots_count == 4
+        assert pool_from_json.scaling.policies[0].name == "minimal"
+        assert pool_from_json.scaling.policies[1].min_total_slots == 2
+        assert pool_from_json.scaling.policies[1].max_total_slots == 32
+

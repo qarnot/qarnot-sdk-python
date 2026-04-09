@@ -22,6 +22,7 @@ import sys
 from typing import Dict, Optional, Union, List, Any, Callable, Sequence
 
 from qarnot.carbon_facts import CarbonClient, CarbonFacts
+from qarnot.credits_client import Credits, CreditsClient
 from qarnot.project import Project
 from qarnot.retry_settings import RetrySettings
 from qarnot.forced_network_rule import ForcedNetworkRule
@@ -1062,6 +1063,22 @@ class Task(object):
 
         carbon_client = CarbonClient(self._connection, datacenter_name)
         return carbon_client.get_task_carbon_facts(self.uuid)
+
+    def credits(self) -> Credits:
+        """Get the credits consumed by the task
+
+        :rtype: :class:`~qarnot.credits_client.Credits`
+        :returns: The credits consumed by the task.
+
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.MissingTaskException: task does not exist
+        """
+        if self._uuid is None:
+            return None
+
+        credits_client = CreditsClient(self._connection)
+        return credits_client.get_task_credits(self.uuid)
 
     @property
     def uuid(self):
