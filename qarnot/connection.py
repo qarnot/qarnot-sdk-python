@@ -30,7 +30,7 @@ from .task import Task, BulkTaskResponse
 from .pool import Pool
 from .paginate import PaginateResponse, OffsetResponse
 from .bucket import Bucket
-from .computing_quotas import ComputingQuotas
+from .computing_quotas import ComputingQuotas, UserComputingQuotas, OrganizationComputingQuotasDetails
 from .job import Job
 from ._filter import create_pool_filter, create_task_filter, create_job_filter
 from ._retry import with_retry
@@ -351,6 +351,38 @@ class Connection(object):
         """
         credits_client = CreditsClient(self)
         return credits_client.get_account_credits()
+
+    def get_user_computing_quotas(self) -> UserComputingQuotas:
+        """Get the computing quotas of the authenticated user.
+
+        :rtype: :class:`~qarnot.computing_quotas.UserComputingQuotas`
+        :returns: The computing quotas of the user.
+
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+        """
+        response = self._get(get_url('user computing quotas'))
+        raise_on_error(response)
+        return UserComputingQuotas.from_json(response.json())
+
+    def get_organization_computing_quotas(self) -> OrganizationComputingQuotasDetails:
+        """Get the computing quotas of the authenticated user's organization.
+
+        The per-user running counts breakdown (``running_counts_per_user`` on each of
+        ``flex``, ``on_demand``, and each entry of ``reserved``) is only populated when
+        the authenticated user has permission to view organization quota details;
+        it is `None` otherwise (an empty dict means nothing is running).
+
+        :rtype: :class:`~qarnot.computing_quotas.OrganizationComputingQuotasDetails`
+        :returns: The computing quotas of the organization.
+
+        :raises ~qarnot.exceptions.UnauthorizedException: invalid credentials
+        :raises ~qarnot.exceptions.QarnotGenericException: API general error, see message for details
+          (including the case where the user doesn't belong to an organization with computing quotas)
+        """
+        response = self._get(get_url('organization computing quotas'))
+        raise_on_error(response)
+        return OrganizationComputingQuotasDetails.from_json(response.json())
 
     def buckets(self):
         """Get the list of buckets.

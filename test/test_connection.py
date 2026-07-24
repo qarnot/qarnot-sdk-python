@@ -750,3 +750,148 @@ class TestConnectionPaginateMethods():
             assert second_project_by_uuid.organization_uuid == user_json['projects'][1]['organizationUuid']
             assert second_project_by_uuid.description == user_json['projects'][1]['description']
             assert second_project_by_uuid.is_default == False
+
+    def test_get_user_computing_quotas(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as mock_get:
+            user_computing_quotas_json = {
+                "flex": {
+                    "maxInstances": 64,
+                    "maxCores": 512,
+                    "runningInstancesCount": 1,
+                    "runningCoresCount": 2
+                },
+                "onDemand": {
+                    "maxInstances": 16,
+                    "maxCores": 128,
+                    "runningInstancesCount": 3,
+                    "runningCoresCount": 4
+                },
+                "reserved": [
+                    {
+                        "machineKey": "my-reserved-machine",
+                        "reservationName": "my-reservation",
+                        "maxInstances": 4,
+                        "maxCores": 32,
+                        "runningInstancesCount": 5,
+                        "runningCoresCount": 6
+                    }
+                ]
+            }
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = user_computing_quotas_json
+            quotas = connec.get_user_computing_quotas()
+
+            assert mock_get.call_args[0][0] == "/quotas/computing-quotas/user"
+            assert quotas.flex.max_instances == user_computing_quotas_json['flex']['maxInstances']
+            assert quotas.flex.max_cores == user_computing_quotas_json['flex']['maxCores']
+            assert quotas.flex.running_instances_count == user_computing_quotas_json['flex']['runningInstancesCount']
+            assert quotas.flex.running_cores_count == user_computing_quotas_json['flex']['runningCoresCount']
+            assert quotas.on_demand.max_instances == user_computing_quotas_json['onDemand']['maxInstances']
+            assert len(quotas.reserved) == 1
+            assert quotas.reserved[0].reservation_name == "my-reservation"
+            assert quotas.reserved[0].machine_key == "my-reserved-machine"
+            assert quotas.reserved[0].max_instances == user_computing_quotas_json['reserved'][0]['maxInstances']
+
+    def test_get_organization_computing_quotas(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as mock_get:
+            organization_computing_quotas_json = {
+                "flex": {
+                    "runningCountsPerUser": {
+                        "alice@example.com": {"runningInstancesCount": 1, "runningCoresCount": 8},
+                        "bob@example.com": {"runningInstancesCount": 2, "runningCoresCount": 16}
+                    },
+                    "maxInstances": 64,
+                    "maxCores": 512,
+                    "runningInstancesCount": 3,
+                    "runningCoresCount": 24
+                },
+                "onDemand": {
+                    "runningCountsPerUser": {
+                        "alice@example.com": {"runningInstancesCount": 1, "runningCoresCount": 8},
+                        "bob@example.com": {"runningInstancesCount": 1, "runningCoresCount": 8}
+                    },
+                    "maxInstances": 16,
+                    "maxCores": 128,
+                    "runningInstancesCount": 2,
+                    "runningCoresCount": 16
+                },
+                "reserved": [
+                    {
+                        "runningCountsPerUser": {
+                            "alice@example.com": {"runningInstancesCount": 2, "runningCoresCount": 16}
+                        },
+                        "machineKey": "my-reserved-machine",
+                        "reservationName": "my-reservation",
+                        "maxInstances": 4,
+                        "maxCores": 32,
+                        "runningInstancesCount": 2,
+                        "runningCoresCount": 16
+                    }
+                ]
+            }
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = organization_computing_quotas_json
+            quotas = connec.get_organization_computing_quotas()
+
+            assert mock_get.call_args[0][0] == "/quotas/computing-quotas/organization"
+            assert quotas.flex.max_instances == organization_computing_quotas_json['flex']['maxInstances']
+            assert quotas.on_demand.running_cores_count == organization_computing_quotas_json['onDemand']['runningCoresCount']
+            assert len(quotas.reserved) == 1
+            assert quotas.reserved[0].reservation_name == "my-reservation"
+
+            assert quotas.flex.running_counts_per_user is not None
+            assert len(quotas.flex.running_counts_per_user) == 2
+            alice_flex = quotas.flex.running_counts_per_user["alice@example.com"]
+            assert alice_flex.running_instances_count == 1
+            assert alice_flex.running_cores_count == 8
+            bob_flex = quotas.flex.running_counts_per_user["bob@example.com"]
+            assert bob_flex.running_instances_count == 2
+            assert bob_flex.running_cores_count == 16
+
+            assert quotas.on_demand.running_counts_per_user is not None
+            alice_on_demand = quotas.on_demand.running_counts_per_user["alice@example.com"]
+            assert alice_on_demand.running_instances_count == 1
+            assert alice_on_demand.running_cores_count == 8
+
+            assert quotas.reserved[0].running_counts_per_user is not None
+            alice_reserved = quotas.reserved[0].running_counts_per_user["alice@example.com"]
+            assert alice_reserved.running_instances_count == 2
+            assert alice_reserved.running_cores_count == 16
+
+    def test_get_organization_computing_quotas_with_null_running_counts(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as mock_get:
+            organization_computing_quotas_json = {
+                "flex": {
+                    "runningCountsPerUser": None,
+                    "maxInstances": 64,
+                    "maxCores": 512,
+                    "runningInstancesCount": 3,
+                    "runningCoresCount": 24
+                },
+                "onDemand": {
+                    "runningCountsPerUser": None,
+                    "maxInstances": 16,
+                    "maxCores": 128,
+                    "runningInstancesCount": 2,
+                    "runningCoresCount": 16
+                },
+                "reserved": []
+            }
+            mock_get.return_value.status_code = 200
+            mock_get.return_value.json.return_value = organization_computing_quotas_json
+            quotas = connec.get_organization_computing_quotas()
+
+            assert quotas.flex.running_counts_per_user is None
+            assert quotas.on_demand.running_counts_per_user is None
+            assert quotas.reserved == []
+
+    def test_get_organization_computing_quotas_raises_on_404(self):
+        connec = self.get_connection()
+        with patch("qarnot.connection.Connection._get") as mock_get:
+            mock_get.return_value.status_code = 404
+            mock_get.return_value.json.return_value = {"message": "The authenticated user does not inherit organization computing quotas"}
+            with pytest.raises(qarnot.exceptions.QarnotGenericException):
+                connec.get_organization_computing_quotas()

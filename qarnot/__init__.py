@@ -91,6 +91,8 @@ def get_url(key, **kwargs):
         'profile details': '/profiles/{profile}',  # GET -> profile details
         'hardware constraints': '/hardware-constraints',  # GET -> user hardware constraints list
         'cpu model constraints search': '/hardware-constraints/cpu-model-constraints/search',  # GET -> user hardware constraints list
+        'user computing quotas': '/quotas/computing-quotas/user',  # GET -> user computing quotas
+        'organization computing quotas': '/quotas/computing-quotas/organization',  # GET -> organization computing quotas
         'settings': '/settings',  # GET -> instance settings
     }
     return urls[key].format(**kwargs)
